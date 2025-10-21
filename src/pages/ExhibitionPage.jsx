@@ -1,14 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
-import { Lock, Star } from 'lucide-react';
+import { Lock, Star, MessageSquare } from 'lucide-react';
 
 const ExhibitionPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const isFreeUser = !user || user.subscription === 'free';
+
+  const [favorites, setFavorites] = useState(120);
+  const [isFavorited, setIsFavorited] = useState(false);
+  const [comments, setComments] = useState([
+    { user: '@artlover', text: 'This collection is amazing! 🤩' },
+    { user: '@critic', text: 'Interesting use of color and texture.' },
+  ]);
+  const [newComment, setNewComment] = useState('');
+
+  const handleFavorite = () => {
+    if (isFavorited) {
+      setFavorites(favorites - 1);
+    } else {
+      setFavorites(favorites + 1);
+    }
+    setIsFavorited(!isFavorited);
+  };
+
+  const handleCommentSubmit = (e) => {
+    e.preventDefault();
+    if (newComment.trim()) {
+      setComments([...comments, { user: '@me', text: newComment }]);
+      setNewComment('');
+    }
+  };
 
   const artworks = [
     { title: 'Digital Sunset', artist: '@artist1', price: '₱5,000', image: '🌅', locked: false },
@@ -54,6 +79,13 @@ const ExhibitionPage = () => {
             <div className="flex gap-3">
               <Button className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
                 <Star size={16} className="mr-2" /> Follow
+              </Button>
+              <Button
+                variant={isFavorited ? "primary" : "secondary"}
+                onClick={handleFavorite}
+                className="transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+              >
+                <Star size={16} /> {favorites}
               </Button>
               <Button variant="secondary" className="transform hover:scale-105 transition-all duration-300">
                 Share
@@ -126,6 +158,33 @@ const ExhibitionPage = () => {
             </div>
           </Card>
         ))}
+      </div>
+
+      {/* Comment Section */}
+      <div className="mt-8">
+        <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+          <MessageSquare size={24} /> Comments
+        </h2>
+        <div className="space-y-4">
+          {comments.map((comment, idx) => (
+            <Card key={idx} className="p-4">
+              <p className="font-bold text-[#f2e9dd]">{comment.user}</p>
+              <p className="text-[#f2e9dd]/70">{comment.text}</p>
+            </Card>
+          ))}
+        </div>
+        <form onSubmit={handleCommentSubmit} className="mt-6">
+          <textarea
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Add a comment..."
+            className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+            rows="3"
+          ></textarea>
+          <Button type="submit" className="mt-2">
+            Submit Comment
+          </Button>        
+        </form>
       </div>
     </div>
   );
