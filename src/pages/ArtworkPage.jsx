@@ -3,17 +3,16 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
-import { Lock, Star, MessageSquare } from 'lucide-react';
+import { Lock, Star, MessageSquare, Share } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 
 const ArtworkPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const { id } = useParams(); // Get artwork ID from URL
+  const { id } = useParams();
   const isFreeUser = !user || user.subscription === 'free';
 
-  // Mock data for a single artwork, would be fetched based on `id` in a real app
   const artwork = {
     id: id,
     title: 'Digital Sunset',
@@ -26,7 +25,6 @@ const ArtworkPage = () => {
     timeAgo: '2h ago',
     likes: 234,
   };
-
 
   const [comments, setComments] = useState([
     { user: '@artlover', text: 'This collection is amazing! 🤩' },
@@ -48,9 +46,22 @@ const ArtworkPage = () => {
     }
   };
 
+  const handleShare = () => {
+    const sharedPosts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
+    const isAlreadyShared = sharedPosts.some(post => post.id === artwork.id);
+
+    if (isAlreadyShared) {
+      toast.info('You have already shared this artwork.');
+      return;
+    }
+
+    sharedPosts.push(artwork);
+    localStorage.setItem('sharedPosts', JSON.stringify(sharedPosts));
+    toast.success('Artwork shared to your profile!');
+  };
+
   return (
     <div className="flex-1 p-6">
-      {/* Artwork Display */}
       <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
         <div>
           <Card noPadding>
@@ -74,15 +85,13 @@ const ArtworkPage = () => {
               <Button className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
                 <Star size={16} className="mr-2" /> Follow Artist
               </Button>
-              <Button variant="secondary" className="transform hover:scale-105 transition-all duration-300">
-                Share
+              <Button variant="secondary" onClick={handleShare} className="transform hover:scale-105 transition-all duration-300">
+                <Share size={16} className="mr-2" /> Share
               </Button>
             </div>
         </div>
       </div>
 
-
-      {/* Comment Section */}
       <div className="mt-8">
         <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
           <MessageSquare size={24} /> Comments

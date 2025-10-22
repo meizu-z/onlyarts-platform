@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/ui/Toast'; // 🆕
-import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates'; // 🆕
+import { useToast } from '../components/ui/Toast';
+import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles } from 'lucide-react';
@@ -11,11 +11,22 @@ const ProfilePage = () => {
   const { username } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast(); // 🆕
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('artworks');
   const [isFollowing, setIsFollowing] = useState(false);
+  const [sharedPosts, setSharedPosts] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedBio, setEditedBio] = useState('');
 
   const isOwnProfile = user?.username === username;
+
+  useEffect(() => {
+    if (isOwnProfile) {
+      const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
+      setSharedPosts(posts);
+      setActiveTab('shared_artworks');
+    }
+  }, [isOwnProfile]);
 
   const profileData = {
     username: username || user?.username,
@@ -27,8 +38,13 @@ const ProfilePage = () => {
     followers: 1234,
     following: 567,
     artworks: 89,
+    posts: sharedPosts.length,
     joinedDate: 'October 2024'
   };
+
+  useEffect(() => {
+    setEditedBio(profileData.bio);
+  }, [profileData.bio]);
 
   const followers = [
     { username: '@user1', name: 'User One', avatar: '👤' },
@@ -48,7 +64,6 @@ const ProfilePage = () => {
     { id: 3, title: 'Urban Nights', image: '🌃', likes: 445 },
   ];
 
-  // 🆕 Handle Follow/Unfollow with Toast
   const handleFollowToggle = () => {
     setIsFollowing(!isFollowing);
     if (!isFollowing) {
@@ -58,14 +73,21 @@ const ProfilePage = () => {
     }
   };
 
-  // 🆕 Handle Share with Toast
   const handleShare = () => {
     toast.info('Profile link copied to clipboard!');
   };
 
+  const handleEditProfile = () => {
+    if (isEditMode) {
+      // In a real app, you'd save this to a backend.
+      profileData.bio = editedBio;
+      toast.success('Profile updated!');
+    }
+    setIsEditMode(!isEditMode);
+  };
+
   return (
     <div className="flex-1 max-w-6xl mx-auto">
-      {/* Cover Image */}
       <div className="aspect-[4/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-6 flex items-center justify-center text-9xl animate-fadeIn overflow-hidden relative group">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
         <span className="transform group-hover:scale-110 transition-transform duration-500 relative z-10">
@@ -73,7 +95,6 @@ const ProfilePage = () => {
         </span>
       </div>
 
-      {/* Profile Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-8">
         <div className="flex-shrink-0">
           <div className="w-32 h-32 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-6xl shadow-lg shadow-[#7C5FFF]/30 transform hover:scale-110 transition-all duration-300">
@@ -103,10 +124,10 @@ const ProfilePage = () => {
                 <Button 
                   variant="secondary" 
                   size="sm"
-                  onClick={() => navigate('/settings')}
+                  onClick={handleEditProfile}
                   className="transform hover:scale-105 transition-all duration-200"
                 >
-                  <SettingsIcon size={16} className="mr-2" /> Edit Profile
+                  <SettingsIcon size={16} className="mr-2" /> {isEditMode ? 'Save Profile' : 'Edit Profile'}
                 </Button>
                 {!profileData.isArtist && (
                   <Button 
@@ -144,9 +165,17 @@ const ProfilePage = () => {
             )}
           </div>
 
-          <p className="text-[#f2e9dd]/90 mb-4">{profileData.bio}</p>
+          {isEditMode ? (
+            <textarea
+              value={editedBio}
+              onChange={(e) => setEditedBio(e.target.value)}
+              className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+              rows="3"
+            ></textarea>
+          ) : (
+            <p className="text-[#f2e9dd]/90 mb-4">{profileData.bio}</p>
+          )}
 
-          {/* Stats */}
           <div className="flex gap-6">
             {profileData.isArtist && (
               <div className="text-center cursor-pointer hover:opacity-80 transition-opacity">
@@ -156,6 +185,12 @@ const ProfilePage = () => {
                 <p className="text-sm text-[#f2e9dd]/70">Artworks</p>
               </div>
             )}
+            <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('shared_artworks')}>
+              <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+                {profileData.posts}
+              </p>
+              <p className="text-sm text-[#f2e9dd]/70">Shared</p>
+            </div>
             <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('followers')}>
               <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
                 {profileData.followers}
@@ -174,7 +209,6 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {/* Tabs */}
       <div className="flex gap-8 border-b border-white/10 mb-8">
         {profileData.isArtist && (
           <button
@@ -191,6 +225,19 @@ const ProfilePage = () => {
             )}
           </button>
         )}
+        <button
+          onClick={() => setActiveTab('shared_artworks')}
+          className={`relative pb-4 text-lg transition-all duration-300 ${
+            activeTab === 'shared_artworks' 
+              ? 'text-[#f2e9dd]' 
+              : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+          }`}
+        >
+          Shared Artworks
+          {activeTab === 'shared_artworks' && (
+            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+          )}
+        </button>
         <button
           onClick={() => setActiveTab('followers')}
           className={`relative pb-4 text-lg transition-all duration-300 ${
@@ -219,7 +266,6 @@ const ProfilePage = () => {
         </button>
       </div>
 
-      {/* Content */}
       {activeTab === 'artworks' && profileData.isArtist && artworks.length > 0 && (
         <div className="grid md:grid-cols-3 gap-6">
           {artworks.map((artwork, idx) => (
@@ -249,17 +295,44 @@ const ProfilePage = () => {
         </div>
       )}
 
-      {/* 🆕 Empty Artworks State */}
+      {activeTab === 'shared_artworks' && sharedPosts.length > 0 && (
+        <div className="grid md:grid-cols-3 gap-6">
+          {sharedPosts.map((post, idx) => (
+            <Card 
+              key={post.id}
+              hover
+              className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+              style={{ animationDelay: `${idx * 0.1}s` }}
+            >
+              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                  {post.image}
+                </span>
+              </div>
+              <div className="p-4">
+                <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                  {post.title}
+                </h3>
+                 <p className="text-sm text-[#f2e9dd]/70">by {post.artistName}</p>
+                <div className="flex items-center gap-2 text-[#f2e9dd]/70">
+                  <Heart size={16} />
+                  <span>{post.likes}</span>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
       {activeTab === 'artworks' && (!profileData.isArtist || artworks.length === 0) && (
         <EmptyArtworks isOwnProfile={isOwnProfile} />
       )}
 
-      {/* 🆕 Empty Followers State */}
       {activeTab === 'followers' && followers.length === 0 && (
         <EmptyFollowers isOwnProfile={isOwnProfile} />
       )}
 
-      {/* Followers List */}
       {activeTab === 'followers' && followers.length > 0 && (
         <div className="space-y-4">
           {followers.map((follower, idx) => (
@@ -287,12 +360,10 @@ const ProfilePage = () => {
         </div>
       )}
 
-      {/* 🆕 Empty Following State */}
       {activeTab === 'following' && following.length === 0 && (
         <EmptyFollowing isOwnProfile={isOwnProfile} />
       )}
 
-      {/* Following List */}
       {activeTab === 'following' && following.length > 0 && (
         <div className="space-y-4">
           {following.map((follow, idx) => (
