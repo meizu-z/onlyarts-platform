@@ -5,16 +5,17 @@ import { useToast } from '../components/ui/Toast';
 import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles } from 'lucide-react';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft } from 'lucide-react';
 
 const ProfilePage = () => {
   const { username } = useParams();
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('artworks');
+  const [activeTab, setActiveTab] = useState('shared_artworks');
   const [isFollowing, setIsFollowing] = useState(false);
   const [sharedPosts, setSharedPosts] = useState([]);
+  const [savedForLater, setSavedForLater] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedBio, setEditedBio] = useState('');
 
@@ -23,10 +24,14 @@ const ProfilePage = () => {
   useEffect(() => {
     if (isOwnProfile) {
       const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
+      const saved = JSON.parse(localStorage.getItem('savedForLater') || '[]');
       setSharedPosts(posts);
+      setSavedForLater(saved);
       setActiveTab('shared_artworks');
+    } else {
+      setActiveTab('artworks');
     }
-  }, [isOwnProfile]);
+  }, [isOwnProfile, username]);
 
   const profileData = {
     username: username || user?.username,
@@ -34,7 +39,7 @@ const ProfilePage = () => {
     bio: 'Digital artist creating beautiful landscapes and abstract art. Available for commissions!',
     avatar: '🎨',
     coverImage: '🌆',
-    isArtist: false,
+    isArtist: true, // Assuming user can be an artist
     followers: 1234,
     following: 567,
     artworks: 89,
@@ -84,6 +89,174 @@ const ProfilePage = () => {
       toast.success('Profile updated!');
     }
     setIsEditMode(!isEditMode);
+  };
+
+  const renderContent = () => {
+    switch (activeTab) {
+      case 'artworks':
+        return profileData.isArtist && artworks.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-6">
+            {artworks.map((artwork, idx) => (
+              <Card 
+                key={artwork.id}
+                hover
+                className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                    {artwork.image}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                    {artwork.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-[#f2e9dd]/70">
+                    <Heart size={16} />
+                    <span>{artwork.likes}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : <EmptyArtworks isOwnProfile={isOwnProfile} />;
+
+      case 'shared_artworks':
+        return sharedPosts.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-6">
+            {sharedPosts.map((post, idx) => (
+              <Card 
+                key={post.id}
+                hover
+                className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                    {post.image}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                    {post.title}
+                  </h3>
+                  <p className="text-sm text-[#f2e9dd]/70">by {post.artistName}</p>
+                  <div className="flex items-center gap-2 text-[#f2e9dd]/70">
+                    <Heart size={16} />
+                    <span>{post.likes}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : <p className="text-center text-[#f2e9dd]/70">No shared artworks yet.</p>;
+
+      case 'saved_for_later':
+        return savedForLater.length > 0 ? (
+          <div className="grid md:grid-cols-3 gap-6">
+            {savedForLater.map((item, idx) => (
+              <Card 
+                key={item.id}
+                hover
+                className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                    {item.image}
+                  </span>
+                </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                    {item.title}
+                  </h3>
+                  <p className="text-sm text-[#f2e9dd]/70">{item.price}</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : <p className="text-center text-[#f2e9dd]/70">No saved items yet.</p>;
+
+      case 'followers':
+        return followers.length > 0 ? (
+          <div className="space-y-4">
+            {followers.map((follower, idx) => (
+              <Card 
+                key={idx}
+                className="p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-2xl shadow-lg">
+                      {follower.avatar}
+                    </div>
+                    <div>
+                      <p className="font-bold text-[#f2e9dd]">{follower.name}</p>
+                      <p className="text-sm text-[#f2e9dd]/70">{follower.username}</p>
+                    </div>
+                  </div>
+                  <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
+                    View Profile
+                  </Button>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : <EmptyFollowers isOwnProfile={isOwnProfile} />;
+
+      case 'following':
+        return following.length > 0 ? (
+          <div className="space-y-4">
+            {following.map((follow, idx) => (
+              <Card 
+                key={idx}
+                className="p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-2xl shadow-lg">
+                      {follow.avatar}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-[#f2e9dd]">{follow.name}</p>
+                        {follow.isArtist && (
+                          <span className="px-2 py-0.5 bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 border border-[#7C5FFF]/30 rounded-full text-xs text-[#B15FFF]">
+                            Artist
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm text-[#f2e9dd]/70">{follow.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => toast.info('Unfollowed')}
+                      className="transform hover:scale-105 transition-all duration-200"
+                    >
+                      Unfollow
+                    </Button>
+                    <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
+                      View Profile
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : <EmptyFollowing isOwnProfile={isOwnProfile} />;
+
+      default:
+        return null;
+    }
   };
 
   return (
@@ -178,19 +351,13 @@ const ProfilePage = () => {
 
           <div className="flex gap-6">
             {profileData.isArtist && (
-              <div className="text-center cursor-pointer hover:opacity-80 transition-opacity">
+              <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('artworks')}>
                 <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
                   {profileData.artworks}
                 </p>
                 <p className="text-sm text-[#f2e9dd]/70">Artworks</p>
               </div>
             )}
-            <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('shared_artworks')}>
-              <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
-                {profileData.posts}
-              </p>
-              <p className="text-sm text-[#f2e9dd]/70">Shared</p>
-            </div>
             <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('followers')}>
               <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
                 {profileData.followers}
@@ -209,204 +376,52 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      <div className="flex gap-8 border-b border-white/10 mb-8">
-        {profileData.isArtist && (
+      {isOwnProfile && !['followers', 'following'].includes(activeTab) && (
+        <div className="flex gap-8 border-b border-white/10 mb-8">
           <button
-            onClick={() => setActiveTab('artworks')}
+            onClick={() => setActiveTab('shared_artworks')}
             className={`relative pb-4 text-lg transition-all duration-300 ${
-              activeTab === 'artworks' 
+              activeTab === 'shared_artworks' 
                 ? 'text-[#f2e9dd]' 
                 : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
             }`}
           >
-            Artworks
-            {activeTab === 'artworks' && (
+            Shared Posts
+            {activeTab === 'shared_artworks' && (
               <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
             )}
           </button>
-        )}
-        <button
-          onClick={() => setActiveTab('shared_artworks')}
-          className={`relative pb-4 text-lg transition-all duration-300 ${
-            activeTab === 'shared_artworks' 
-              ? 'text-[#f2e9dd]' 
-              : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
-          }`}
-        >
-          Shared Artworks
-          {activeTab === 'shared_artworks' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('followers')}
-          className={`relative pb-4 text-lg transition-all duration-300 ${
-            activeTab === 'followers' 
-              ? 'text-[#f2e9dd]' 
-              : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
-          }`}
-        >
-          Followers
-          {activeTab === 'followers' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('following')}
-          className={`relative pb-4 text-lg transition-all duration-300 ${
-            activeTab === 'following' 
-              ? 'text-[#f2e9dd]' 
-              : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
-          }`}
-        >
-          Following
-          {activeTab === 'following' && (
-            <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-          )}
-        </button>
-      </div>
-
-      {activeTab === 'artworks' && profileData.isArtist && artworks.length > 0 && (
-        <div className="grid md:grid-cols-3 gap-6">
-          {artworks.map((artwork, idx) => (
-            <Card 
-              key={artwork.id}
-              hover
-              className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                  {artwork.image}
-                </span>
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
-                  {artwork.title}
-                </h3>
-                <div className="flex items-center gap-2 text-[#f2e9dd]/70">
-                  <Heart size={16} />
-                  <span>{artwork.likes}</span>
-                </div>
-              </div>
-            </Card>
-          ))}
+          <button
+            onClick={() => setActiveTab('saved_for_later')}
+            className={`relative pb-4 text-lg transition-all duration-300 ${
+              activeTab === 'saved_for_later' 
+                ? 'text-[#f2e9dd]' 
+                : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+            }`}
+          >
+            $ Saved for Later
+            {activeTab === 'saved_for_later' && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+            )}
+          </button>
         </div>
       )}
 
-      {activeTab === 'shared_artworks' && sharedPosts.length > 0 && (
-        <div className="grid md:grid-cols-3 gap-6">
-          {sharedPosts.map((post, idx) => (
-            <Card 
-              key={post.id}
-              hover
-              className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
-              style={{ animationDelay: `${idx * 0.1}s` }}
+      {['followers', 'following'].includes(activeTab) && (
+        <div className="flex justify-start items-center border-b border-white/10 mb-8">
+            <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab(isOwnProfile ? 'shared_artworks' : 'artworks')}
+                className="transform hover:scale-105 transition-all duration-200 mb-4 mr-4"
             >
-              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                  {post.image}
-                </span>
-              </div>
-              <div className="p-4">
-                <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
-                  {post.title}
-                </h3>
-                 <p className="text-sm text-[#f2e9dd]/70">by {post.artistName}</p>
-                <div className="flex items-center gap-2 text-[#f2e9dd]/70">
-                  <Heart size={16} />
-                  <span>{post.likes}</span>
-                </div>
-              </div>
-            </Card>
-          ))}
+                <ArrowLeft size={16} className="mr-2" /> Back to Profile
+            </Button>
         </div>
       )}
 
-      {activeTab === 'artworks' && (!profileData.isArtist || artworks.length === 0) && (
-        <EmptyArtworks isOwnProfile={isOwnProfile} />
-      )}
+      {renderContent()}
 
-      {activeTab === 'followers' && followers.length === 0 && (
-        <EmptyFollowers isOwnProfile={isOwnProfile} />
-      )}
-
-      {activeTab === 'followers' && followers.length > 0 && (
-        <div className="space-y-4">
-          {followers.map((follower, idx) => (
-            <Card 
-              key={idx}
-              className="p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-2xl shadow-lg">
-                    {follower.avatar}
-                  </div>
-                  <div>
-                    <p className="font-bold text-[#f2e9dd]">{follower.name}</p>
-                    <p className="text-sm text-[#f2e9dd]/70">{follower.username}</p>
-                  </div>
-                </div>
-                <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
-                  View Profile
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {activeTab === 'following' && following.length === 0 && (
-        <EmptyFollowing isOwnProfile={isOwnProfile} />
-      )}
-
-      {activeTab === 'following' && following.length > 0 && (
-        <div className="space-y-4">
-          {following.map((follow, idx) => (
-            <Card 
-              key={idx}
-              className="p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-2xl shadow-lg">
-                    {follow.avatar}
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-bold text-[#f2e9dd]">{follow.name}</p>
-                      {follow.isArtist && (
-                        <span className="px-2 py-0.5 bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 border border-[#7C5FFF]/30 rounded-full text-xs text-[#B15FFF]">
-                          Artist
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm text-[#f2e9dd]/70">{follow.username}</p>
-                  </div>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    onClick={() => toast.info('Unfollowed')}
-                    className="transform hover:scale-105 transition-all duration-200"
-                  >
-                    Unfollow
-                  </Button>
-                  <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
-                    View Profile
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

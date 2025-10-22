@@ -3,6 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
+import Modal from '../components/common/Modal';
 import { Lock, Star, MessageSquare } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 
@@ -19,6 +20,7 @@ const ExhibitionPage = () => {
     { user: '@critic', text: 'Interesting use of color and texture.' },
   ]);
   const [newComment, setNewComment] = useState('');
+  const [selectedArtwork, setSelectedArtwork] = useState(null);
 
   const handleFavorite = () => {
     if (isFavorited) {
@@ -39,18 +41,32 @@ const ExhibitionPage = () => {
     }
   };
 
+  const handleSaveForLater = (artwork) => {
+    const savedItems = JSON.parse(localStorage.getItem('savedForLater') || '[]');
+    const isAlreadySaved = savedItems.some(item => item.id === artwork.id);
+
+    if (isAlreadySaved) {
+      toast.info('This artwork is already in your saved list.');
+      return;
+    }
+
+    savedItems.push(artwork);
+    localStorage.setItem('savedForLater', JSON.stringify(savedItems));
+    toast.success('Artwork saved for later!');
+    setSelectedArtwork(null);
+  };
+
   const artworks = [
-    { title: 'Digital Sunset', artist: '@artist1', price: '₱5,000', image: '🌅', locked: false },
-    { title: 'Abstract Flow', artist: '@artist2', price: '₱7,500', image: '🎨', locked: false },
-    { title: 'Neon Dreams', artist: '@artist3', price: '₱12,000', image: '💫', locked: false },
-    { title: 'Mountain Vista', artist: '@artist4', locked: isFreeUser, image: '🏔️' },
-    { title: 'Ocean Waves', artist: '@artist5', locked: isFreeUser, image: '🌊' },
-    { title: 'City Lights', artist: '@artist6', locked: isFreeUser, image: '🌃' },
+    { id: 1, title: 'Digital Sunset', artist: '@artist1', price: '₱5,000', image: '🌅', locked: false },
+    { id: 2, title: 'Abstract Flow', artist: '@artist2', price: '₱7,500', image: '🎨', locked: false },
+    { id: 3, title: 'Neon Dreams', artist: '@artist3', price: '₱12,000', image: '💫', locked: false },
+    { id: 4, title: 'Mountain Vista', artist: '@artist4', locked: isFreeUser, image: '🏔️' },
+    { id: 5, title: 'Ocean Waves', artist: '@artist5', locked: isFreeUser, image: '🌊' },
+    { id: 6, title: 'City Lights', artist: '@artist6', locked: isFreeUser, image: '🌃' },
   ];
 
   return (
     <div className="flex-1 p-6 md:p-8">
-      {/* Exhibition Header */}
       <div className="mb-8">
         <div className="aspect-[3/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-6 flex items-center justify-center text-9xl animate-fadeIn group hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 transition-all duration-500 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
@@ -119,52 +135,78 @@ const ExhibitionPage = () => {
         </Card>
       )}
 
-      {/* Artworks Grid */}
       <div className="grid md:grid-cols-3 gap-6">
         {artworks.map((artwork, idx) => (
-          <Card 
-            key={idx} 
-            hover={!artwork.locked} 
-            className={`relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group ${
-              artwork.locked ? 'cursor-not-allowed' : ''
-            }`}
-            style={{ animationDelay: `${idx * 0.1}s` }}
-          >
-            {artwork.locked && (
-              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl group-hover:bg-black/70 transition-all duration-300">
-                <div className="text-center transform group-hover:scale-110 transition-transform duration-300">
-                  <Lock className="mx-auto mb-2 text-[#f2e9dd]/50" size={32} />
-                  <p className="text-[#f2e9dd] font-bold">Locked</p>
-                  <p className="text-sm text-[#f2e9dd]/70">Upgrade to view</p>
+          <div key={idx} onClick={() => !artwork.locked && artwork.price && setSelectedArtwork(artwork)}>
+            <Card 
+              hover={!artwork.locked} 
+              className={`relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group ${
+                artwork.locked ? 'cursor-not-allowed' : ''
+              }`}
+              style={{ animationDelay: `${idx * 0.1}s` }}
+            >
+              {artwork.locked && (
+                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl group-hover:bg-black/70 transition-all duration-300">
+                  <div className="text-center transform group-hover:scale-110 transition-transform duration-300">
+                    <Lock className="mx-auto mb-2 text-[#f2e9dd]/50" size={32} />
+                    <p className="text-[#f2e9dd] font-bold">Locked</p>
+                    <p className="text-sm text-[#f2e9dd]/70">Upgrade to view</p>
+                  </div>
                 </div>
+              )}
+              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                {!artwork.locked && (
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                )}
+                <span className={`transform transition-transform duration-300 relative z-10 ${
+                  !artwork.locked ? 'group-hover:scale-110' : ''
+                }`}>
+                  {artwork.image}
+                </span>
               </div>
-            )}
-            <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
-              {!artwork.locked && (
-                <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              )}
-              <span className={`transform transition-transform duration-300 relative z-10 ${
-                !artwork.locked ? 'group-hover:scale-110' : ''
-              }`}>
-                {artwork.image}
-              </span>
-            </div>
-            <div className="p-4">
-              <h3 className={`font-bold text-[#f2e9dd] mb-1 transition-colors ${
-                !artwork.locked ? 'group-hover:text-[#7C5FFF]' : ''
-              }`}>
-                {artwork.title}
-              </h3>
-              <p className="text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
-              {!artwork.locked && artwork.price && (
-                <p className="text-[#B15FFF] font-bold">{artwork.price}</p>
-              )}
-            </div>
-          </Card>
+              <div className="p-4">
+                <h3 className={`font-bold text-[#f2e9dd] mb-1 transition-colors ${
+                  !artwork.locked ? 'group-hover:text-[#7C5FFF]' : ''
+                }`}>
+                  {artwork.title}
+                </h3>
+                <p className="text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
+                {!artwork.locked && artwork.price && (
+                  <p className="text-[#B15FFF] font-bold">{artwork.price}</p>
+                )}
+              </div>
+            </Card>
+          </div>
         ))}
       </div>
 
-      {/* Comment Section */}
+      {selectedArtwork && (
+        <Modal isOpen={!!selectedArtwork} onClose={() => setSelectedArtwork(null)} title={selectedArtwork.title}>
+          <div className="flex flex-col items-center">
+            <div className="w-full aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-8xl mb-4 rounded-lg">
+              {selectedArtwork.image}
+            </div>
+            <p className="text-2xl font-bold text-[#f2e9dd] mb-2">{selectedArtwork.price}</p>
+            <p className="text-lg text-[#f2e9dd]/70 mb-6">by {selectedArtwork.artist}</p>
+            <div className="flex gap-4 w-full">
+              <Button 
+                onClick={() => handleSaveForLater(selectedArtwork)} 
+                variant="secondary" 
+                className="w-full"
+              >
+                Save for Later
+              </Button>
+              <Button 
+                onClick={() => toast.info('Purchase functionality not yet implemented.')}
+                className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50"
+              >
+                Buy Now
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
       <div className="mt-8">
         <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
           <MessageSquare size={24} /> Comments
