@@ -8,6 +8,7 @@ import Sidebar from './components/layouts/sidebar';
 // Import Pages
 import { LandingPage } from './pages/LandingPage';
 import { LoginPage } from './pages/LoginPage';
+import { RegisterPage } from './pages/RegisterPage'; // Import RegisterPage
 import { Dashboard } from './pages/Dashboard';
 import { ExplorePage } from './pages/ExplorePage';
 import { ExhibitionPage } from './pages/ExhibitionPage';
@@ -65,7 +66,7 @@ const AppContent = () => {
         />
         <Route 
           path="/register" 
-          element={isAuthenticated ? <Navigate to="/home" replace /> : <LoginPage />} 
+          element={isAuthenticated ? <Navigate to="/home" replace /> : <RegisterPage />} // Corrected route
         />
         <Route 
           path="/*" 
@@ -93,4 +94,3 @@ function App() {
 }
 
 export default App;
-
