@@ -55,7 +55,7 @@ const ExplorePage = () => {
   // 🆕 Show loading state (for demo)
   if (loading) {
     return (
-      <div className="flex-1">
+      <div className="flex-1 p-6 md:p-8">
         <LoadingPaint message="Finding amazing exhibitions..." />
       </div>
     );
@@ -64,14 +64,14 @@ const ExplorePage = () => {
   // 🆕 Show error state (for demo)
   if (error) {
     return (
-      <div className="flex-1">
+      <div className="flex-1 p-6 md:p-8">
         <APIError error={error} retry={() => setError(null)} />
       </div>
     );
   }
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 p-6 md:p-8">
       <div className="mb-8">
         <h1 className="text-4xl font-bold text-[#f2e9dd] mb-4">Explore Exhibitions</h1>
         

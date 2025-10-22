@@ -49,7 +49,7 @@ const ExhibitionPage = () => {
   ];
 
   return (
-    <div className="flex-1">
+    <div className="flex-1 p-6 md:p-8">
       {/* Exhibition Header */}
       <div className="mb-8">
         <div className="aspect-[3/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-6 flex items-center justify-center text-9xl animate-fadeIn group hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 transition-all duration-500 overflow-hidden relative">

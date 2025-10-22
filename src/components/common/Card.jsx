@@ -4,12 +4,13 @@ const Card = ({
   children, 
   className = '', 
   noPadding = false,
-  // Removed the generic onClick prop to avoid conflicts
+  onClick,
 }) => {
   const padding = noPadding ? '' : 'p-6';
   
   return (
     <div
+      onClick={onClick}
       className={`
         bg-[#121212] rounded-2xl overflow-hidden 
         border border-white/5

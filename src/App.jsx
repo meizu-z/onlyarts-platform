@@ -23,6 +23,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { WalletPage } from './pages/WalletPage';
 import { LoadingPaint } from './components/ui/LoadingStates';
 import { ArtworkPage } from './pages/ArtworkPage';
+import { ChatPage } from './pages/ChatPage';
 
 // Route Guards
 const ProtectedRoute = ({ children }) => {
@@ -86,6 +87,7 @@ const AppContent = () => {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="wallet" element={<WalletPage />} />
         <Route path="artwork/:id" element={<ArtworkPage />} />
+        <Route path="chat" element={<ChatPage />} />
       </Route>
 
       {/* Fallback to redirect root to either landing or dashboard */}

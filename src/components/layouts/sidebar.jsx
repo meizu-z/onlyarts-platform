@@ -1,117 +1,117 @@
-import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Home, Compass, Video, Star, User, Sparkles, Settings, Wallet, Palette } from 'lucide-react';
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { Home, Compass, Tv, Star, User, Settings, Wallet, PlusSquare, ChevronsLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
-const Sidebar = () => {
+const NavItem = ({ to, icon, children, isCollapsed, delay }) => {
   const location = useLocation();
-  const { user } = useAuth();
-
-  const menuItems = [
-    { icon: Home, label: 'Home', path: '/dashboard' },
-    { icon: Compass, label: 'Explore', path: '/explore' },
-    { icon: Video, label: 'Livestreams', path: '/livestreams' },
-    { icon: Star, label: 'Favorites', path: '/favorites' },
-    { 
-      icon: user?.isArtist ? Palette : User, 
-      label: user?.isArtist ? 'My Artist Page' : 'Create Artist Page', 
-      path: user?.isArtist ? `/portfolio/${user?.username}` : '/create-artist'
-    },
-  ];
-
-  const isActive = (path) => location.pathname === path;
+  const isActive = location.pathname.startsWith(to);
 
   return (
-    <aside className="hidden lg:block w-64 bg-[#121212] border-r border-white/10 min-h-[calc(100vh-4rem)] sticky top-16">
-      <div className="p-4 space-y-2">
-        {/* Main Menu */}
-        {menuItems.map((item) => (
-          <Link
-            key={item.path}
-            to={item.path}
-            className={`
-              w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-              transition-all duration-200
-              ${
-                isActive(item.path)
-                  ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-[#f2e9dd] border border-purple-500/30'
-                  : 'text-[#f2e9dd]/70 hover:bg-white/5 hover:text-[#f2e9dd]'
-              }
-            `}
-          >
-            <item.icon size={20} />
-            <span className="font-medium">{item.label}</span>
-          </Link>
-        ))}
+    <NavLink
+      to={to}
+      style={{ animationDelay: `${delay}s`, animationFillMode: 'forwards' }}
+      className={`
+        opacity-0 animate-fadeIn
+        flex items-center rounded-lg
+        text-lg font-medium transition-all duration-300 ease-in-out
+        transform hover:scale-105
+        ${isCollapsed ? 'px-3 py-3 justify-center' : 'px-4 py-3'}
+        ${isActive
+          ? 'bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 text-white shadow-inner-purple'
+          : 'text-gray-400 hover:text-white hover:bg-white/5'
+        }
+      `}
+    >
+      {icon}
+      <span
+        className={`whitespace-nowrap overflow-hidden transition-all duration-300
+        ${isCollapsed ? 'w-0 opacity-0' : 'flex-1 w-full opacity-100 ml-4'}`}
+      >
+        {children}
+      </span>
+    </NavLink>
+  );
+};
 
-        {/* Divider */}
-        <div className="pt-4 border-t border-white/10 mt-4">
-          <Link
-            to="/subscriptions"
-            className={`
-              w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-              transition-all duration-200
-              ${
-                isActive('/subscriptions')
-                  ? 'bg-gradient-to-r from-purple-600/20 to-pink-600/20 text-purple-400 border border-purple-500/30'
-                  : 'text-purple-400 hover:bg-purple-500/10'
-              }
-            `}
-          >
-            <Sparkles size={20} />
-            <span className="font-medium">Upgrade</span>
-          </Link>
-        </div>
+const Sidebar = () => {
+  const { user } = useAuth();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
-        {/* Settings Section */}
-        <div className="pt-4 border-t border-white/10 mt-4 space-y-2">
-          <Link
-            to="/settings"
-            className={`
-              w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-              transition-all duration-200
-              ${
-                isActive('/settings')
-                  ? 'bg-white/5 text-[#f2e9dd]'
-                  : 'text-[#f2e9dd]/70 hover:bg-white/5 hover:text-[#f2e9dd]'
-              }
-            `}
-          >
-            <Settings size={20} />
-            <span className="font-medium">Settings</span>
-          </Link>
+  const menuItems = [
+    { to: '/dashboard', icon: <Home size={24} />, label: 'Feed' },
+    { to: '/explore', icon: <Compass size={24} />, label: 'Explore' },
+    { to: '/livestreams', icon: <Tv size={24} />, label: 'Livestreams' },
+    { to: '/exhibition', icon: <PlusSquare size={24} />, label: 'Exhibition' },
+    { to: '/favorites', icon: <Star size={24} />, label: 'Favorites' },
+  ];
 
-          <Link
-            to="/wallet"
-            className={`
-              w-full flex items-center gap-3 px-4 py-3 rounded-xl 
-              transition-all duration-200
-              ${
-                isActive('/wallet')
-                  ? 'bg-white/5 text-[#f2e9dd]'
-                  : 'text-[#f2e9dd]/70 hover:bg-white/5 hover:text-[#f2e9dd]'
-              }
-            `}
-          >
-            <Wallet size={20} />
-            <span className="font-medium">Wallet</span>
-          </Link>
-        </div>
+  const accountItems = [
+    { to: `/portfolio/${user.username}`, icon: <User size={24} />, label: 'Portfolio' },
+    { to: '/wallet', icon: <Wallet size={24} />, label: 'Wallet' },
+    { to: '/settings', icon: <Settings size={24} />, label: 'Settings' },
+  ];
 
-        {/* User Subscription Badge */}
-        {user?.subscription && user.subscription !== 'free' && (
-          <div className="mt-6 p-4 bg-gradient-to-br from-purple-600/10 to-pink-600/10 border border-purple-500/30 rounded-xl">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles size={16} className="text-purple-400" />
-              <span className="text-sm font-bold text-purple-400 capitalize">
-                {user.subscription} Member
-              </span>
-            </div>
-            <p className="text-xs text-[#f2e9dd]/70">
-              Enjoying premium features
-            </p>
+  return (
+    <aside
+      className={`
+        h-screen flex flex-col
+        bg-gradient-to-b from-[#1a1a1a] to-[#121212]
+        border-r border-white/10
+        transition-all duration-300 ease-in-out
+        ${isCollapsed ? 'w-24' : 'w-72'}
+      `}
+    >
+      <div className={`p-4 flex items-center mb-8 ${isCollapsed ? 'justify-center' : 'justify-end'}`}>
+        <button
+          onClick={() => setIsCollapsed(!isCollapsed)}
+          className="p-2 rounded-lg hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+        >
+          <ChevronsLeft
+            size={24}
+            className={`transform transition-transform duration-300 ${isCollapsed ? 'rotate-180' : 'rotate-0'}`}
+          />
+        </button>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-4" style={{ scrollbarWidth: 'none', 'msOverflowStyle': 'none' }}>
+        <nav className="space-y-3">
+          <div>
+            <p className={`px-4 text-sm font-semibold text-gray-500 uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>Menu</p>
+            {menuItems.map((item, index) => (
+              <NavItem key={item.to} to={item.to} icon={item.icon} isCollapsed={isCollapsed} delay={index * 0.05}>
+                {item.label}
+              </NavItem>
+            ))}
           </div>
-        )}
+
+          <div className="pt-6">
+            <p className={`px-4 text-sm font-semibold text-gray-500 uppercase tracking-wider ${isCollapsed ? 'hidden' : 'block'}`}>Account</p>
+            {accountItems.map((item, index) => (
+              <NavItem
+                key={item.to}
+                to={item.to}
+                icon={item.icon}
+                isCollapsed={isCollapsed}
+                delay={(menuItems.length + index) * 0.05}
+              >
+                {item.label}
+              </NavItem>
+            ))}
+          </div>
+        </nav>
+      </div>
+
+      <div className="border-t border-white/10 mt-6">
+        <div className={`flex items-center p-4 ${isCollapsed ? 'justify-center' : ''}`}>
+          <img src={user.profilePicture} alt={user.username} className="w-12 h-12 rounded-full flex-shrink-0" />
+          <div
+            className={`overflow-hidden transition-all duration-300 ease-in-out
+            ${isCollapsed ? 'w-0 opacity-0' : 'flex-1 w-full opacity-100 ml-4'}`}>
+            <p className="font-semibold text-white truncate">{user.username}</p>
+            <p className="text-sm text-gray-400">{user.subscription} Plan</p>
+          </div>
+        </div>
       </div>
     </aside>
   );

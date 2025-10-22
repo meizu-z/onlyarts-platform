@@ -15,7 +15,7 @@ const MainLayout = ({ showSidebar = true, showFooter = false }) => {
       <div className="flex flex-1 max-w-[1920px] mx-auto w-full">
         {showSidebar && isAuthenticated && <Sidebar />}
         
-        <main className="flex-1 w-full">
+        <main className="flex-1 w-full p-6 md:p-8">
           <Outlet />
         </main>
       </div>
