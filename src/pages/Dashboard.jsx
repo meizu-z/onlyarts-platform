@@ -53,7 +53,8 @@ const Dashboard = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const toggleLike = (id) => {
+  const toggleLike = (e, id) => {
+    e.stopPropagation();
     setLikedArtworks(prev => {
       const newSet = new Set(prev);
       if (newSet.has(id)) {
@@ -178,6 +179,7 @@ const Dashboard = () => {
             noPadding
             className="group cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn"
             style={{ animationDelay: `${idx * 0.1}s` }}
+            onClick={(e) => toggleLike(e, artwork.id)}
           >
             <div className="border border-white/10 rounded-2xl overflow-hidden hover:border-[#7C5FFF]/50 hover:shadow-lg hover:shadow-[#7C5FFF]/20 transition-all duration-300">
               {/* Recommendation badge for "For You" tab */}
@@ -248,10 +250,7 @@ const Dashboard = () => {
 
                 <div className="flex items-center gap-4 text-sm text-[#f2e9dd]/70">
                   <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleLike(artwork.id);
-                    }}
+                    onClick={(e) => toggleLike(e, artwork.id)}
                     className={`flex items-center gap-1 transition-all duration-200 group/like ${
                       likedArtworks.has(artwork.id) 
                         ? 'text-[#FF5F9E]' 
