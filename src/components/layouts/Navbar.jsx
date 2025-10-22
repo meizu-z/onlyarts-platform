@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Search, Bell, MessageSquare, ChevronDown, User, Settings, Wallet, Sparkles, LogOut, Menu, X } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../common/Button';
+import onlyArtsLogo from '../../assets/onlyartslogo.png';
 
 // ============================================
 // ONLYARTS LOGO COMPONENT (Mobile Optimized)
@@ -16,28 +17,9 @@ const OnlyArtsLogo = ({ size = 'md', withText = true }) => {
 
   return (
     <div className="flex items-center gap-2 md:gap-3 group">
-      {/* Pencil "O" Icon */}
+      {/* Logo Image */}
       <div className={`${sizes[size]} relative flex-shrink-0`}>
-        <svg viewBox="0 0 100 100" className="w-full h-full transform group-hover:rotate-12 group-hover:scale-110 transition-all duration-300">
-          {/* Pencil tip (peach/tan) */}
-          <path d="M 70 15 L 85 30 L 80 35 L 65 20 Z" fill="#D4A574" />
-          
-          {/* Main pencil body forming "O" */}
-          <defs>
-            <linearGradient id="pencilGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#7C5FFF" />
-              <stop offset="50%" stopColor="#B15FFF" />
-              <stop offset="100%" stopColor="#FF5F9E" />
-            </linearGradient>
-          </defs>
-          
-          {/* Outer circle of the O */}
-          <circle cx="50" cy="50" r="35" fill="none" stroke="url(#pencilGradient)" strokeWidth="14" />
-          
-          {/* Pencil tip triangle on top */}
-          <path d="M 70 15 L 85 30 L 80 35 L 65 20 Z" fill="#D4A574" />
-          <path d="M 75 22 L 78 25 L 76 27 L 73 24 Z" fill="#8B6F47" />
-        </svg>
+        <img src={onlyArtsLogo} alt="OnlyArts Logo" className="w-full h-full transform group-hover:rotate-12 group-hover:scale-110 transition-all duration-300" />
       </div>
       
       {/* "only arts" text - SMALLER ON MOBILE */}
