@@ -25,15 +25,26 @@ import { LoadingPaint } from './components/ui/LoadingStates';
 import { ArtworkPage } from './pages/ArtworkPage';
 import { ChatPage } from './pages/ChatPage';
 
-// Route Guards
+// This component handles the initial redirection logic based on auth state.
+const RootRedirect = () => {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) {
+    return <div className="h-screen w-full flex items-center justify-center"><LoadingPaint message="Initializing..." /></div>;
+  }
+  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/landing" replace />;
+};
+
+// This guard protects routes that require authentication.
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
     return <div className="h-screen w-full flex items-center justify-center"><LoadingPaint message="Loading..." /></div>;
   }
-  return isAuthenticated ? children : <Navigate to="/login" replace />;
+  // If user is not authenticated, redirect them to the landing page.
+  return isAuthenticated ? children : <Navigate to="/landing" replace />;
 };
 
+// This guard handles public routes like login/register, redirecting authenticated users to the dashboard.
 const PublicRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
   if (loading) {
@@ -47,55 +58,43 @@ const App = () => {
     <AuthProvider>
       <ToastProvider>
         <Router>
-          <AppContent />
+          <Routes>
+            {/* The root path redirects to the appropriate page based on auth state. */}
+            <Route path="/" element={<RootRedirect />} />
+            
+            {/* Public routes accessible to everyone. */}
+            <Route path="/landing" element={<LandingPage />} />
+            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+
+            {/* Protected routes wrapped in MainLayout. These require authentication. */}
+            <Route 
+              element={
+                <ProtectedRoute>
+                  <MainLayout />
+                </ProtectedRoute>
+              }
+            >
+              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/explore" element={<ExplorePage />} />
+              <Route path="/exhibition" element={<ExhibitionPage />} />
+              <Route path="/livestreams" element={<LivestreamsPage />} />
+              <Route path="/favorites" element={<FavoritesPage />} />
+              <Route path="/create-artist" element={<CreateArtistPage />} />
+              <Route path="/portfolio/:username" element={<ProfilePage />} />
+              <Route path="/subscriptions" element={<SubscriptionsPage />} />
+              <Route path="/settings" element={<SettingsPage />} />
+              <Route path="/wallet" element={<WalletPage />} />
+              <Route path="/artwork/:id" element={<ArtworkPage />} />
+              <Route path="/chat" element={<ChatPage />} />
+            </Route>
+
+            {/* A catch-all route for any undefined paths. */}
+            <Route path="*" element={<NotFoundPage />} />
+          </Routes>
         </Router>
       </ToastProvider>
     </AuthProvider>
-  );
-};
-
-const AppContent = () => {
-  const { isAuthenticated } = useAuth();
-
-  return (
-    <Routes>
-      {/* Public routes */}
-      <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-      <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
-      
-      {/* Landing page is special, it can be viewed by anyone but redirects logged-in users */}
-      <Route path="/landing" element={isAuthenticated ? <Navigate to="/dashboard" replace /> : <LandingPage />} />
-
-      {/* Protected routes that use the MainLayout */}
-      <Route 
-        path="/" 
-        element={
-          <ProtectedRoute>
-            <MainLayout />
-          </ProtectedRoute>
-        }
-      >
-        <Route index element={<Navigate to="/dashboard" replace />} />
-        <Route path="dashboard" element={<Dashboard />} />
-        <Route path="explore" element={<ExplorePage />} />
-        <Route path="exhibition" element={<ExhibitionPage />} />
-        <Route path="livestreams" element={<LivestreamsPage />} />
-        <Route path="favorites" element={<FavoritesPage />} />
-        <Route path="create-artist" element={<CreateArtistPage />} />
-        <Route path="portfolio/:username" element={<ProfilePage />} />
-        <Route path="subscriptions" element={<SubscriptionsPage />} />
-        <Route path="settings" element={<SettingsPage />} />
-        <Route path="wallet" element={<WalletPage />} />
-        <Route path="artwork/:id" element={<ArtworkPage />} />
-        <Route path="chat" element={<ChatPage />} />
-      </Route>
-
-      {/* Fallback to redirect root to either landing or dashboard */}
-      <Route path="/" element={<Navigate to="/landing" />} />
-
-      {/* Not Found Route */}
-      <Route path="*" element={<NotFoundPage />} />
-    </Routes>
   );
 };
 

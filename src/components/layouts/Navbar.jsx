@@ -56,7 +56,7 @@ const Navbar = () => {
 
     const handleLogout = () => {
         logout();
-        navigate('/');
+        navigate('/landing');
         setShowUserMenu(false);
     };
 

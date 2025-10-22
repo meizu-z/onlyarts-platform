@@ -45,7 +45,7 @@ const LoginPage = () => {
     setTimeout(() => {
       if (result.success) {
         toast.success('Login successful! Welcome back 🎨');
-        setTimeout(() => navigate('/home'), 500);
+        setTimeout(() => navigate('/dashboard'), 500);
       } else {
         toast.error(result.error);
       }
