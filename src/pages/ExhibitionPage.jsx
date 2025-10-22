@@ -4,10 +4,12 @@ import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import { Lock, Star, MessageSquare } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
 
 const ExhibitionPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const toast = useToast();
   const isFreeUser = !user || user.subscription === 'free';
 
   const [favorites, setFavorites] = useState(120);
@@ -21,8 +23,10 @@ const ExhibitionPage = () => {
   const handleFavorite = () => {
     if (isFavorited) {
       setFavorites(favorites - 1);
+      toast.success('Removed from favorites');
     } else {
       setFavorites(favorites + 1);
+      toast.success('Added to favorites');
     }
     setIsFavorited(!isFavorited);
   };
