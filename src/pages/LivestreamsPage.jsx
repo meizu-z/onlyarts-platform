@@ -1,187 +1,311 @@
 import React, { useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
+import { Wifi, Users, Clock, ArrowLeft } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import { Users, Calendar } from 'lucide-react';
 
-const LivestreamsPage = () => { 
-  const { user } = useAuth();
-  const navigate = useNavigate();
+const LivestreamsPage = () => {
   const [activeTab, setActiveTab] = useState('live');
   const [selectedStream, setSelectedStream] = useState(null);
+  const [comments, setComments] = useState([
+    {
+      user: 'ArtLover_22',
+      comment: 'This is breathtaking!',
+      profilePicture: 'https://randomuser.me/api/portraits/women/11.jpg',
+    },
+    {
+      user: 'NFTCollector_1',
+      comment: 'bids $500',
+      isBid: true,
+      profilePicture: 'https://randomuser.me/api/portraits/men/22.jpg',
+    },
+  ]);
+  const [newComment, setNewComment] = useState('');
+  const [isBidding, setIsBidding] = useState(false);
+  const [bidAmount, setBidAmount] = useState('');
 
-  // Updated primary streams with custom content/usernames
   const streams = [
     {
-      artist: 'meizzuuuuuuu', // YOUR USERNAME
+      artist: 'meizzuuuuuuu',
       title: 'Digital Painting Process',
       viewers: 987,
       live: true,
+      auction: true,
       thumbnail: '💻',
       profilePicture: 'https://randomuser.me/api/portraits/women/8.jpg',
       followers: '2.1M',
-      description: 'Join me as I create a new digital masterpiece from scratch!'
+      description: 'Join me as I create a new digital masterpiece from scratch!',
     },
     {
-      artist: 'jnorman', // YOUR USERNAME
+      artist: 'jnorman',
       title: 'Sculpting in VR',
       viewers: 654,
       live: true,
+      auction: false,
       thumbnail: '🗿',
       profilePicture: 'https://randomuser.me/api/portraits/men/12.jpg',
       followers: '950K',
-      description: 'Exploring new forms and textures in virtual reality.'
+      description: 'Exploring new forms and textures in virtual reality.',
     },
-    { artist: 'AbstractFlow', title: 'Watercolor Tutorial', viewers: 234, live: false, scheduled: 'Tomorrow 8PM', thumbnail: '💧', profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg', followers: '300K' },
-    { artist: 'ArtistThree', title: 'Abstract Painting', viewers: 789, live: true, thumbnail: '🖌️', profilePicture: 'https://randomuser.me/api/portraits/men/47.jpg', followers: '500K' },
+    {
+      artist: 'AbstractFlow',
+      title: 'Watercolor Tutorial',
+      viewers: 234,
+      live: false,
+      scheduled: 'Tomorrow 8PM',
+      thumbnail: '💧',
+      profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg',
+      followers: '300K',
+    },
+    {
+      artist: 'ArtistThree',
+      title: 'Abstract Painting',
+      viewers: 789,
+      live: true,
+      auction: true,
+      thumbnail: '🖌️',
+      profilePicture: 'https://randomuser.me/api/portraits/men/47.jpg',
+      followers: '500K',
+    },
   ];
 
-  // The 'newStreams' array is now merged into the main 'streams' array for simplicity,
-  // making the final mapping logic cleaner.
-  
-  // Filter streams based on the active tab (Live vs. Scheduled)
-  const displayStreams = streams.filter(s => activeTab === 'live' ? s.live : !s.live);
+  const displayStreams = streams.filter(s => (activeTab === 'live' ? s.live : !s.live));
+
+  const handleCommentSubmit = e => {
+    e.preventDefault();
+    if (newComment.trim()) {
+      setComments([
+        ...comments,
+        {
+          user: 'You',
+          comment: newComment,
+          profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
+        },
+      ]);
+      setNewComment('');
+    }
+  };
+
+  const handleBidSubmit = e => {
+    e.preventDefault();
+    if (bidAmount.trim() && !isNaN(bidAmount)) {
+      const newBid = {
+        user: 'You',
+        comment: `bids $${bidAmount}`,
+        isBid: true,
+        profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
+      };
+      setComments([...comments, newBid]);
+      setBidAmount('');
+      setIsBidding(false);
+    }
+  };
+
+  if (selectedStream) {
+    return (
+      <div className="flex-1 animate-fadeIn">
+        <Button onClick={() => setSelectedStream(null)} className="mb-6">
+          <ArrowLeft size={20} className="mr-2" />
+          Back to Livestreams
+        </Button>
+        <div className="flex flex-col lg:flex-row gap-6">
+          <div className="lg:w-2/3">
+            <div className="aspect-video bg-black rounded-2xl flex items-center justify-center text-8xl text-white mb-4">
+              {selectedStream.thumbnail}
+            </div>
+            <div className="flex items-center justify-between mb-4">
+              <h1 className="text-4xl font-bold text-[#f2e9dd]">
+                {selectedStream.title}
+              </h1>
+              {selectedStream.auction && (
+                <Button
+                  onClick={() => setIsBidding(true)}
+                  className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg hover:scale-105"
+                >
+                  Place Bid
+                </Button>
+              )}
+            </div>
+            <div className="flex items-center gap-4">
+              <img
+                src={selectedStream.profilePicture}
+                alt={selectedStream.artist}
+                className="w-12 h-12 rounded-full"
+              />
+              <div>
+                <p className="font-semibold text-lg text-[#f2e9dd]">
+                  {selectedStream.artist}
+                </p>
+                <p className="text-sm text-[#f2e9dd]/60">
+                  {selectedStream.followers} Followers
+                </p>
+              </div>
+            </div>
+            <p className="text-[#f2e9dd]/70 mt-4">
+              {selectedStream.description}
+            </p>
+          </div>
+
+          <div className="lg:w-1/3">
+            <Card className="h-full flex flex-col">
+              <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 border-b border-white/10 pb-3">
+                Live Chat & Bids
+              </h2>
+              <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+                {comments.map((comment, index) => (
+                  <div
+                    key={index}
+                    className={`flex items-start gap-3 p-2 rounded-lg ${comment.isBid ? 'bg-yellow-500/10' : ''
+                      }`}
+                  >
+                    <img
+                      src={comment.profilePicture}
+                      alt={comment.user}
+                      className="w-8 h-8 rounded-full"
+                    />
+                    <div>
+                      <p className="font-semibold text-sm text-[#f2e9dd]">
+                        {comment.user}
+                        {comment.isBid && (
+                          <span className="ml-2 text-xs font-bold text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded-md">
+                            BIDDER
+                          </span>
+                        )}
+                      </p>
+                      <p
+                        className={`text-sm ${
+                          comment.isBid
+                            ? 'text-yellow-300 font-bold'
+                            : 'text-[#f2e9dd]/80'
+                          }`}
+                      >
+                        {comment.comment}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <form onSubmit={handleCommentSubmit} className="mt-4 flex gap-2">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  placeholder="Say something..."
+                  className="w-full px-3 py-2 bg-[#1e1e1e] border border-white/20 rounded-md text-[#f2e9dd] focus:outline-none focus:border-[#7C5FFF]"
+                />
+                <Button type="submit" size="sm">
+                  Send
+                </Button>
+              </form>
+            </Card>
+          </div>
+        </div>
+        {selectedStream.auction && isBidding && (
+          <Modal
+            isOpen={isBidding}
+            onClose={() => setIsBidding(false)}
+            title="Place Your Bid"
+          >
+            <form onSubmit={handleBidSubmit}>
+              <input
+                type="number"
+                value={bidAmount}
+                onChange={e => setBidAmount(e.target.value)}
+                placeholder="Enter bid amount"
+                className="w-full px-4 py-2 bg-[#1e1e1e] border border-white/20 rounded-md text-[#f2e9dd] focus:outline-none focus:border-[#7C5FFF]"
+              />
+              <Button type="submit" className="mt-4 w-full">
+                Submit Bid
+              </Button>
+            </form>
+          </Modal>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1">
       <h1 className="text-4xl font-bold text-[#f2e9dd] mb-8">Livestreams</h1>
 
-      {/* Tabs */}
-      <div className="flex gap-8 border-b border-white/10 mb-8">
-        {[
-          { key: 'live', label: 'Live Now' },
-          { key: 'scheduled', label: 'Scheduled' },
-        ].map(tab => (
-          <button
-            key={tab.key}
-            onClick={() => setActiveTab(tab.key)}
-            className={`relative pb-4 text-lg transition-all duration-300 ${
-              activeTab === tab.key
-                ? 'text-[#f2e9dd]'
-                : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+      <div className="flex border-b border-white/10 mb-6">
+        <button
+          className={`px-6 py-3 text-lg font-medium transition-colors duration-300 ${
+            activeTab === 'live'
+              ? 'text-[#f2e9dd] border-b-2 border-[#7C5FFF]'
+              : 'text-[#f2e9dd]/60 hover:text-[#f2e9dd]'
             }`}
-          >
-            {tab.label}
-            {activeTab === tab.key && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-            )}
-          </button>
-        ))}
+          onClick={() => setActiveTab('live')}
+        >
+          Live
+        </button>
+        <button
+          className={`px-6 py-3 text-lg font-medium transition-colors duration-300 ${
+            activeTab === 'scheduled'
+              ? 'text-[#f2e9dd] border-b-2 border-[#7C5FFF]'
+              : 'text-[#f2e9dd]/60 hover:text-[#f2e9dd]'
+            }`}
+          onClick={() => setActiveTab('scheduled')}
+        >
+          Scheduled
+        </button>
       </div>
 
-      {/* Streams Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
         {displayStreams.map((stream, idx) => (
           <Card
             key={idx}
             hover
-            className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+            noPadding
+            className="group cursor-pointer"
             onClick={() => setSelectedStream(stream)}
           >
-            <div className="relative overflow-hidden rounded-t-2xl">
-              <div className="aspect-video bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl">
-                {/* Fallback emoji thumbnail */}
-                {!stream.live && stream.thumbnail} 
+            <div className="relative">
+              <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-teal-600/20 flex items-center justify-center text-6xl">
+                {stream.thumbnail}
               </div>
-              {stream.live && (
-                <>
-                  <img 
-                    src={stream.profilePicture} 
-                    alt={`${stream.artist}'s profile`} 
-                    className="absolute inset-0 w-full h-full object-cover filter blur-sm opacity-50" />
-                  
-                  <div className="absolute top-3 left-3 bg-red-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg animate-pulse">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+              <div className="absolute top-2 left-2 flex gap-2">
+                {stream.live ? (
+                  <>
+                    <span className="px-2 py-0.5 bg-red-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                      <Wifi size={12} />
+                      LIVE
                     </span>
-                    LIVE
-                  </div>
-                  <div className="absolute bottom-3 left-3 bg-black/60 backdrop-blur-sm text-white px-2 py-1 rounded text-xs flex items-center gap-1 shadow-lg">
-                    <Users size={12} className="animate-pulse" /> {stream.viewers.toLocaleString()}
-                  </div>
-                </>
+                    <span className="px-2 py-0.5 bg-black/50 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                      <Users size={12} />
+                      {stream.viewers}
+                    </span>
+                  </>
+                ) : (
+                  <span className="px-2 py-0.5 bg-blue-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                    <Clock size={12} />
+                    {stream.scheduled}
+                  </span>
+                )}
+              </div>
+              {stream.auction && (
+                <span className="absolute top-2 right-2 px-2 py-0.5 bg-[#7C5FFF] text-white rounded-md text-xs font-bold">
+                  AUCTION
+                </span>
               )}
             </div>
             <div className="p-4">
               <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
                 {stream.title}
               </h3>
-
-              <p className="text-sm text-[#f2e9dd]/50 mb-2">@{stream.artist}</p>
-              <div className="flex items-center gap-2 text-sm text-[#f2e9dd]/70 mb-2">
-                <img src={stream.profilePicture} alt={`${stream.artist}'s profile`} className="w-6 h-6 rounded-full object-cover" />
-                <span className="font-medium">@{stream.artist}</span>
-                {stream.followers && (
-                  <>
-                    <span className="text-[#f2e9dd]/30">·</span>
-                    <span>{stream.followers} followers</span>
-                  </>
-                )}
-              </div> 
-              {stream.scheduled && (
-                <p className="text-sm text-[#B15FFF] flex items-center gap-1">
-                  <Calendar size={14} /> {stream.scheduled}
-                </p>
-              )}
-              {stream.live && (
-                <div 
-                  className="w-full mt-3 bg-gradient-to-r from-red-600 to-[#FF5F9E] transform hover:scale-105 transition-all duration-200 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 rounded-lg text-center text-white font-bold py-2"
-                  onClick={(e) => { e.stopPropagation(); setSelectedStream(stream); }}
-                >
-                  Join Stream
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                <img
+                  src={stream.profilePicture}
+                  alt={stream.artist}
+                  className="w-8 h-8 rounded-full"
+                />
+                <p className="text-sm text-[#f2e9dd]/80">{stream.artist}</p>
+              </div>
             </div>
           </Card>
         ))}
       </div>
-
-      {/* Stream Modal */}
-      {selectedStream && (
-        <Modal isOpen={!!selectedStream} onClose={() => setSelectedStream(null)} title={`Live: ${selectedStream.title}`}>
-          <div className="flex flex-col lg:flex-row min-h-[70vh]">
-            {/* Video Section */}
-            <div className="flex-1 bg-black relative flex items-center justify-center min-h-[300px]">
-              <div className="text-white text-2xl">Mock Video Stream for {selectedStream.artist}</div>
-              <div className="absolute inset-0 flex items-center justify-center bg-black/50">
-                <img src={selectedStream.profilePicture} alt={`${selectedStream.artist}'s profile`} className="w-32 h-32 rounded-full object-cover animate-pulse" />
-              </div>
-            </div>
-
-            {/* Info and Chat Section */}
-            <div className="w-full lg:w-80 bg-[#1c1c22] p-4 flex flex-col">
-              <div className="mb-4 flex-shrink-0">
-                <div className="flex items-center gap-3 mb-2">
-                  <img src={selectedStream.profilePicture} alt={`${selectedStream.artist}'s profile`} className="w-10 h-10 rounded-full object-cover" />
-                  <div>
-                    <h3 className="text-xl font-bold text-[#f2e9dd]">@{selectedStream.artist}</h3>
-                    <p className="text-sm text-[#f2e9dd]/70">{selectedStream.followers} followers</p>
-                  </div>
-                </div>
-                <p className="text-sm text-[#f2e9dd]/80">{selectedStream.description || selectedStream.title}</p>
-              </div>
-
-              {/* Chat Box */}
-              <div className="flex-1 flex flex-col bg-[#2a2a35] rounded-lg p-3 mb-4 overflow-y-auto space-y-1">
-                <div className="text-xs text-[#f2e9dd]/60 mb-2">Welcome to the chat!</div>
-                {/* Mock Messages */}
-                <div className="text-sm"><span className="font-semibold text-[#7C5FFF]">User1:</span> Awesome stream!</div>
-                <div className="text-sm"><span className="font-semibold text-[#FF5F9E]">User2:</span> Love the colors!</div>
-                <div className="text-sm"><span className="font-semibold text-[#f2e9dd]">You:</span> Looking good!</div>
-              </div>
-
-              {/* Chat Input */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                <input type="text" placeholder="Chat..." className="flex-1 bg-[#3b3b4d] text-[#f2e9dd] px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]" />
-                <Button size="sm" className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]">Send</Button>
-              </div>
-            </div>
-          </div>
-        </Modal>
-      )}
     </div>
   );
 };
