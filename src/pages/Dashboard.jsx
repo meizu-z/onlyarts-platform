@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus } from 'lucide-react';
+import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus, Plus } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
+import Modal from '../components/common/Modal';
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -14,6 +15,7 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('foryou');
   const [likedArtworks, setLikedArtworks] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   // Mock data
   const followingArtworks = [{ id: 1, title: 'Sunset Dreams', artist: '@artist1', artistName: 'Sarah Chen', likes: 234, comments: 12, image: '🌅', isFollowing: true, timeAgo: '2h ago' }, { id: 2, title: 'Digital Abstract', artist: '@artist2', artistName: 'Mike Johnson', likes: 189, comments: 8, image: '🎨', isFollowing: true, timeAgo: '5h ago' }, { id: 3, title: 'Urban Nights', artist: '@artist3', artistName: 'Emma Davis', likes: 445, comments: 23, image: '🌃', isFollowing: true, timeAgo: '1d ago' }];
@@ -61,6 +63,17 @@ const Dashboard = () => {
     navigate(`/artwork/${artwork.id}`);
   };
 
+  const handleCreatePost = (type) => {
+    setCreateModalOpen(false);
+    if (type === 'artwork') {
+      navigate('/create-artwork');
+    } else if (type === 'exhibition') {
+      navigate('/host-exhibition');
+    } else if (type === 'live') {
+      navigate('/start-live');
+    }
+  };
+
   if (loading) {
     return (
       <div className="p-6 max-w-7xl mx-auto">
@@ -74,10 +87,26 @@ const Dashboard = () => {
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold text-[#f2e9dd] mb-2">Welcome back, {user?.username}! 👋</h1>
-        <p className="text-[#f2e9dd]/70">{activeTab === 'following' ? 'Latest from artists you follow' : activeTab === 'trending' ? 'What\'s trending on OnlyArts' : 'Personalized feed just for you'}</p>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-3xl font-bold text-[#f2e9dd] mb-2">Welcome back, {user?.username}! 👋</h1>
+          <p className="text-[#f2e9dd]/70">{activeTab === 'following' ? 'Latest from artists you follow' : activeTab === 'trending' ? 'What\'s trending on OnlyArts' : 'Personalized feed just for you'}</p>
+        </div>
+        {user?.role === 'artist' && (
+          <Button onClick={() => setCreateModalOpen(true)}>
+            <Plus size={16} className="mr-2" />
+            Make a Post
+          </Button>
+        )}
       </div>
+
+      <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="What would you like to create?">
+        <div className="flex flex-col gap-4">
+          <Button onClick={() => handleCreatePost('artwork')} variant="secondary">Post an Artwork</Button>
+          <Button onClick={() => handleCreatePost('exhibition')} variant="secondary">Host an Exhibition</Button>
+          <Button onClick={() => handleCreatePost('live')} variant="secondary">Start a Live</Button>
+        </div>
+      </Modal>
 
       {user?.subscription !== 'free' && (
         <Card className="mb-6 bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 border-[#7C5FFF]/30 animate-fadeIn">

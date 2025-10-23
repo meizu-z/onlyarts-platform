@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './components/ui/Toast';
 
 // Layouts
@@ -24,11 +25,16 @@ import { WalletPage } from './pages/WalletPage';
 import { LoadingPaint } from './components/ui/LoadingStates';
 import { ArtworkPage } from './pages/ArtworkPage';
 import { ChatPage } from './pages/ChatPage';
+import CreatePostPage from './pages/CreatePostPage';
+import CreateArtworkPage from './pages/CreateArtworkPage';
+import HostExhibitionPage from './pages/HostExhibitionPage';
+import StartLivePage from './pages/StartLivePage';
+import CartPage from './pages/CartPage';
 
 // This component handles the initial redirection logic based on auth state.
 const RootRedirect = () => {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
     return <div className="h-screen w-full flex items-center justify-center"><LoadingPaint message="Initializing..." /></div>;
   }
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Navigate to="/landing" replace />;
@@ -36,8 +42,8 @@ const RootRedirect = () => {
 
 // This guard protects routes that require authentication.
 const ProtectedRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
     return <div className="h-screen w-full flex items-center justify-center"><LoadingPaint message="Loading..." /></div>;
   }
   // If user is not authenticated, redirect them to the landing page.
@@ -46,8 +52,8 @@ const ProtectedRoute = ({ children }) => {
 
 // This guard handles public routes like login/register, redirecting authenticated users to the dashboard.
 const PublicRoute = ({ children }) => {
-  const { isAuthenticated, loading } = useAuth();
-  if (loading) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) {
     return <div className="h-screen w-full flex items-center justify-center"><LoadingPaint message="Loading..." /></div>;
   }
   return isAuthenticated ? <Navigate to="/dashboard" replace /> : children;
@@ -56,44 +62,51 @@ const PublicRoute = ({ children }) => {
 const App = () => {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <Router>
-          <Routes>
-            {/* The root path redirects to the appropriate page based on auth state. */}
-            <Route path="/" element={<RootRedirect />} />
-            
-            {/* Public routes accessible to everyone. */}
-            <Route path="/landing" element={<LandingPage />} />
-            <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
-            <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
+      <CartProvider>
+        <ToastProvider>
+          <Router>
+            <Routes>
+              {/* The root path redirects to the appropriate page based on auth state. */}
+              <Route path="/" element={<RootRedirect />} />
+              
+              {/* Public routes accessible to everyone. */}
+              <Route path="/landing" element={<LandingPage />} />
+              <Route path="/login" element={<PublicRoute><LoginPage /></PublicRoute>} />
+              <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
 
-            {/* Protected routes wrapped in MainLayout. These require authentication. */}
-            <Route 
-              element={
-                <ProtectedRoute>
-                  <MainLayout />
-                </ProtectedRoute>
-              }
-            >
-              <Route path="/dashboard" element={<Dashboard />} />
-              <Route path="/explore" element={<ExplorePage />} />
-              <Route path="/exhibition" element={<ExhibitionPage />} />
-              <Route path="/livestreams" element={<LivestreamsPage />} />
-              <Route path="/favorites" element={<FavoritesPage />} />
-              <Route path="/create-artist" element={<CreateArtistPage />} />
-              <Route path="/portfolio/:username" element={<ProfilePage />} />
-              <Route path="/subscriptions" element={<SubscriptionsPage />} />
-              <Route path="/settings" element={<SettingsPage />} />
-              <Route path="/wallet" element={<WalletPage />} />
-              <Route path="/artwork/:id" element={<ArtworkPage />} />
-              <Route path="/chat" element={<ChatPage />} />
-            </Route>
+              {/* Protected routes wrapped in MainLayout. These require authentication. */}
+              <Route 
+                element={
+                  <ProtectedRoute>
+                    <MainLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/explore" element={<ExplorePage />} />
+                <Route path="/exhibition" element={<ExhibitionPage />} />
+                <Route path="/livestreams" element={<LivestreamsPage />} />
+                <Route path="/favorites" element={<FavoritesPage />} />
+                <Route path="/create-artist" element={<CreateArtistPage />} />
+                <Route path="/portfolio/:username" element={<ProfilePage />} />
+                <Route path="/subscriptions" element={<SubscriptionsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="/wallet" element={<WalletPage />} />
+                <Route path="/artwork/:id" element={<ArtworkPage />} />
+                <Route path="/chat" element={<ChatPage />} />
+                <Route path="/create-post" element={<CreatePostPage />} />
+                <Route path="/create-artwork" element={<CreateArtworkPage />} />
+                <Route path="/host-exhibition" element={<HostExhibitionPage />} />
+                <Route path="/start-live" element={<StartLivePage />} />
+                <Route path="/cart" element={<CartPage />} />
+              </Route>
 
-            {/* A catch-all route for any undefined paths. */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Router>
-      </ToastProvider>
+              {/* A catch-all route for any undefined paths. */}
+              <Route path="*" element={<NotFoundPage />} />
+            </Routes>
+          </Router>
+        </ToastProvider>
+      </CartProvider>
     </AuthProvider>
   );
 };

@@ -56,6 +56,11 @@ const ExhibitionPage = () => {
     setSelectedArtwork(null);
   };
 
+  const handleBuyNow = (artwork) => {
+    toast.info(`'${artwork.title}' has been added to your cart.`);
+    setSelectedArtwork(null);
+  };
+
   const artworks = [
     { id: 1, title: 'Digital Sunset', artist: '@artist1', price: '₱5,000', image: '🌅', locked: false },
     { id: 2, title: 'Abstract Flow', artist: '@artist2', price: '₱7,500', image: '🎨', locked: false },
@@ -172,7 +177,18 @@ const ExhibitionPage = () => {
                 </h3>
                 <p className="text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
                 {!artwork.locked && artwork.price && (
-                  <p className="text-[#B15FFF] font-bold">{artwork.price}</p>
+                  <div className="flex justify-between items-center">
+                    <p className="text-[#B15FFF] font-bold">{artwork.price}</p>
+                    <Button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleBuyNow(artwork);
+                      }}
+                      className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-4 py-1 rounded-lg text-sm"
+                    >
+                      Buy Now
+                    </Button>
+                  </div>
                 )}
               </div>
             </Card>
@@ -197,7 +213,7 @@ const ExhibitionPage = () => {
                 Save for Later
               </Button>
               <Button 
-                onClick={() => toast.info('Purchase functionality not yet implemented.')}
+                onClick={() => handleBuyNow(selectedArtwork)}
                 className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50"
               >
                 Buy Now

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, MessageSquare, ChevronDown, User, Settings, Wallet, Sparkles, LogOut, Menu, X, Heart, MessageCircle } from 'lucide-react';
+import { Search, Bell, MessageSquare, ChevronDown, User, Settings, Wallet, Sparkles, LogOut, Menu, X, Heart, MessageCircle, ShoppingCart, Trash2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { useCart } from '../../context/CartContext';
 import Button from '../common/Button';
 import onlyArtsLogo from '../../assets/onlyartslogo.png';
 
@@ -33,10 +34,12 @@ const OnlyArtsLogo = ({ size = 'md', withText = true }) => {
 
 const Navbar = () => {
     const { user, isAuthenticated, logout } = useAuth();
+    const { cartItems, removeFromCart } = useCart(); // Destructure removeFromCart
     const navigate = useNavigate();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
+    const [showCartDropdown, setShowCartDropdown] = useState(false); // New state for cart dropdown
     const [scrolled, setScrolled] = useState(false);
     const [hasChatNotification, setHasChatNotification] = useState(true);
 
@@ -65,10 +68,22 @@ const Navbar = () => {
         navigate('/chat');
     };
 
+    // Toggle cart dropdown instead of navigating
+    const handleCartClick = () => {
+        setShowCartDropdown(prev => !prev);
+        // If the cart dropdown is about to be shown, close other dropdowns
+        if (!showCartDropdown) {
+            setShowNotifications(false);
+            setShowUserMenu(false);
+        }
+    };
+
     const handleNotificationsClick = () => {
         setShowNotifications(prev => !prev);
         if (!showNotifications) {
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+            setShowUserMenu(false);
+            setShowCartDropdown(false);
         }
     };
 
@@ -81,6 +96,10 @@ const Navbar = () => {
             case 'follow': return <User className="w-5 h-5 text-green-500" />;
             default: return <Sparkles className="w-5 h-5 text-yellow-500" />;
         }
+    };
+
+    const calculateCartTotal = () => {
+        return cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
     };
 
     return (
@@ -132,16 +151,20 @@ const Navbar = () => {
                                             <div className="p-3 border-b border-white/10">
                                                 <h3 className="font-bold text-white">Notifications</h3>
                                             </div>
-                                            <div className="max-h-96 overflow-y-auto">
-                                                {notifications.map(notification => (
-                                                    <div key={notification.id} className={`flex items-start gap-3 p-3 border-b border-white/5 ${!notification.read ? 'bg-white/5' : ''}`}>
-                                                        <div className="mt-1">{getNotificationIcon(notification.type)}</div>
-                                                        <div>
-                                                            <p className="text-sm text-gray-200" dangerouslySetInnerHTML={{ __html: notification.text }}></p>
-                                                            <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                                            <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                                {notifications.length > 0 ? (
+                                                    notifications.map(notification => (
+                                                        <div key={notification.id} className={`flex items-start gap-3 p-3 border-b border-white/5 ${!notification.read ? 'bg-white/5' : ''}`}>
+                                                            <div className="mt-1">{getNotificationIcon(notification.type)}</div>
+                                                            <div>
+                                                                <p className="text-sm text-gray-200" dangerouslySetInnerHTML={{ __html: notification.text }}></p>
+                                                                <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
+                                                            </div>
                                                         </div>
-                                                    </div>
-                                                ))}
+                                                    ))
+                                                ) : (
+                                                    <p className="p-4 text-sm text-gray-400 text-center">No new notifications.</p>
+                                                )}
                                             </div>
                                         </div>
                                     </>
@@ -158,8 +181,73 @@ const Navbar = () => {
                                 )}
                             </button>
 
+                            {/* Cart Dropdown */} 
                             <div className="relative">
-                                <button onClick={() => setShowUserMenu(!showUserMenu)} className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-full hover:bg-white/5 transition-colors group">
+                                <button onClick={handleCartClick} className="hidden sm:block relative p-1.5 md:p-2 text-[#f2e9dd] hover:bg-white/5 rounded-full transition-colors group">
+                                    <ShoppingCart size={18} className="md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
+                                    {cartItems.length > 0 && (
+                                        <span className="absolute top-0 right-0 flex items-center justify-center w-4 h-4 text-xs font-bold text-white bg-red-500 rounded-full">
+                                            {cartItems.length}
+                                        </span>
+                                    )}
+                                </button>
+
+                                {showCartDropdown && (
+                                    <>
+                                        <div className="fixed inset-0 z-40" onClick={() => setShowCartDropdown(false)}></div>
+                                        <div className="absolute right-0 mt-2 w-80 bg-[#121212] border border-white/10 rounded-2xl shadow-xl z-50 animate-slideDown">
+                                            <div className="p-3 border-b border-white/10">
+                                                <h3 className="font-bold text-white">Your Cart ({cartItems.length})</h3>
+                                            </div>
+                                            <div className="max-h-96 overflow-y-auto custom-scrollbar">
+                                                {cartItems.length > 0 ? (
+                                                    cartItems.map(item => (
+                                                        <div key={item.id} className="flex items-center gap-3 p-3 border-b border-white/5 last:border-b-0">
+                                                            <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
+                                                            <div className="flex-grow">
+                                                                <p className="text-sm text-gray-200 font-semibold truncate">{item.name}</p>
+                                                                <p className="text-xs text-gray-400">{item.quantity} x ${item.price.toFixed(2)}</p>
+                                                            </div>
+                                                            <button 
+                                                                onClick={() => removeFromCart(item.id)}
+                                                                className="p-1 text-red-400 hover:bg-red-500/20 rounded-full transition-colors"
+                                                                title="Remove from cart"
+                                                            >
+                                                                <Trash2 size={16} />
+                                                            </button>
+                                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <p className="p-4 text-sm text-gray-400 text-center">Your cart is empty.</p>
+                                                )}
+                                            </div>
+                                            {cartItems.length > 0 && (
+                                                <div className="p-3 border-t border-white/10">
+                                                    <div className="flex justify-between items-center mb-3">
+                                                        <span className="text-white font-bold">Total:</span>
+                                                        <span className="text-white font-bold">${calculateCartTotal()}</span>
+                                                    </div>
+                                                    <Button 
+                                                        onClick={() => { navigate('/cart'); setShowCartDropdown(false); }}
+                                                        className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] hover:shadow-lg hover:shadow-[#7C5FFF]/30 transition-all"
+                                                    >
+                                                        View Cart
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+
+                            <div className="relative">
+                                <button onClick={() => {
+                                    setShowUserMenu(!showUserMenu);
+                                    if (!showUserMenu) {
+                                        setShowNotifications(false);
+                                        setShowCartDropdown(false);
+                                    }
+                                }} className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-full hover:bg-white/5 transition-colors group">
                                     <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-white font-bold text-xs md:text-sm ring-2 ring-transparent group-hover:ring-[#7C5FFF]/50 transition-all">
                                         {user?.displayName?.[0]?.toUpperCase() || 'U'}
                                     </div>
@@ -225,6 +313,8 @@ const Navbar = () => {
                         <Link to="/livestreams" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Livestreams</Link>
                         <Link to="/chat" onClick={() => { setShowMobileMenu(false); handleChatClick(); }} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Messages</Link>
                         <Link to="/favorites" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Favorites</Link>
+                        {/* The cart link in mobile menu should also close the dropdown if open */}
+                        <button onClick={() => { setShowMobileMenu(false); setShowCartDropdown(true); }} className="w-full text-left px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Cart</button>
                     </div>
                 </div>
             )}
@@ -232,6 +322,10 @@ const Navbar = () => {
             <style>{`
                 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
                 .animate-slideDown { animation: slideDown 0.2s ease-out forwards; }
+                .custom-scrollbar::-webkit-scrollbar { width: 8px; }
+                .custom-scrollbar::-webkit-scrollbar-track { background: #1a1a1a; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb { background: #4a4a4a; border-radius: 10px; }
+                .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #5a5a5a; }
             `}</style>
         </nav>
     );

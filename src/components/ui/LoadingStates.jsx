@@ -31,23 +31,6 @@ export const LoadingPaint = ({ message = "Drying the paint.. please wait." }) =>
         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
         <div className="w-2 h-2 bg-indigo-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
       </div>
-
-      <style jsx>{`
-        @keyframes drip {
-          0%, 100% { 
-            transform: translateY(0) scale(1);
-            opacity: 1;
-          }
-          50% { 
-            transform: translateY(20px) scale(0.5);
-            opacity: 0.5;
-          }
-        }
-        
-        .animate-drip {
-          animation: drip 1.5s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };
