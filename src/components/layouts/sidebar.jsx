@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Compass, Tv, Star, User, Settings, Wallet, PlusSquare, ChevronsLeft } from 'lucide-react';
+import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ChevronsLeft } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const NavItem = ({ to, icon, children, isCollapsed }) => {
@@ -106,7 +106,9 @@ const Sidebar = () => {
               <NavItem to="/dashboard" icon={<Home size={22} />} isCollapsed={isCollapsed}>Feed</NavItem>
               <NavItem to="/explore" icon={<Compass size={22} />} isCollapsed={isCollapsed}>Explore</NavItem>
               <NavItem to="/livestreams" icon={<Tv size={22} />} isCollapsed={isCollapsed}>Livestreams</NavItem>
-              <NavItem to="/exhibition" icon={<PlusSquare size={22} />} isCollapsed={isCollapsed}>Exhibition</NavItem>
+              {user?.role !== 'artist' && (
+                <NavItem to="/create-artist" icon={<Sparkles size={22} />} isCollapsed={isCollapsed}>Be an Artist</NavItem>
+              )}
               <NavItem to="/favorites" icon={<Star size={22} />} isCollapsed={isCollapsed}>Favorites</NavItem>
             </div>
           </div>

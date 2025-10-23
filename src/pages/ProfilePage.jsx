@@ -5,7 +5,8 @@ import { useToast } from '../components/ui/Toast';
 import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft } from 'lucide-react';
+import Modal from '../components/common/Modal';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar } from 'lucide-react';
 
 const ProfilePage = () => {
   const { username } = useParams();
@@ -15,23 +16,16 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('shared_artworks');
   const [isFollowing, setIsFollowing] = useState(false);
   const [sharedPosts, setSharedPosts] = useState([]);
-  const [savedForLater, setSavedForLater] = useState([]);
+  const [savedForLater, setSavedForLater] = useState([
+    { id: 101, title: 'Ocean Waves', image: '🌊', likes: 567, type: 'artwork', forSale: true, price: 6500 },
+    { id: 102, title: 'Mountain Peak', image: '⛰️', likes: 445, type: 'artwork', forSale: false },
+    { id: 103, title: 'Abstract Expressions', image: '🎭', type: 'exhibition', exhibitionType: 'Solo', artworksCount: 15 },
+  ]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedBio, setEditedBio] = useState('');
+  const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
   const isOwnProfile = user?.username === username;
-
-  useEffect(() => {
-    if (isOwnProfile) {
-      const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
-      const saved = JSON.parse(localStorage.getItem('savedForLater') || '[]');
-      setSharedPosts(posts);
-      setSavedForLater(saved);
-      setActiveTab('shared_artworks');
-    } else {
-      setActiveTab('artworks');
-    }
-  }, [isOwnProfile, username]);
 
   const profileData = {
     username: username || user?.username,
@@ -49,7 +43,23 @@ const ProfilePage = () => {
 
   useEffect(() => {
     setEditedBio(profileData.bio);
-  }, [profileData.bio]);
+
+    // Load posts and set initial tab
+    if (isOwnProfile) {
+      const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
+      if (posts.length > 0) {
+        setSharedPosts(posts);
+      }
+      // For artists, default to portfolio tab
+      if (profileData.isArtist) {
+        setActiveTab('portfolio');
+      } else {
+        setActiveTab('shared_artworks');
+      }
+    } else {
+      setActiveTab(profileData.isArtist ? 'portfolio' : 'shared_artworks');
+    }
+  }, [profileData.bio, isOwnProfile, profileData.isArtist]);
 
   const followers = [
     { username: '@user1', name: 'User One', avatar: '👤' },
@@ -64,9 +74,14 @@ const ProfilePage = () => {
   ];
 
   const artworks = [
-    { id: 1, title: 'Sunset Dreams', image: '🌅', likes: 234 },
-    { id: 2, title: 'Abstract Flow', image: '🎨', likes: 189 },
-    { id: 3, title: 'Urban Nights', image: '🌃', likes: 445 },
+    { id: 1, title: 'Sunset Dreams', image: '🌅', likes: 234, type: 'artwork', forSale: true, price: 5000 },
+    { id: 2, title: 'Abstract Flow', image: '🎨', likes: 189, type: 'artwork', forSale: false },
+    { id: 3, title: 'Urban Nights', image: '🌃', likes: 445, type: 'artwork', forSale: true, price: 8000 },
+  ];
+
+  const exhibitions = [
+    { id: 1, title: 'Digital Dreams Exhibition', image: '🖼️', type: 'exhibition', exhibitionType: 'Solo', startDate: '2024-12-01', endDate: '2024-12-15', artworksCount: 12 },
+    { id: 2, title: 'Collaborative Visions', image: '🎭', type: 'exhibition', exhibitionType: 'Collaboration', startDate: '2024-11-15', endDate: '2024-11-30', artworksCount: 24 },
   ];
 
   const handleFollowToggle = () => {
@@ -91,8 +106,110 @@ const ProfilePage = () => {
     setIsEditMode(!isEditMode);
   };
 
+  const handleCreatePost = (type) => {
+    setCreateModalOpen(false);
+    if (type === 'artwork') {
+      navigate('/create-artwork');
+    } else if (type === 'exhibition') {
+      navigate('/host-exhibition');
+    } else if (type === 'live') {
+      navigate('/start-live');
+    }
+  };
+
   const renderContent = () => {
     switch (activeTab) {
+      case 'portfolio':
+        // Show both artworks and exhibitions for artists
+        return (
+          <div className="space-y-8">
+            {/* Artworks Section */}
+            <div>
+              <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                <Image size={24} /> Artworks
+              </h2>
+              {artworks.length > 0 ? (
+                <div className="grid md:grid-cols-3 gap-6">
+                  {artworks.map((artwork, idx) => (
+                    <Card
+                      key={artwork.id}
+                      hover
+                      className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                          {artwork.image}
+                        </span>
+                        {artwork.forSale && (
+                          <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                            For Sale
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                          {artwork.title}
+                        </h3>
+                        {artwork.forSale && artwork.price && (
+                          <p className="text-green-400 font-semibold mb-2">₱{artwork.price.toLocaleString()}</p>
+                        )}
+                        <div className="flex items-center gap-2 text-[#f2e9dd]/70">
+                          <Heart size={16} />
+                          <span>{artwork.likes}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : <EmptyArtworks isOwnProfile={isOwnProfile} />}
+            </div>
+
+            {/* Exhibitions Section */}
+            <div>
+              <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                <Calendar size={24} /> Exhibitions
+              </h2>
+              {exhibitions.length > 0 ? (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {exhibitions.map((exhibition, idx) => (
+                    <Card
+                      key={exhibition.id}
+                      hover
+                      className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div className="aspect-video bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                          {exhibition.image}
+                        </span>
+                        <div className="absolute top-3 right-3 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                          {exhibition.exhibitionType}
+                        </div>
+                      </div>
+                      <div className="p-4">
+                        <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                          {exhibition.title}
+                        </h3>
+                        <p className="text-sm text-[#f2e9dd]/70 mb-2">
+                          {new Date(exhibition.startDate).toLocaleDateString()} - {new Date(exhibition.endDate).toLocaleDateString()}
+                        </p>
+                        <p className="text-sm text-[#f2e9dd]/70">
+                          {exhibition.artworksCount} artworks
+                        </p>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-center text-[#f2e9dd]/70">No exhibitions yet.</p>
+              )}
+            </div>
+          </div>
+        );
+
       case 'artworks':
         return profileData.isArtist && artworks.length > 0 ? (
           <div className="grid md:grid-cols-3 gap-6">
@@ -155,26 +272,48 @@ const ProfilePage = () => {
         ) : <p className="text-center text-[#f2e9dd]/70">No shared artworks yet.</p>;
 
       case 'saved_for_later':
-        return savedForLater.length > 0 ? (
+        // Combine saved artworks and exhibitions
+        const savedItems = [...savedForLater];
+
+        return savedItems.length > 0 ? (
           <div className="grid md:grid-cols-3 gap-6">
-            {savedForLater.map((item, idx) => (
-              <Card 
+            {savedItems.map((item, idx) => (
+              <Card
                 key={item.id}
                 hover
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
-                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                <div className={`${item.type === 'exhibition' ? 'aspect-video' : 'aspect-square'} bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative`}>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
                     {item.image}
                   </span>
+                  {item.type === 'exhibition' && (
+                    <div className="absolute top-3 right-3 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                      Exhibition
+                    </div>
+                  )}
+                  {item.forSale && item.price && (
+                    <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                      ₱{item.price.toLocaleString()}
+                    </div>
+                  )}
                 </div>
                 <div className="p-4">
                   <h3 className="font-bold text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
                     {item.title}
                   </h3>
-                  <p className="text-sm text-[#f2e9dd]/70">{item.price}</p>
+                  {item.type === 'exhibition' ? (
+                    <p className="text-sm text-[#f2e9dd]/70">
+                      {item.exhibitionType} • {item.artworksCount} artworks
+                    </p>
+                  ) : (
+                    <div className="flex items-center gap-2 text-[#f2e9dd]/70">
+                      <Heart size={16} />
+                      <span>{item.likes || 0}</span>
+                    </div>
+                  )}
                 </div>
               </Card>
             ))}
@@ -261,6 +400,14 @@ const ProfilePage = () => {
 
   return (
     <div className="flex-1 max-w-6xl mx-auto">
+      <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="What would you like to create?">
+        <div className="flex flex-col gap-4">
+          <Button onClick={() => handleCreatePost('artwork')} variant="secondary">Post an Artwork</Button>
+          <Button onClick={() => handleCreatePost('exhibition')} variant="secondary">Host an Exhibition</Button>
+          <Button onClick={() => handleCreatePost('live')} variant="secondary">Start a Live</Button>
+        </div>
+      </Modal>
+
       <div className="aspect-[4/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-6 flex items-center justify-center text-9xl animate-fadeIn overflow-hidden relative group">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
         <span className="transform group-hover:scale-110 transition-transform duration-500 relative z-10">
@@ -294,16 +441,25 @@ const ProfilePage = () => {
 
             {isOwnProfile ? (
               <div className="flex gap-2">
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="sm"
                   onClick={handleEditProfile}
                   className="transform hover:scale-105 transition-all duration-200"
                 >
                   <SettingsIcon size={16} className="mr-2" /> {isEditMode ? 'Save Profile' : 'Edit Profile'}
                 </Button>
+                {profileData.isArtist && (
+                  <Button
+                    size="sm"
+                    onClick={() => setCreateModalOpen(true)}
+                    className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
+                  >
+                    <Plus size={16} className="mr-2" /> Make a Post
+                  </Button>
+                )}
                 {!profileData.isArtist && (
-                  <Button 
+                  <Button
                     size="sm"
                     onClick={() => navigate('/create-artist')}
                     className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
@@ -376,34 +532,54 @@ const ProfilePage = () => {
         </div>
       </div>
 
-      {isOwnProfile && !['followers', 'following'].includes(activeTab) && (
+      {!['followers', 'following'].includes(activeTab) && (
         <div className="flex gap-8 border-b border-white/10 mb-8">
-          <button
-            onClick={() => setActiveTab('shared_artworks')}
-            className={`relative pb-4 text-lg transition-all duration-300 ${
-              activeTab === 'shared_artworks' 
-                ? 'text-[#f2e9dd]' 
-                : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
-            }`}
-          >
-            Shared Posts
-            {activeTab === 'shared_artworks' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-            )}
-          </button>
-          <button
-            onClick={() => setActiveTab('saved_for_later')}
-            className={`relative pb-4 text-lg transition-all duration-300 ${
-              activeTab === 'saved_for_later' 
-                ? 'text-[#f2e9dd]' 
-                : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
-            }`}
-          >
-            $ Saved for Later
-            {activeTab === 'saved_for_later' && (
-              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
-            )}
-          </button>
+          {profileData.isArtist && (
+            <button
+              onClick={() => setActiveTab('portfolio')}
+              className={`relative pb-4 text-lg transition-all duration-300 ${
+                activeTab === 'portfolio'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+            >
+              Portfolio
+              {activeTab === 'portfolio' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('shared_artworks')}
+              className={`relative pb-4 text-lg transition-all duration-300 ${
+                activeTab === 'shared_artworks'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+            >
+              Shared Posts
+              {activeTab === 'shared_artworks' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
+          {isOwnProfile && (
+            <button
+              onClick={() => setActiveTab('saved_for_later')}
+              className={`relative pb-4 transition-all duration-300 flex items-center gap-2 ${
+                activeTab === 'saved_for_later'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+              title="Saved for Later"
+            >
+              <Bookmark size={20} />
+              {activeTab === 'saved_for_later' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
         </div>
       )}
 
@@ -412,7 +588,7 @@ const ProfilePage = () => {
             <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setActiveTab(isOwnProfile ? 'shared_artworks' : 'artworks')}
+                onClick={() => setActiveTab(profileData.isArtist ? 'portfolio' : (isOwnProfile ? 'shared_artworks' : 'artworks'))}
                 className="transform hover:scale-105 transition-all duration-200 mb-4 mr-4"
             >
                 <ArrowLeft size={16} className="mr-2" /> Back to Profile
