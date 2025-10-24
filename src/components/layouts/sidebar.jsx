@@ -65,7 +65,7 @@ const Sidebar = () => {
   return (
     <aside
       className={`
-        h-screen flex flex-col
+        hidden md:flex h-screen flex-col
         bg-gradient-to-b from-[#1a1a1a] to-[#121212]
         border-r border-white/10 backdrop-blur-xl
         transition-all duration-500 ease-out

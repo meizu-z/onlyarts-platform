@@ -105,67 +105,67 @@ const LivestreamsPage = () => {
   if (selectedStream) {
     return (
       <div className="flex-1 animate-fadeIn">
-        <Button onClick={() => setSelectedStream(null)} className="mb-6">
+        <Button onClick={() => setSelectedStream(null)} className="mb-4 md:mb-6">
           <ArrowLeft size={20} className="mr-2" />
           Back to Livestreams
         </Button>
-        <div className="flex flex-col lg:flex-row gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
           <div className="lg:w-2/3">
-            <div className="aspect-video bg-black rounded-2xl flex items-center justify-center text-8xl text-white mb-4">
+            <div className="aspect-video bg-black rounded-2xl flex items-center justify-center text-6xl md:text-8xl text-white mb-3 md:mb-4">
               {selectedStream.thumbnail}
             </div>
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-4xl font-bold text-[#f2e9dd]">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4 mb-3 md:mb-4">
+              <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd]">
                 {selectedStream.title}
               </h1>
               {selectedStream.auction && (
                 <Button
                   onClick={() => setIsBidding(true)}
-                  className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg hover:scale-105"
+                  className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg hover:scale-105"
                 >
                   Place Bid
                 </Button>
               )}
             </div>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3 md:gap-4">
               <img
                 src={selectedStream.profilePicture}
                 alt={selectedStream.artist}
-                className="w-12 h-12 rounded-full"
+                className="w-10 h-10 md:w-12 md:h-12 rounded-full"
               />
               <div>
-                <p className="font-semibold text-lg text-[#f2e9dd]">
+                <p className="font-semibold text-base md:text-lg text-[#f2e9dd]">
                   {selectedStream.artist}
                 </p>
-                <p className="text-sm text-[#f2e9dd]/60">
+                <p className="text-xs md:text-sm text-[#f2e9dd]/60">
                   {selectedStream.followers} Followers
                 </p>
               </div>
             </div>
-            <p className="text-[#f2e9dd]/70 mt-4">
+            <p className="text-sm md:text-base text-[#f2e9dd]/70 mt-3 md:mt-4">
               {selectedStream.description}
             </p>
           </div>
 
           <div className="lg:w-1/3">
-            <Card className="h-full flex flex-col">
-              <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 border-b border-white/10 pb-3">
+            <Card className="h-full flex flex-col p-3 md:p-4">
+              <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3 md:mb-4 border-b border-white/10 pb-2 md:pb-3">
                 Live Chat & Bids
               </h2>
-              <div className="flex-1 space-y-4 overflow-y-auto pr-2">
+              <div className="flex-1 space-y-3 md:space-y-4 overflow-y-auto pr-2">
                 {comments.map((comment, index) => (
                   <div
                     key={index}
-                    className={`flex items-start gap-3 p-2 rounded-lg ${comment.isBid ? 'bg-yellow-500/10' : ''
+                    className={`flex items-start gap-2 md:gap-3 p-2 rounded-lg ${comment.isBid ? 'bg-yellow-500/10' : ''
                       }`}
                   >
                     <img
                       src={comment.profilePicture}
                       alt={comment.user}
-                      className="w-8 h-8 rounded-full"
+                      className="w-7 h-7 md:w-8 md:h-8 rounded-full"
                     />
                     <div>
-                      <p className="font-semibold text-sm text-[#f2e9dd]">
+                      <p className="font-semibold text-xs md:text-sm text-[#f2e9dd]">
                         {comment.user}
                         {comment.isBid && (
                           <span className="ml-2 text-xs font-bold text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded-md">
@@ -174,7 +174,7 @@ const LivestreamsPage = () => {
                         )}
                       </p>
                       <p
-                        className={`text-sm ${
+                        className={`text-xs md:text-sm ${
                           comment.isBid
                             ? 'text-yellow-300 font-bold'
                             : 'text-[#f2e9dd]/80'
@@ -186,13 +186,13 @@ const LivestreamsPage = () => {
                   </div>
                 ))}
               </div>
-              <form onSubmit={handleCommentSubmit} className="mt-4 flex gap-2">
+              <form onSubmit={handleCommentSubmit} className="mt-3 md:mt-4 flex gap-2">
                 <input
                   type="text"
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
                   placeholder="Say something..."
-                  className="w-full px-3 py-2 bg-[#1e1e1e] border border-white/20 rounded-md text-[#f2e9dd] focus:outline-none focus:border-[#7C5FFF]"
+                  className="w-full px-3 py-2 text-sm md:text-base bg-[#1e1e1e] border border-white/20 rounded-md text-[#f2e9dd] focus:outline-none focus:border-[#7C5FFF]"
                 />
                 <Button type="submit" size="sm">
                   Send
@@ -227,11 +227,11 @@ const LivestreamsPage = () => {
 
   return (
     <div className="flex-1">
-      <h1 className="text-4xl font-bold text-[#f2e9dd] mb-8">Livestreams</h1>
+      <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-6 md:mb-8">Livestreams</h1>
 
-      <div className="flex border-b border-white/10 mb-6">
+      <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
         <button
-          className={`px-6 py-3 text-lg font-medium transition-colors duration-300 ${
+          className={`px-6 py-3 text-base md:text-lg font-medium whitespace-nowrap transition-colors duration-300 ${
             activeTab === 'live'
               ? 'text-[#f2e9dd] border-b-2 border-[#7C5FFF]'
               : 'text-[#f2e9dd]/60 hover:text-[#f2e9dd]'
@@ -241,7 +241,7 @@ const LivestreamsPage = () => {
           Live
         </button>
         <button
-          className={`px-6 py-3 text-lg font-medium transition-colors duration-300 ${
+          className={`px-6 py-3 text-base md:text-lg font-medium whitespace-nowrap transition-colors duration-300 ${
             activeTab === 'scheduled'
               ? 'text-[#f2e9dd] border-b-2 border-[#7C5FFF]'
               : 'text-[#f2e9dd]/60 hover:text-[#f2e9dd]'
@@ -252,17 +252,17 @@ const LivestreamsPage = () => {
         </button>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
         {displayStreams.map((stream, idx) => (
           <Card
             key={idx}
             hover
             noPadding
-            className="group cursor-pointer"
+            className="group cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300"
             onClick={() => setSelectedStream(stream)}
           >
             <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-teal-600/20 flex items-center justify-center text-6xl">
+              <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-teal-600/20 flex items-center justify-center text-5xl md:text-6xl">
                 {stream.thumbnail}
               </div>
               <div className="absolute top-2 left-2 flex gap-2">
@@ -290,8 +290,8 @@ const LivestreamsPage = () => {
                 </span>
               )}
             </div>
-            <div className="p-4">
-              <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
+            <div className="p-3 md:p-4">
+              <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
                 {stream.title}
               </h3>
               <div className="flex items-center gap-3">
@@ -300,7 +300,7 @@ const LivestreamsPage = () => {
                   alt={stream.artist}
                   className="w-8 h-8 rounded-full"
                 />
-                <p className="text-sm text-[#f2e9dd]/80">{stream.artist}</p>
+                <p className="text-xs md:text-sm text-[#f2e9dd]/80">{stream.artist}</p>
               </div>
             </div>
           </Card>

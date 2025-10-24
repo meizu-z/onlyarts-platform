@@ -92,19 +92,19 @@ const SubscriptionsPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto py-12 px-4">
-      <div className="text-center mb-12">
-        <h1 className="text-4xl font-bold text-[#f2e9dd] mb-4">Choose Your OnlyArts Experience</h1>
-        <p className="text-[#f2e9dd]/70">Unlock exclusive features for fans and artists</p>
+    <div className="max-w-7xl mx-auto py-6 md:py-12">
+      <div className="text-center mb-6 md:mb-12">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#f2e9dd] mb-2 md:mb-4">Choose Your OnlyArts Experience</h1>
+        <p className="text-sm md:text-base text-[#f2e9dd]/70">Unlock exclusive features for fans and artists</p>
       </div>
 
       {/* Billing Toggle */}
-      <div className="flex justify-center gap-4 mb-8">
+      <div className="flex justify-center gap-2 md:gap-4 mb-6 md:mb-8">
         <button
           onClick={() => setBillingCycle('monthly')}
-          className={`px-6 py-2 rounded-full transition-all duration-300 transform hover:scale-105 ${
-            billingCycle === 'monthly' 
-              ? 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white shadow-lg shadow-[#7C5FFF]/30' 
+          className={`px-4 md:px-6 py-2 text-sm md:text-base rounded-full transition-all duration-300 transform hover:scale-105 ${
+            billingCycle === 'monthly'
+              ? 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white shadow-lg shadow-[#7C5FFF]/30'
               : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd] hover:bg-white/5'
           }`}
         >
@@ -112,9 +112,9 @@ const SubscriptionsPage = () => {
         </button>
         <button
           onClick={() => setBillingCycle('yearly')}
-          className={`px-6 py-2 rounded-full transition-all duration-300 transform hover:scale-105 ${
-            billingCycle === 'yearly' 
-              ? 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white shadow-lg shadow-[#7C5FFF]/30' 
+          className={`px-4 md:px-6 py-2 text-sm md:text-base rounded-full transition-all duration-300 transform hover:scale-105 ${
+            billingCycle === 'yearly'
+              ? 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white shadow-lg shadow-[#7C5FFF]/30'
               : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd] hover:bg-white/5'
           }`}
         >
@@ -123,39 +123,39 @@ const SubscriptionsPage = () => {
       </div>
 
       {/* Plans Grid */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         {plans.map((plan, idx) => (
-          <Card 
-            key={plan.name} 
-            className={`p-6 transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn ${
+          <Card
+            key={plan.name}
+            className={`p-4 md:p-6 transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn ${
               plan.popular ? 'border-2 border-[#7C5FFF] shadow-lg shadow-[#7C5FFF]/30' : ''
             }`}
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
             {plan.popular && (
-              <div className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white text-sm font-bold px-3 py-1 rounded-full inline-flex items-center gap-1 mb-4 shadow-lg shadow-[#7C5FFF]/30">
+              <div className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white text-xs md:text-sm font-bold px-2 md:px-3 py-1 rounded-full inline-flex items-center gap-1 mb-3 md:mb-4 shadow-lg shadow-[#7C5FFF]/30">
                 <Sparkles size={12} className="animate-pulse" /> POPULAR
               </div>
             )}
-            <h3 className="text-2xl font-bold text-[#f2e9dd] mb-2">{plan.title}</h3>
-            <div className="mb-6">
-              <span className="text-4xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+            <h3 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-2">{plan.title}</h3>
+            <div className="mb-4 md:mb-6">
+              <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
                 ₱{plan.price}
               </span>
               <span className="text-[#f2e9dd]/50">/month</span>
             </div>
 
-            <div className="space-y-4 mb-6">
+            <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
               <div>
-                <p className="text-sm font-bold text-[#B15FFF] mb-2">Fan Access:</p>
+                <p className="text-xs md:text-sm font-bold text-[#B15FFF] mb-1 md:mb-2">Fan Access:</p>
                 {plan.features.fan.map((feature, idx) => (
-                  <p key={idx} className="text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
+                  <p key={idx} className="text-xs md:text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
                 ))}
               </div>
               <div>
-                <p className="text-sm font-bold text-[#FF5F9E] mb-2">Artist:</p>
+                <p className="text-xs md:text-sm font-bold text-[#FF5F9E] mb-1 md:mb-2">Artist:</p>
                 {plan.features.artist.map((feature, idx) => (
-                  <p key={idx} className="text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
+                  <p key={idx} className="text-xs md:text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
                 ))}
               </div>
             </div>
@@ -188,28 +188,28 @@ const SubscriptionsPage = () => {
 
       {/* Payment Modal */}
       <Modal isOpen={showPayment} onClose={() => setShowPayment(false)} title="Complete Your Upgrade">
-        <div className="space-y-6">
-          <div className="bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 rounded-lg p-4">
-            <p className="text-[#f2e9dd] mb-1">Selected Plan: <span className="font-bold capitalize">{selectedPlan?.name}</span></p>
-            <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+        <div className="space-y-4 md:space-y-6">
+          <div className="bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 rounded-lg p-3 md:p-4">
+            <p className="text-sm md:text-base text-[#f2e9dd] mb-1">Selected Plan: <span className="font-bold capitalize">{selectedPlan?.name}</span></p>
+            <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
               ₱{selectedPlan?.price}/month
             </p>
           </div>
 
           <div>
-            <h3 className="text-[#f2e9dd] font-bold mb-3">Payment Method:</h3>
+            <h3 className="text-sm md:text-base text-[#f2e9dd] font-bold mb-2 md:mb-3">Payment Method:</h3>
             <div className="space-y-2">
-              <label className="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
+              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
                 <input type="radio" name="payment" defaultChecked />
-                <span className="text-[#f2e9dd]">Credit/Debit Card</span>
+                <span className="text-sm md:text-base text-[#f2e9dd]">Credit/Debit Card</span>
               </label>
-              <label className="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
+              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
                 <input type="radio" name="payment" />
-                <span className="text-[#f2e9dd]">PayPal</span>
+                <span className="text-sm md:text-base text-[#f2e9dd]">PayPal</span>
               </label>
-              <label className="flex items-center gap-3 p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
+              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
                 <input type="radio" name="payment" />
-                <span className="text-[#f2e9dd]">Crypto Wallet</span>
+                <span className="text-sm md:text-base text-[#f2e9dd]">Crypto Wallet</span>
               </label>
             </div>
           </div>
@@ -225,16 +225,16 @@ const SubscriptionsPage = () => {
 
           <Input label="Full Name" placeholder="Your full name" />
 
-          <div className="bg-[#121212] border border-white/10 rounded-lg p-4">
-            <div className="flex justify-between mb-2">
+          <div className="bg-[#121212] border border-white/10 rounded-lg p-3 md:p-4">
+            <div className="flex justify-between mb-2 text-sm md:text-base">
               <span className="text-[#f2e9dd]/70">Subtotal:</span>
               <span className="text-[#f2e9dd]">₱{selectedPlan?.price}</span>
             </div>
-            <div className="flex justify-between mb-2">
+            <div className="flex justify-between mb-2 text-sm md:text-base">
               <span className="text-[#f2e9dd]/70">Tax:</span>
               <span className="text-[#f2e9dd]">₱{(selectedPlan?.price * 0.1).toFixed(2)}</span>
             </div>
-            <div className="border-t border-white/10 pt-2 flex justify-between">
+            <div className="border-t border-white/10 pt-2 flex justify-between text-sm md:text-base">
               <span className="font-bold text-[#f2e9dd]">Total:</span>
               <span className="font-bold text-[#f2e9dd]">₱{(selectedPlan?.price * 1.1).toFixed(2)}</span>
             </div>

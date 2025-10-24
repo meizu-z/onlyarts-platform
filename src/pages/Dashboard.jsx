@@ -76,7 +76,7 @@ const Dashboard = () => {
 
   if (loading) {
     return (
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         <LoadingPaint message="Loading your feed..." />
         <div className="mt-8">
           <SkeletonGrid count={6} />
@@ -86,14 +86,14 @@ const Dashboard = () => {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-3xl font-bold text-[#f2e9dd] mb-2">Welcome back, {user?.username}! 👋</h1>
-          <p className="text-[#f2e9dd]/70">{activeTab === 'following' ? 'Latest from artists you follow' : activeTab === 'trending' ? 'What\'s trending on OnlyArts' : 'Personalized feed just for you'}</p>
+    <div className="max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3">
+        <div className="flex-1">
+          <h1 className="text-xl md:text-3xl font-bold text-[#f2e9dd] mb-1 md:mb-2">Welcome back, {user?.username}! 👋</h1>
+          <p className="text-sm md:text-base text-[#f2e9dd]/70">{activeTab === 'following' ? 'Latest from artists you follow' : activeTab === 'trending' ? 'What\'s trending on OnlyArts' : 'Personalized feed just for you'}</p>
         </div>
         {user?.role === 'artist' && (
-          <Button onClick={() => setCreateModalOpen(true)}>
+          <Button onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto" size="sm">
             <Plus size={16} className="mr-2" />
             Make a Post
           </Button>
@@ -114,36 +114,36 @@ const Dashboard = () => {
         </Card>
       )}
 
-      <div className="flex gap-8 border-b border-white/10 mb-6">
+      <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-4 md:mb-6 overflow-x-auto scrollbar-hide">
         {/* ... Tabs ... */}
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
         {artworks.map((artwork, idx) => (
-          <Card 
-            key={artwork.id} 
+          <Card
+            key={artwork.id}
             noPadding
-            className="animate-fadeIn group transform hover:scale-105 hover:-translate-y-2 transition-all duration-300"
+            className="animate-fadeIn group transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300"
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
             <div className="border border-white/10 rounded-2xl overflow-hidden hover:border-[#7C5FFF]/50 hover:shadow-lg hover:shadow-[#7C5FFF]/20 transition-all duration-300">
-              
+
               {/* Clickable Area for Navigation */}
               <div onClick={() => handleArtworkClick(artwork)} className="cursor-pointer">
                 {activeTab === 'foryou' && artwork.reason && (
-                    <div className="absolute top-3 left-3 z-10 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Sparkles size={12} /> Recommended</div>
+                    <div className="absolute top-2 left-2 md:top-3 md:left-3 z-10 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-2 md:px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Sparkles size={12} /> Recommended</div>
                 )}
-                <div className="relative aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-8xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-4 gap-4">
-                    <button className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" onClick={(e) => { e.stopPropagation(); handleArtworkClick(artwork); }}>View</button>
-                    <button className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" style={{ transitionDelay: '50ms' }} onClick={(e) => handleShare(e, artwork)}>Share</button>
+                <div className="relative aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-8xl overflow-hidden">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3 md:pb-4 gap-2 md:gap-4">
+                    <button className="px-3 md:px-4 py-1.5 md:py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs md:text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" onClick={(e) => { e.stopPropagation(); handleArtworkClick(artwork); }}>View</button>
+                    <button className="px-3 md:px-4 py-1.5 md:py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs md:text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" style={{ transitionDelay: '50ms' }} onClick={(e) => handleShare(e, artwork)}>Share</button>
                   </div>
                   <span className="transform group-hover:scale-110 transition-transform duration-300">{artwork.image}</span>
                 </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">{artwork.title}</h3>
+                <div className="p-3 md:p-4">
+                  <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">{artwork.title}</h3>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm text-[#f2e9dd]/50">{artwork.artistName}</p>
+                    <p className="text-xs md:text-sm text-[#f2e9dd]/50">{artwork.artistName}</p>
                     {!artwork.isFollowing && (
                         <button onClick={(e) => handleFollowArtist(e, artwork.artistName)} className="text-xs text-[#7C5FFF] hover:text-[#B15FFF] flex items-center gap-1 transition-colors"><UserPlus size={12} /> Follow</button>
                     )}
@@ -153,17 +153,17 @@ const Dashboard = () => {
               </div>
 
               {/* Non-Clickable Area for Actions */}
-              <div className="p-4 pt-0">
+              <div className="p-3 md:p-4 pt-0">
                 {artwork.reason && (
                   <div className="mb-2 text-xs text-[#B15FFF] bg-[#7C5FFF]/10 px-2 py-1 rounded">{artwork.reason}</div>
                 )}
-                <div className="flex items-center gap-4 text-sm text-[#f2e9dd]/70">
+                <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-[#f2e9dd]/70">
                   <button onClick={() => toggleLike(artwork.id)} className={`flex items-center gap-1 transition-all duration-200 group/like ${likedArtworks.has(artwork.id) ? 'text-[#FF5F9E]' : 'hover:text-[#FF5F9E]'}`}>
-                    <Heart size={16} className={`group-hover/like:scale-125 transition-transform ${likedArtworks.has(artwork.id) ? 'fill-current' : ''}`} /> 
+                    <Heart size={16} className={`group-hover/like:scale-125 transition-transform ${likedArtworks.has(artwork.id) ? 'fill-current' : ''}`} />
                     {artwork.likes + (likedArtworks.has(artwork.id) ? 1 : 0)}
                   </button>
                   <button onClick={() => handleArtworkClick(artwork)} className="flex items-center gap-1 hover:text-[#7C5FFF] transition-colors group/comment">
-                    <MessageCircle size={16} className="group-hover/comment:scale-110 transition-transform" /> 
+                    <MessageCircle size={16} className="group-hover/comment:scale-110 transition-transform" />
                     {artwork.comments}
                   </button>
                 </div>

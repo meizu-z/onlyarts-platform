@@ -86,37 +86,37 @@ const ArtworkPage = () => {
   };
 
   return (
-    <div className="flex-1 p-6">
-      <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-8">
+    <div className="flex-1 px-4 py-4 md:p-6">
+      <div className="mb-6 md:mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
         <div>
           <Card noPadding>
-            <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-9xl">
+            <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-9xl">
               {artwork.image}
             </div>
           </Card>
         </div>
         <div>
-            <h1 className="text-4xl font-bold text-[#f2e9dd] mb-2">{artwork.title}</h1>
-            <p className="text-[#f2e9dd]/70 mb-4">by {artwork.artistName} ({artwork.artist})</p>
-            <p className="text-[#f2e9dd]/90 mb-6">{artwork.description}</p>
+            <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-2">{artwork.title}</h1>
+            <p className="text-sm md:text-base text-[#f2e9dd]/70 mb-3 md:mb-4">by {artwork.artistName} ({artwork.artist})</p>
+            <p className="text-sm md:text-base text-[#f2e9dd]/90 mb-4 md:mb-6">{artwork.description}</p>
 
-            <div className="flex items-center gap-4 text-[#f2e9dd]/70 mb-6">
+            <div className="flex items-center gap-3 md:gap-4 text-xs md:text-base text-[#f2e9dd]/70 mb-4 md:mb-6">
               <span>👁 2.3K views</span>
               <span>•</span>
               <span>{artwork.likes} likes</span>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={handleFollowArtist} className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
+            <div className="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3">
+              <Button onClick={handleFollowArtist} className="w-full md:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
                 <Star size={16} className="mr-2" /> Follow Artist
               </Button>
-              <Button variant="secondary" onClick={handleShare} className="transform hover:scale-105 transition-all duration-300">
+              <Button variant="secondary" onClick={handleShare} className="w-full md:w-auto transform hover:scale-105 transition-all duration-300">
                 <Share size={16} className="mr-2" /> Share
               </Button>
               {artwork.price && (
-                <Button 
-                  onClick={handleBuyNow} 
-                  className="bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transform hover:scale-105 transition-all duration-300"
+                <Button
+                  onClick={handleBuyNow}
+                  className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transform hover:scale-105 transition-all duration-300"
                 >
                   <ShoppingCart size={16} className="mr-2" /> Buy Now (₱{artwork.price.toLocaleString()})
                 </Button>
@@ -125,54 +125,54 @@ const ArtworkPage = () => {
         </div>
       </div>
 
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
-          <MessageSquare size={24} /> Comments
+      <div className="mt-6 md:mt-8">
+        <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3 md:mb-4 flex items-center gap-2">
+          <MessageSquare size={20} className="md:size-24" /> Comments
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-3 md:space-y-4">
           {comments.map((comment, idx) => (
-            <Card key={idx} className="p-4">
-              <p className="font-bold text-[#f2e9dd]">{comment.user}</p>
-              <p className="text-[#f2e9dd]/70">{comment.text}</p>
+            <Card key={idx} className="p-3 md:p-4">
+              <p className="font-bold text-sm md:text-base text-[#f2e9dd]">{comment.user}</p>
+              <p className="text-xs md:text-sm text-[#f2e9dd]/70">{comment.text}</p>
             </Card>
           ))}
         </div>
-        <form onSubmit={handleCommentSubmit} className="mt-6">
+        <form onSubmit={handleCommentSubmit} className="mt-4 md:mt-6">
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder={isFreeUser ? "Upgrade to Plus to comment" : "Add a comment..."}
-            className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+            className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-sm md:text-base text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
             rows="3"
             disabled={isFreeUser || isSubmitting}
           ></textarea>
-          
-          <div className="mt-4 flex items-center gap-4">
-              <Button type="submit" disabled={isSubmitting || isFreeUser}>
+
+          <div className="mt-3 md:mt-4 flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4">
+              <Button type="submit" disabled={isSubmitting || isFreeUser} className="w-full md:w-auto">
                 {isSubmitting ? "Submitting..." : "Submit Comment"}
               </Button>
               {submissionError && (
-                <Button onClick={handleCommentSubmit} variant="secondary">
+                <Button onClick={handleCommentSubmit} variant="secondary" className="w-full md:w-auto">
                   Retry
                 </Button>
               )}
           </div>
         </form>
         {submissionError && (
-            <div className="mt-4 flex items-center gap-2 text-red-400 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+            <div className="mt-3 md:mt-4 flex items-center gap-2 text-red-400 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
                 <AlertCircle size={16} />
-                <p className="text-sm">{submissionError}</p>
+                <p className="text-xs md:text-sm">{submissionError}</p>
             </div>
         )}
          {isFreeUser && (
-            <Card className="mt-4 p-4 bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30">
-                <p className="text-orange-400 font-bold mb-1 flex items-center gap-2">
+            <Card className="mt-3 md:mt-4 p-3 md:p-4 bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30">
+                <p className="text-orange-400 font-bold mb-1 flex items-center gap-2 text-sm md:text-base">
                   <Lock size={16} /> Commenting is a Plus feature
                 </p>
-                <p className="text-[#f2e9dd]/70 text-sm mb-3">
+                <p className="text-[#f2e9dd]/70 text-xs md:text-sm mb-3">
                   Upgrade your account to share your thoughts on this artwork.
                 </p>
-                <Button onClick={() => navigate('/subscriptions')} className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]">Upgrade to Plus</Button>
+                <Button onClick={() => navigate('/subscriptions')} className="w-full md:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]">Upgrade to Plus</Button>
             </Card>
         )}
       </div>

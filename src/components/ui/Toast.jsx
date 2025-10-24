@@ -64,7 +64,7 @@ const Toast = ({ id, type, message, onClose }) => {
 // 🎯 TOAST CONTAINER
 const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 right-4 z-50 space-y-3 pointer-events-none w-full max-w-sm">
+    <div className="fixed top-4 md:top-4 md:right-4 left-4 right-4 md:left-auto bottom-auto md:bottom-auto z-50 space-y-3 pointer-events-none w-auto md:max-w-sm">
       <div className="pointer-events-auto space-y-3">
         {toasts.map(toast => (
           <Toast

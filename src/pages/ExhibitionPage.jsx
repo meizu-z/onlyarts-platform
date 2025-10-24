@@ -71,48 +71,48 @@ const ExhibitionPage = () => {
   ];
 
   return (
-    <div className="flex-1 p-6 md:p-8">
-      <div className="mb-8">
-        <div className="aspect-[3/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-6 flex items-center justify-center text-9xl animate-fadeIn group hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 transition-all duration-500 overflow-hidden relative">
+    <div className="flex-1 p-3 sm:p-6 md:p-8">
+      <div className="mb-4 sm:mb-6 md:mb-8">
+        <div className="aspect-[3/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-4 sm:mb-6 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl animate-fadeIn group hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 transition-all duration-500 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
           <span className="transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 relative z-10">
             🎨
           </span>
         </div>
-        
-        <div className="flex items-start justify-between gap-8">
+
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 md:gap-8">
           <div className="flex-1">
-            <h1 className="text-4xl font-bold text-[#f2e9dd] mb-2">Digital Dreams Collection</h1>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#f2e9dd] mb-2">Digital Dreams Collection</h1>
             <p className="text-[#f2e9dd]/70 mb-4">Curated by @gallery_master</p>
             {isFreeUser && (
-              <div className="bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30 rounded-lg p-4 mb-4 animate-fadeIn hover:border-orange-500/50 transition-all duration-300">
-                <p className="text-orange-400 font-bold mb-1 flex items-center gap-2">
+              <div className="bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 animate-fadeIn hover:border-orange-500/50 transition-all duration-300">
+                <p className="text-orange-400 font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
                   <Lock size={16} className="animate-pulse" /> PREVIEW MODE
                 </p>
-                <p className="text-[#f2e9dd]/70 text-sm">
+                <p className="text-[#f2e9dd]/70 text-xs sm:text-sm">
                   You can view 3 of 15 artworks in preview mode. Upgrade to Plus to unlock full access.
                 </p>
               </div>
             )}
-            <div className="flex items-center gap-4 text-[#f2e9dd]/70 mb-6">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[#f2e9dd]/70 mb-4 sm:mb-6 text-sm sm:text-base">
               <span>👁 2.3K views</span>
               <span>•</span>
               <span>15 artworks</span>
               <span>•</span>
-              <span>Live until Nov 30</span>
+              <span className="whitespace-nowrap">Live until Nov 30</span>
             </div>
-            <div className="flex gap-3">
-              <Button className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
                 <Star size={16} className="mr-2" /> Follow
               </Button>
               <Button
                 variant={isFavorited ? "primary" : "secondary"}
                 onClick={handleFavorite}
-                className="transform hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300 flex items-center gap-2 justify-center"
               >
                 <Star size={16} /> {favorites}
               </Button>
-              <Button variant="secondary" className="transform hover:scale-105 transition-all duration-300">
+              <Button variant="secondary" className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300">
                 Share
               </Button>
             </div>
@@ -121,30 +121,30 @@ const ExhibitionPage = () => {
       </div>
 
       {isFreeUser && (
-        <Card className="mb-8 p-6 bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 animate-fadeIn hover:border-[#7C5FFF]/50 transition-all duration-300">
-          <h3 className="font-bold text-[#f2e9dd] mb-2 flex items-center gap-2">
+        <Card className="mb-4 sm:mb-6 md:mb-8 p-4 sm:p-6 bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 animate-fadeIn hover:border-[#7C5FFF]/50 transition-all duration-300">
+          <h3 className="font-bold text-[#f2e9dd] mb-2 flex items-center gap-2 text-base sm:text-lg">
             <Lock size={20} className="text-[#B15FFF]" />
             Unlock full exhibition access
           </h3>
-          <ul className="text-sm text-[#f2e9dd]/70 mb-4 space-y-1">
+          <ul className="text-xs sm:text-sm text-[#f2e9dd]/70 mb-4 space-y-1">
             <li>✓ View all 15 artworks</li>
             <li>✓ Participate in auctions</li>
             <li>✓ Engage with artist</li>
           </ul>
-          <Button 
+          <Button
             onClick={() => navigate('/subscriptions')}
-            className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
+            className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
           >
             Upgrade to Plus - ₱149/mo
           </Button>
         </Card>
       )}
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
         {artworks.map((artwork, idx) => (
           <div key={idx} onClick={() => !artwork.locked && artwork.price && setSelectedArtwork(artwork)}>
-            <Card 
-              hover={!artwork.locked} 
+            <Card
+              hover={!artwork.locked}
               className={`relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group ${
                 artwork.locked ? 'cursor-not-allowed' : ''
               }`}
@@ -159,7 +159,7 @@ const ExhibitionPage = () => {
                   </div>
                 </div>
               )}
-              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-5xl sm:text-6xl overflow-hidden relative">
                 {!artwork.locked && (
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                 )}
@@ -169,22 +169,22 @@ const ExhibitionPage = () => {
                   {artwork.image}
                 </span>
               </div>
-              <div className="p-4">
+              <div className="p-3 sm:p-4">
                 <h3 className={`font-bold text-[#f2e9dd] mb-1 transition-colors ${
                   !artwork.locked ? 'group-hover:text-[#7C5FFF]' : ''
                 }`}>
                   {artwork.title}
                 </h3>
-                <p className="text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
+                <p className="text-xs sm:text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
                 {!artwork.locked && artwork.price && (
-                  <div className="flex justify-between items-center">
-                    <p className="text-[#B15FFF] font-bold">{artwork.price}</p>
-                    <Button 
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                    <p className="text-[#B15FFF] font-bold text-sm sm:text-base">{artwork.price}</p>
+                    <Button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleBuyNow(artwork);
                       }}
-                      className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-4 py-1 rounded-lg text-sm"
+                      className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-4 py-1 rounded-lg text-sm"
                     >
                       Buy Now
                     </Button>
@@ -223,29 +223,31 @@ const ExhibitionPage = () => {
         </Modal>
       )}
 
-      <div className="mt-8">
-        <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
-          <MessageSquare size={24} /> Comments
+      <div className="mt-6 sm:mt-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-[#f2e9dd] mb-3 sm:mb-4 flex items-center gap-2">
+          <MessageSquare size={20} className="sm:hidden" />
+          <MessageSquare size={24} className="hidden sm:block" />
+          Comments
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {comments.map((comment, idx) => (
-            <Card key={idx} className="p-4">
-              <p className="font-bold text-[#f2e9dd]">{comment.user}</p>
-              <p className="text-[#f2e9dd]/70">{comment.text}</p>
+            <Card key={idx} className="p-3 sm:p-4">
+              <p className="font-bold text-[#f2e9dd] text-sm sm:text-base">{comment.user}</p>
+              <p className="text-[#f2e9dd]/70 text-sm sm:text-base">{comment.text}</p>
             </Card>
           ))}
         </div>
-        <form onSubmit={handleCommentSubmit} className="mt-6">
+        <form onSubmit={handleCommentSubmit} className="mt-4 sm:mt-6">
           <textarea
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Add a comment..."
-            className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+            className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF] text-sm sm:text-base"
             rows="3"
           ></textarea>
-          <Button type="submit" className="mt-2">
+          <Button type="submit" className="mt-2 w-full sm:w-auto">
             Submit Comment
-          </Button>        
+          </Button>
         </form>
       </div>
     </div>
