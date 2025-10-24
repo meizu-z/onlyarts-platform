@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus, Plus } from 'lucide-react';
+import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus, Plus, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { dashboardService, mockDashboardData, artworkService } from '../services';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
+
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -15,38 +20,119 @@ const Dashboard = () => {
   const [activeTab, setActiveTab] = useState('foryou');
   const [likedArtworks, setLikedArtworks] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [artworks, setArtworks] = useState([]);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
-  // Mock data
-  const followingArtworks = [{ id: 1, title: 'Sunset Dreams', artist: '@artist1', artistName: 'Sarah Chen', likes: 234, comments: 12, image: '🌅', isFollowing: true, timeAgo: '2h ago' }, { id: 2, title: 'Digital Abstract', artist: '@artist2', artistName: 'Mike Johnson', likes: 189, comments: 8, image: '🎨', isFollowing: true, timeAgo: '5h ago' }, { id: 3, title: 'Urban Nights', artist: '@artist3', artistName: 'Emma Davis', likes: 445, comments: 23, image: '🌃', isFollowing: true, timeAgo: '1d ago' }];
-  const recommendedArtworks = [{ id: 4, title: 'Nature Flow', artist: '@artist4', artistName: 'Alex Park', likes: 301, comments: 15, image: '🌿', isFollowing: false, reason: 'Similar to artworks you liked', timeAgo: '3h ago' }, { id: 5, title: 'Cosmic Dreams', artist: '@artist5', artistName: 'Jordan Lee', likes: 567, comments: 34, image: '🌌', isFollowing: false, reason: 'Trending in your interests', timeAgo: '6h ago' }, { id: 6, title: 'Portrait Study', artist: '@artist6', artistName: 'Taylor Swift', likes: 423, comments: 19, image: '👤', isFollowing: false, reason: 'Popular with people you follow', timeAgo: '8h ago' }];
-  const trendingArtworks = [{ id: 7, title: 'Neon City', artist: '@trendartist1', artistName: 'Chris Wong', likes: 1234, comments: 89, image: '🌆', isFollowing: false, timeAgo: '1h ago' }, { id: 8, title: 'Ocean Waves', artist: '@trendartist2', artistName: 'Maria Garcia', likes: 987, comments: 56, image: '🌊', isFollowing: false, timeAgo: '4h ago' }, { id: 9, title: 'Mountain Peak', artist: '@trendartist3', artistName: 'David Kim', likes: 756, comments: 34, image: '⛰️', isFollowing: false, timeAgo: '7h ago' }];
+  // Fetch feed data
+  const fetchFeedData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-  const getArtworks = () => {
-    if (activeTab === 'following') return followingArtworks;
-    if (activeTab === 'trending') return trendingArtworks;
-    return [...followingArtworks.slice(0, 2), ...recommendedArtworks.slice(0, 2), followingArtworks[2], recommendedArtworks[2]];
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        // Simulate API delay
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        let data;
+        if (activeTab === 'following') {
+          data = mockDashboardData.following;
+        } else if (activeTab === 'trending') {
+          data = mockDashboardData.trending;
+        } else {
+          data = mockDashboardData.forYou;
+        }
+
+        setArtworks(data);
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      let response;
+      if (activeTab === 'following') {
+        response = await dashboardService.getFollowingFeed();
+      } else if (activeTab === 'trending') {
+        response = await dashboardService.getTrending();
+      } else {
+        response = await dashboardService.getFeed();
+      }
+
+      setArtworks(response.artworks || response);
+    } catch (err) {
+      console.error('Error fetching feed:', err);
+      setError(err.message || 'Failed to load feed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const artworks = getArtworks();
-
+  // Load feed on mount and when tab changes
   useEffect(() => {
-    const timer = setTimeout(() => setLoading(false), 1500);
-    return () => clearTimeout(timer);
-  }, []);
+    fetchFeedData();
+  }, [activeTab]);
 
-  const toggleLike = (id) => {
+  const toggleLike = async (id) => {
+    const isLiked = likedArtworks.has(id);
+
+    // Optimistic UI update
     setLikedArtworks(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(id)) {
+      if (isLiked) {
         newSet.delete(id);
-        toast.info('Removed from favorites');
       } else {
         newSet.add(id);
-        toast.success('Added to favorites! ❤️');
       }
       return newSet;
     });
+
+    // Update artwork likes count optimistically
+    setArtworks(prev => prev.map(artwork =>
+      artwork.id === id
+        ? { ...artwork, likes: artwork.likes + (isLiked ? -1 : 1) }
+        : artwork
+    ));
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        if (isLiked) {
+          toast.info('Removed from favorites');
+        } else {
+          toast.success('Added to favorites! ❤️');
+        }
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (isLiked) {
+        await artworkService.unlikeArtwork(id);
+        toast.info('Removed from favorites');
+      } else {
+        await artworkService.likeArtwork(id);
+        toast.success('Added to favorites! ❤️');
+      }
+    } catch (error) {
+      // Revert on error
+      setLikedArtworks(prev => {
+        const newSet = new Set(prev);
+        if (isLiked) {
+          newSet.add(id);
+        } else {
+          newSet.delete(id);
+        }
+        return newSet;
+      });
+
+      setArtworks(prev => prev.map(artwork =>
+        artwork.id === id
+          ? { ...artwork, likes: artwork.likes + (isLiked ? 1 : -1) }
+          : artwork
+      ));
+
+      toast.error('Failed to update. Please try again.');
+    }
   };
 
   const handleFollowArtist = (e, artist) => {
@@ -85,6 +171,14 @@ const Dashboard = () => {
     );
   }
 
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto">
+        <APIError error={error} retry={fetchFeedData} />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 md:mb-6 gap-3">
@@ -92,10 +186,20 @@ const Dashboard = () => {
           <h1 className="text-xl md:text-3xl font-bold text-[#f2e9dd] mb-1 md:mb-2">Welcome back, {user?.username}! 👋</h1>
           <p className="text-sm md:text-base text-[#f2e9dd]/70">{activeTab === 'following' ? 'Latest from artists you follow' : activeTab === 'trending' ? 'What\'s trending on OnlyArts' : 'Personalized feed just for you'}</p>
         </div>
-        {user?.role === 'artist' && (
-          <Button onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto" size="sm">
-            <Plus size={16} className="mr-2" />
-            Make a Post
+        <div className="flex gap-2">
+          <Button
+            onClick={fetchFeedData}
+            variant="ghost"
+            size="sm"
+            className="w-auto"
+            title="Refresh feed"
+          >
+            <RefreshCw size={16} />
+          </Button>
+          {user?.role === 'artist' && (
+            <Button onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto" size="sm">
+              <Plus size={16} className="mr-2" />
+              Make a Post
           </Button>
         )}
       </div>

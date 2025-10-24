@@ -1,22 +1,35 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useToast } from '../components/ui/Toast'; // 🆕
-import { useFormValidation, validators } from '../utils/formValidation'; // 🆕
-import { InlineError } from '../components/ui/ErrorStates'; // 🆕
+import { useToast } from '../components/ui/Toast';
+import { useFormValidation, validators } from '../utils/formValidation';
+import { InlineError } from '../components/ui/ErrorStates';
+import { LoadingPaint } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { settingsService, mockSettings } from '../services/settings.service';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import { Moon, Sun, Monitor } from 'lucide-react';
 
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
+
 const SettingsPage = () => {
   const { user, logout } = useAuth();
-  const toast = useToast(); // 🆕
+  const toast = useToast();
   const [activeSection, setActiveSection] = useState('account');
   const [theme, setTheme] = useState('dark');
 
-  // 🆕 Form validation for account settings
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [privacySettings, setPrivacySettings] = useState({});
+  const [notificationSettings, setNotificationSettings] = useState({});
+
+  // Form validation for account settings
   const { values, errors, touched, handleChange, handleBlur, validateAll, setValues } = useFormValidation(
-    { 
+    {
       email: user?.email || '',
       username: user?.username || ''
     },
@@ -25,6 +38,43 @@ const SettingsPage = () => {
       username: validators.username
     }
   );
+
+  // Fetch settings on mount
+  useEffect(() => {
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        setSettings(mockSettings);
+        setPrivacySettings(mockSettings.privacy);
+        setNotificationSettings(mockSettings.notifications);
+        setTheme(mockSettings.appearance.theme);
+
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await settingsService.getSettings();
+      setSettings(response.settings);
+      setPrivacySettings(response.settings.privacy || {});
+      setNotificationSettings(response.settings.notifications || {});
+      setTheme(response.settings.appearance?.theme || 'dark');
+    } catch (err) {
+      console.error('Error fetching settings:', err);
+      setError(err.message || 'Failed to load settings. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     const root = document.documentElement;
@@ -54,31 +104,85 @@ const SettingsPage = () => {
     setTheme(savedTheme);
   }, []);
 
-  // 🆕 Handle theme change with toast
-  const handleThemeChange = (newTheme) => {
+  // Handle theme change with toast
+  const handleThemeChange = async (newTheme) => {
+    const oldTheme = theme;
     setTheme(newTheme);
-    toast.info(`Theme changed to ${newTheme} mode`);
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.info(`Theme changed to ${newTheme} mode`);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await settingsService.updateAppearance({ theme: newTheme });
+      toast.info(`Theme changed to ${newTheme} mode`);
+    } catch (error) {
+      // Revert on error
+      setTheme(oldTheme);
+      toast.error('Failed to update theme. Please try again.');
+    }
   };
 
-  // 🆕 Handle save account settings
-  const handleSaveAccount = () => {
+  // Handle save account settings
+  const handleSaveAccount = async () => {
     if (!validateAll()) {
       toast.error('Please fix the errors before saving');
       return;
     }
-    
-    // Simulate API call
-    toast.success('Account settings saved successfully!');
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.success('Account settings saved successfully!');
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await settingsService.updateAccount({
+        email: values.email,
+        username: values.username,
+      });
+      toast.success('Account settings saved successfully!');
+    } catch (error) {
+      toast.error('Failed to save account settings. Please try again.');
+    }
   };
 
-  // 🆕 Handle save privacy settings
-  const handleSavePrivacy = () => {
-    toast.success('Privacy settings updated!');
+  // Handle save privacy settings
+  const handleSavePrivacy = async () => {
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.success('Privacy settings updated!');
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await settingsService.updatePrivacy(privacySettings);
+      toast.success('Privacy settings updated!');
+    } catch (error) {
+      toast.error('Failed to update privacy settings. Please try again.');
+    }
   };
 
-  // 🆕 Handle save notifications
-  const handleSaveNotifications = () => {
-    toast.success('Notification preferences saved!');
+  // Handle save notifications
+  const handleSaveNotifications = async () => {
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.success('Notification preferences saved!');
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await settingsService.updateNotifications(notificationSettings);
+      toast.success('Notification preferences saved!');
+    } catch (error) {
+      toast.error('Failed to save notification preferences. Please try again.');
+    }
   };
 
   const themeOptions = [
@@ -101,6 +205,22 @@ const SettingsPage = () => {
       description: 'Matches system'
     }
   ];
+
+  if (loading) {
+    return (
+      <div className="flex-1">
+        <LoadingPaint message="Loading settings..." />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1">
+        <APIError error={error} retry={fetchSettings} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1">
@@ -278,14 +398,19 @@ const SettingsPage = () => {
                 <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Privacy Settings</h2>
                 <div className="space-y-4">
                   {[
-                    'Show profile to public',
-                    'Allow messages from non-followers',
-                    'Show activity status',
-                    'Show in search results'
+                    { key: 'showProfile', label: 'Show profile to public' },
+                    { key: 'allowMessages', label: 'Allow messages from non-followers' },
+                    { key: 'showActivityStatus', label: 'Show activity status' },
+                    { key: 'showInSearch', label: 'Show in search results' }
                   ].map((setting, idx) => (
                     <label key={idx} className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group">
-                      <span className="text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors">{setting}</span>
-                      <input type="checkbox" defaultChecked={idx < 2} className="toggle" />
+                      <span className="text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors">{setting.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={privacySettings[setting.key] || false}
+                        onChange={(e) => setPrivacySettings({ ...privacySettings, [setting.key]: e.target.checked })}
+                        className="toggle"
+                      />
                     </label>
                   ))}
                 </div>
@@ -303,16 +428,21 @@ const SettingsPage = () => {
                 <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Notification Settings</h2>
                 <div className="space-y-4">
                   {[
-                    'Email notifications',
-                    'Push notifications',
-                    'New followers',
-                    'Comments on artwork',
-                    'Auction updates',
-                    'Marketing emails'
+                    { key: 'email', label: 'Email notifications' },
+                    { key: 'push', label: 'Push notifications' },
+                    { key: 'newFollowers', label: 'New followers' },
+                    { key: 'commentsOnArtwork', label: 'Comments on artwork' },
+                    { key: 'auctionUpdates', label: 'Auction updates' },
+                    { key: 'marketingEmails', label: 'Marketing emails' }
                   ].map((setting, idx) => (
                     <label key={idx} className="flex items-center justify-between p-4 rounded-lg hover:bg-white/5 transition-colors cursor-pointer group">
-                      <span className="text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors">{setting}</span>
-                      <input type="checkbox" defaultChecked={idx < 4} className="toggle" />
+                      <span className="text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors">{setting.label}</span>
+                      <input
+                        type="checkbox"
+                        checked={notificationSettings[setting.key] || false}
+                        onChange={(e) => setNotificationSettings({ ...notificationSettings, [setting.key]: e.target.checked })}
+                        className="toggle"
+                      />
                     </label>
                   ))}
                 </div>

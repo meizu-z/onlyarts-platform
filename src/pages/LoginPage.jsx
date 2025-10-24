@@ -40,17 +40,20 @@ const LoginPage = () => {
 
     setIsLoading(true);
 
-    const result = login(values.username, values.password);
-    
-    setTimeout(() => {
+    try {
+      const result = await login(values.username, values.password);
+
       if (result.success) {
         toast.success('Login successful! Welcome back 🎨');
         setTimeout(() => navigate('/dashboard'), 500);
       } else {
         toast.error(result.error);
       }
+    } catch (error) {
+      toast.error('An unexpected error occurred. Please try again.');
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   return (

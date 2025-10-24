@@ -3,10 +3,16 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from '../services/profile.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar } from 'lucide-react';
+
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
 
 const ProfilePage = () => {
   const { username } = useParams();
@@ -15,81 +21,159 @@ const ProfilePage = () => {
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('shared_artworks');
   const [isFollowing, setIsFollowing] = useState(false);
-  const [sharedPosts, setSharedPosts] = useState([]);
-  const [savedForLater, setSavedForLater] = useState([
-    { id: 101, title: 'Ocean Waves', image: '🌊', likes: 567, type: 'artwork', forSale: true, price: 6500 },
-    { id: 102, title: 'Mountain Peak', image: '⛰️', likes: 445, type: 'artwork', forSale: false },
-    { id: 103, title: 'Abstract Expressions', image: '🎭', type: 'exhibition', exhibitionType: 'Solo', artworksCount: 15 },
-  ]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedBio, setEditedBio] = useState('');
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
 
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [profileData, setProfileData] = useState(null);
+  const [artworks, setArtworks] = useState([]);
+  const [exhibitions, setExhibitions] = useState([]);
+  const [sharedPosts, setSharedPosts] = useState([]);
+  const [savedForLater, setSavedForLater] = useState([]);
+  const [followers, setFollowers] = useState([]);
+  const [following, setFollowing] = useState([]);
+
   const isOwnProfile = user?.username === username;
 
-  const profileData = {
-    username: username || user?.username,
-    displayName: 'Artist Name',
-    bio: 'Digital artist creating beautiful landscapes and abstract art. Available for commissions!',
-    avatar: '🎨',
-    coverImage: '🌆',
-    isArtist: true, // Assuming user can be an artist
-    followers: 1234,
-    following: 567,
-    artworks: 89,
-    posts: sharedPosts.length,
-    joinedDate: 'October 2024'
+  // Fetch profile data
+  const fetchProfileData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+
+        // Get profile data based on current user or username param
+        let profile;
+        if (isOwnProfile) {
+          // Use current user's data
+          if (user?.role === 'artist') {
+            profile = mockProfileData.artist;
+          } else if (user?.subscription === 'premium') {
+            profile = mockProfileData.premium;
+          } else {
+            profile = mockProfileData.basic;
+          }
+          profile.username = user.username;
+        } else {
+          // Use mock data for other users
+          profile = mockProfileData.artist;
+          profile.username = username;
+        }
+
+        setProfileData(profile);
+        setEditedBio(profile.bio);
+        setArtworks(mockArtworks);
+        setExhibitions(mockExhibitions);
+        setFollowers(mockFollowers);
+        setFollowing(mockFollowing);
+        setSavedForLater(mockSavedItems);
+
+        // Load shared posts from localStorage for own profile
+        if (isOwnProfile) {
+          const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
+          setSharedPosts(posts);
+        }
+
+        // Set initial tab
+        if (isOwnProfile) {
+          if (profile.isArtist) {
+            setActiveTab('portfolio');
+          } else {
+            setActiveTab('shared_artworks');
+          }
+        } else {
+          setActiveTab(profile.isArtist ? 'portfolio' : 'shared_artworks');
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const targetUsername = username || user?.username;
+      const response = await profileService.getProfile(targetUsername);
+
+      setProfileData(response.profile);
+      setEditedBio(response.profile.bio);
+
+      // Fetch user's content
+      const [artworksData, exhibitionsData, followersData, followingData] = await Promise.all([
+        profileService.getUserArtworks(targetUsername),
+        profileService.getUserExhibitions(targetUsername),
+        profileService.getFollowers(targetUsername),
+        profileService.getFollowing(targetUsername),
+      ]);
+
+      setArtworks(artworksData.artworks || []);
+      setExhibitions(exhibitionsData.exhibitions || []);
+      setFollowers(followersData.followers || []);
+      setFollowing(followingData.following || []);
+
+      // Fetch saved items for own profile
+      if (isOwnProfile) {
+        const [savedData, postsData] = await Promise.all([
+          profileService.getSavedItems(),
+          profileService.getSharedPosts(targetUsername),
+        ]);
+        setSavedForLater(savedData.items || []);
+        setSharedPosts(postsData.posts || []);
+
+        if (response.profile.isArtist) {
+          setActiveTab('portfolio');
+        } else {
+          setActiveTab('shared_artworks');
+        }
+      } else {
+        setActiveTab(response.profile.isArtist ? 'portfolio' : 'shared_artworks');
+      }
+    } catch (err) {
+      console.error('Error fetching profile:', err);
+      setError(err.message || 'Failed to load profile. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  // Load profile on mount and when username changes
   useEffect(() => {
-    setEditedBio(profileData.bio);
+    fetchProfileData();
+  }, [username]);
 
-    // Load posts and set initial tab
-    if (isOwnProfile) {
-      const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
-      if (posts.length > 0) {
-        setSharedPosts(posts);
-      }
-      // For artists, default to portfolio tab
-      if (profileData.isArtist) {
-        setActiveTab('portfolio');
-      } else {
-        setActiveTab('shared_artworks');
-      }
-    } else {
-      setActiveTab(profileData.isArtist ? 'portfolio' : 'shared_artworks');
-    }
-  }, [profileData.bio, isOwnProfile, profileData.isArtist]);
+  const handleFollowToggle = async () => {
+    const wasFollowing = isFollowing;
 
-  const followers = [
-    { username: '@user1', name: 'User One', avatar: '👤' },
-    { username: '@user2', name: 'User Two', avatar: '👤' },
-    { username: '@user3', name: 'User Three', avatar: '👤' },
-  ];
-
-  const following = [
-    { username: '@artist1', name: 'Artist One', avatar: '🎨', isArtist: true },
-    { username: '@artist2', name: 'Artist Two', avatar: '🎭', isArtist: true },
-    { username: '@user4', name: 'User Four', avatar: '👤' },
-  ];
-
-  const artworks = [
-    { id: 1, title: 'Sunset Dreams', image: '🌅', likes: 234, type: 'artwork', forSale: true, price: 5000 },
-    { id: 2, title: 'Abstract Flow', image: '🎨', likes: 189, type: 'artwork', forSale: false },
-    { id: 3, title: 'Urban Nights', image: '🌃', likes: 445, type: 'artwork', forSale: true, price: 8000 },
-  ];
-
-  const exhibitions = [
-    { id: 1, title: 'Digital Dreams Exhibition', image: '🖼️', type: 'exhibition', exhibitionType: 'Solo', startDate: '2024-12-01', endDate: '2024-12-15', artworksCount: 12 },
-    { id: 2, title: 'Collaborative Visions', image: '🎭', type: 'exhibition', exhibitionType: 'Collaboration', startDate: '2024-11-15', endDate: '2024-11-30', artworksCount: 24 },
-  ];
-
-  const handleFollowToggle = () => {
+    // Optimistic UI update
     setIsFollowing(!isFollowing);
-    if (!isFollowing) {
-      toast.success('Followed successfully! 🎉');
-    } else {
-      toast.info('Unfollowed');
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        if (!wasFollowing) {
+          toast.success('Followed successfully! 🎉');
+        } else {
+          toast.info('Unfollowed');
+        }
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (!wasFollowing) {
+        await profileService.followUser(username);
+        toast.success('Followed successfully! 🎉');
+      } else {
+        await profileService.unfollowUser(username);
+        toast.info('Unfollowed');
+      }
+    } catch (error) {
+      // Revert on error
+      setIsFollowing(wasFollowing);
+      toast.error('Failed to update. Please try again.');
     }
   };
 
@@ -97,13 +181,28 @@ const ProfilePage = () => {
     toast.info('Profile link copied to clipboard!');
   };
 
-  const handleEditProfile = () => {
+  const handleEditProfile = async () => {
     if (isEditMode) {
-      // In a real app, you'd save this to a backend.
-      profileData.bio = editedBio;
-      toast.success('Profile updated!');
+      try {
+        // DEMO MODE: Just update local state
+        if (USE_DEMO_MODE) {
+          setProfileData({ ...profileData, bio: editedBio });
+          toast.success('Profile updated!');
+          setIsEditMode(false);
+          return;
+        }
+
+        // REAL API MODE: Call backend
+        const response = await profileService.updateProfile({ bio: editedBio });
+        setProfileData(response.profile);
+        toast.success('Profile updated!');
+        setIsEditMode(false);
+      } catch (error) {
+        toast.error('Failed to update profile. Please try again.');
+      }
+    } else {
+      setIsEditMode(true);
     }
-    setIsEditMode(!isEditMode);
   };
 
   const handleCreatePost = (type) => {
@@ -397,6 +496,36 @@ const ProfilePage = () => {
         return null;
     }
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        <LoadingPaint message="Loading profile..." />
+        <div className="mt-8">
+          <SkeletonGrid count={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6">
+        <APIError error={error} retry={fetchProfileData} />
+      </div>
+    );
+  }
+
+  if (!profileData) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 text-center py-20">
+        <p className="text-[#f2e9dd]/70">Profile not found.</p>
+        <Button onClick={() => navigate('/dashboard')} className="mt-4">
+          Go to Dashboard
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 max-w-6xl mx-auto px-4 md:px-6">

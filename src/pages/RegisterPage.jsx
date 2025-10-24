@@ -78,18 +78,24 @@ const RegisterPage = () => {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      const result = register({
+    try {
+      const result = await register({
         email: formData.email,
         username: formData.username,
+        password: formData.password,
         displayName: formData.username,
       });
 
       if (result.success) {
         navigate('/dashboard');
+      } else {
+        setErrors({ general: result.error });
       }
+    } catch (error) {
+      setErrors({ general: 'Registration failed. Please try again.' });
+    } finally {
       setIsLoading(false);
-    }, 500);
+    }
   };
 
   const handleSocialLogin = (provider) => {
