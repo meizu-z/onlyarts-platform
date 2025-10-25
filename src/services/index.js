@@ -15,6 +15,8 @@ export { walletService, mockWallet, mockTransactions, mockPaymentMethods } from 
 export { livestreamService, mockLiveStreams, mockUpcomingStreams, mockComments } from './livestream.service';
 export { chatService, mockContacts, mockMessages } from './chat.service';
 export { exhibitionService, mockExhibition, mockExhibitionArtworks, mockExhibitionComments } from './exhibition.service';
+export { cartService, mockCart, mockCartItems } from './cart.service';
+export { checkoutService, mockPaymentMethods as mockCheckoutPaymentMethods, mockOrder } from './checkout.service';
 
 // Export API configuration
 export { API_CONFIG, API_ENDPOINTS } from '../config/api.config';
