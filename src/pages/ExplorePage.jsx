@@ -1,58 +1,109 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ui/Toast'; // 🆕
-import { LoadingPaint } from '../components/ui/LoadingStates'; // 🆕
-import { EmptySearchResults } from '../components/ui/EmptyStates'; // 🆕
-import { APIError } from '../components/ui/ErrorStates'; // 🆕
+import { useToast } from '../components/ui/Toast';
+import { LoadingPaint } from '../components/ui/LoadingStates';
+import { EmptySearchResults } from '../components/ui/EmptyStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { exhibitionService } from '../services/exhibition.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { ChevronDown, Filter, Grid, List, Lock } from 'lucide-react';
 
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
+
 const ExplorePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const toast = useToast(); // 🆕
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('current');
   const [viewMode, setViewMode] = useState('grid');
-  const [loading, setLoading] = useState(false); // 🆕
-  const [error, setError] = useState(null); // 🆕
-  const [searchQuery, setSearchQuery] = useState(''); // 🆕
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [exhibitions, setExhibitions] = useState([]);
+  const [allExhibitions, setAllExhibitions] = useState([]);
 
-  const exhibitions = [
-    { title: 'Digital Dreams', curator: '@curator1', pieces: 20, status: 'live', image: '🎨' },
-    { title: 'Abstract Visions', curator: '@curator2', pieces: 15, status: 'upcoming', image: '🖼️' },
-    { title: 'Modern Masters', curator: '@curator3', pieces: 12, status: 'live', image: '🎭', premium: true },
-    { title: 'Urban Landscapes', curator: '@curator4', pieces: 18, status: 'live', image: '🌆' },
-    { title: 'Nature & Tech', curator: '@curator5', pieces: 25, status: 'upcoming', image: '🌿' },
-    { title: 'Portraits 2024', curator: '@curator6', pieces: 10, status: 'past', image: '👤' },
-  ];
+  // Fetch exhibitions on mount
+  useEffect(() => {
+    fetchExhibitions();
+  }, []);
 
-  const filteredExhibitions = exhibitions.filter(e => {
-    if (activeTab === 'current') return e.status === 'live';
-    if (activeTab === 'upcoming') return e.status === 'upcoming';
-    if (activeTab === 'past') return e.status === 'past';
-    return true;
-  });
+  // Filter exhibitions when tab changes
+  useEffect(() => {
+    filterExhibitions();
+  }, [activeTab, allExhibitions]);
 
-  // 🆕 Simulate search
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    // Add your actual search logic here
+  const fetchExhibitions = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const mockData = [
+          { id: 1, title: 'Digital Dreams', curator: '@curator1', pieces: 20, status: 'live', image: '🎨' },
+          { id: 2, title: 'Abstract Visions', curator: '@curator2', pieces: 15, status: 'upcoming', image: '🖼️' },
+          { id: 3, title: 'Modern Masters', curator: '@curator3', pieces: 12, status: 'live', image: '🎭', premium: true },
+          { id: 4, title: 'Urban Landscapes', curator: '@curator4', pieces: 18, status: 'live', image: '🌆' },
+          { id: 5, title: 'Nature & Tech', curator: '@curator5', pieces: 25, status: 'upcoming', image: '🌿' },
+          { id: 6, title: 'Portraits 2024', curator: '@curator6', pieces: 10, status: 'past', image: '👤' },
+        ];
+        setAllExhibitions(mockData);
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await exhibitionService.getExhibitions();
+      setAllExhibitions(response.exhibitions || response);
+    } catch (err) {
+      console.error('Error fetching exhibitions:', err);
+      setError(err.message || 'Failed to load exhibitions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // 🆕 Handle premium content click
+  const filterExhibitions = () => {
+    let filtered = allExhibitions;
+
+    // Filter by tab
+    if (activeTab === 'current') {
+      filtered = filtered.filter(e => e.status === 'live');
+    } else if (activeTab === 'upcoming') {
+      filtered = filtered.filter(e => e.status === 'upcoming');
+    } else if (activeTab === 'past') {
+      filtered = filtered.filter(e => e.status === 'past');
+    }
+
+    // Filter by search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(e =>
+        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.curator.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    setExhibitions(filtered);
+  };
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+    filterExhibitions();
+  };
+
   const handlePremiumClick = () => {
     toast.info('Upgrade to Premium to view this exhibition');
     setTimeout(() => navigate('/subscriptions'), 1500);
   };
 
-  // 🆕 Handle follow exhibition
   const handleFollow = () => {
     toast.success('Exhibition followed! You\'ll be notified when it opens 🎨');
   };
 
-  // 🆕 Show loading state (for demo)
   if (loading) {
     return (
       <div className="flex-1 p-6 md:p-8">
@@ -61,11 +112,10 @@ const ExplorePage = () => {
     );
   }
 
-  // 🆕 Show error state (for demo)
   if (error) {
     return (
       <div className="flex-1 p-6 md:p-8">
-        <APIError error={error} retry={() => setError(null)} />
+        <APIError error={error} retry={fetchExhibitions} />
       </div>
     );
   }
@@ -180,13 +230,13 @@ const ExplorePage = () => {
         </Card>
       )}
 
-      {/* 🆕 Show Empty State if no results */}
-      {filteredExhibitions.length === 0 ? (
+      {/* Show Empty State if no results */}
+      {exhibitions.length === 0 ? (
         <EmptySearchResults searchQuery={searchQuery} />
       ) : (
         /* Exhibitions Grid */
         <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-4 md:gap-6`}>
-          {filteredExhibitions.map((exhibition, idx) => (
+          {exhibitions.map((exhibition, idx) => (
             <Card
               key={idx}
               hover

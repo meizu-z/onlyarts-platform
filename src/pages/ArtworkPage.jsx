@@ -1,89 +1,232 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import { Lock, Star, MessageSquare, Share, ShoppingCart, AlertCircle } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
-import { useCart } from '../context/CartContext'; // Import useCart
+import { useCart } from '../context/CartContext';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { artworkService, mockArtworkDetail, mockArtworkComments } from '../services/artwork.service';
+import { profileService } from '../services/profile.service';
+
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
 
 const ArtworkPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
   const { id } = useParams();
-  const { addToCart } = useCart(); // Destructure addToCart
+  const { addToCart } = useCart();
   const isFreeUser = !user || user.subscription === 'free';
 
-  // Mock Data - Adjusted price to be a number
-  const artwork = {
-    id: id,
-    title: 'Digital Sunset',
-    artist: '@artist1',
-    artistName: 'Sarah Chen',
-    price: 5000, // Price as a number
-    image: '🌅',
-    description: 'A beautiful digital painting of a sunset over the ocean. Created with a custom set of brushes in Procreate.',
-    isFollowing: true,
-    timeAgo: '2h ago',
-    likes: 234,
-  };
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [artwork, setArtwork] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likesCount, setLikesCount] = useState(0);
 
-  // State Management
-  const [comments, setComments] = useState([
-    { user: '@artlover', text: 'This collection is amazing! 🤩' },
-    { user: '@critic', text: 'Interesting use of color and texture.' },
-  ]);
+  // Comment submission state
   const [newComment, setNewComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submissionError, setSubmissionError] = useState(null);
-  
-  // This state is just to simulate a transient error that resolves on retry
-  const [submitAttempts, setSubmitAttempts] = useState(0);
 
-  const handleCommentSubmit = (e) => {
+  // Fetch artwork and comments on mount
+  useEffect(() => {
+    fetchArtworkData();
+  }, [id]);
+
+  const fetchArtworkData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setArtwork({ ...mockArtworkDetail, id });
+        setComments(mockArtworkComments);
+        setIsFollowing(mockArtworkDetail.isFollowing);
+        setIsLiked(mockArtworkDetail.isLiked);
+        setLikesCount(mockArtworkDetail.likes);
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Parallel fetching
+      const [artworkData, commentsData] = await Promise.all([
+        artworkService.getArtwork(id),
+        artworkService.getComments(id),
+      ]);
+
+      setArtwork(artworkData.artwork || artworkData);
+      setComments(commentsData.comments || commentsData);
+      setIsFollowing(artworkData.artwork?.isFollowing || false);
+      setIsLiked(artworkData.artwork?.isLiked || false);
+      setLikesCount(artworkData.artwork?.likes || 0);
+    } catch (err) {
+      console.error('Error fetching artwork:', err);
+      setError(err.message || 'Failed to load artwork. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (isFreeUser) {
-        toast.info('Upgrade to Plus to comment on artworks.');
-        navigate('/subscriptions');
-        return;
+      toast.info('Upgrade to Plus to comment on artworks.');
+      navigate('/subscriptions');
+      return;
     }
     if (!newComment.trim()) return;
 
-    setIsSubmitting(true);
-    setSubmissionError(null);
-    setSubmitAttempts(prev => prev + 1);
+    const tempComment = {
+      id: Date.now(),
+      user: user?.username || '@me',
+      userName: user?.name || 'You',
+      text: newComment,
+      timestamp: 'Just now',
+      createdAt: new Date().toISOString(),
+    };
 
-    // Simulate a network request that fails on the first attempt
-    setTimeout(() => {
-        if (submitAttempts % 2 === 0) { // Fails on 1st, 3rd, 5th... attempt
-            const errorMsg = "Failed to post comment. Please check your connection.";
-            setSubmissionError(errorMsg);
-            setIsSubmitting(false);
-            toast.error("Network Error", "Your comment could not be posted.");
-        } else {
-            setComments([...comments, { user: '@me', text: newComment }]);
-            setNewComment('');
-            setIsSubmitting(false);
-            setSubmissionError(null);
-            toast.success('Comment posted!');
-        }
-    }, 1200);
+    // Optimistic UI update
+    setComments([...comments, tempComment]);
+    const commentText = newComment;
+    setNewComment('');
+    setIsSubmitting(true);
+
+    try {
+      // DEMO MODE: Just show success
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 800));
+        toast.success('Comment posted!');
+        setIsSubmitting(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await artworkService.addComment(id, commentText);
+
+      // Replace temp comment with real comment from API
+      setComments(prev => prev.map(c =>
+        c.id === tempComment.id ? response.comment : c
+      ));
+
+      toast.success('Comment posted!');
+    } catch (error) {
+      // Revert on error
+      setComments(prev => prev.filter(c => c.id !== tempComment.id));
+      setNewComment(commentText);
+      toast.error('Failed to post comment. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
-  
+
+  const handleFollowArtist = async () => {
+    if (!artwork) return;
+
+    const oldFollowing = isFollowing;
+    setIsFollowing(!isFollowing);
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.success(isFollowing ? `Unfollowed ${artwork.artistName}` : `Now following ${artwork.artistName}! 🎨`);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (isFollowing) {
+        await profileService.unfollowUser(artwork.artist);
+        toast.success(`Unfollowed ${artwork.artistName}`);
+      } else {
+        await profileService.followUser(artwork.artist);
+        toast.success(`Now following ${artwork.artistName}! 🎨`);
+      }
+    } catch (error) {
+      // Revert on error
+      setIsFollowing(oldFollowing);
+      toast.error('Failed to update follow status');
+    }
+  };
+
+  const handleLike = async () => {
+    if (!artwork) return;
+
+    const oldLiked = isLiked;
+    const oldCount = likesCount;
+
+    setIsLiked(!isLiked);
+    setLikesCount(isLiked ? likesCount - 1 : likesCount + 1);
+
+    try {
+      // DEMO MODE: Just update state
+      if (USE_DEMO_MODE) {
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (isLiked) {
+        await artworkService.unlikeArtwork(id);
+      } else {
+        await artworkService.likeArtwork(id);
+      }
+    } catch (error) {
+      // Revert on error
+      setIsLiked(oldLiked);
+      setLikesCount(oldCount);
+      toast.error('Failed to update like');
+    }
+  };
+
   const handleShare = () => {
+    if (!artwork) return;
     toast.success(`Sharing "${artwork.title}"...`);
   };
 
   const handleBuyNow = () => {
-    addToCart({ ...artwork, quantity: 1 }); // Add artwork to cart
+    if (!artwork) return;
+    addToCart({ ...artwork, quantity: 1 });
     toast.success(`"${artwork.title}" added to cart!`);
-    navigate('/cart'); // Navigate to the cart page
+    navigate('/cart');
   };
 
-  const handleFollowArtist = () => {
-    toast.success(`Now following ${artwork.artistName}! 🎨`);
-  };
+  if (loading) {
+    return (
+      <div className="flex-1 px-4 py-4 md:p-6">
+        <LoadingPaint message="Loading artwork..." />
+        <div className="mt-8">
+          <SkeletonGrid count={2} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 px-4 py-4 md:p-6">
+        <APIError error={error} retry={fetchArtworkData} />
+      </div>
+    );
+  }
+
+  if (!artwork) {
+    return (
+      <div className="flex-1 px-4 py-4 md:p-6">
+        <Card className="p-8 text-center">
+          <h2 className="text-2xl font-bold text-[#f2e9dd] mb-2">Artwork Not Found</h2>
+          <p className="text-[#f2e9dd]/70 mb-4">The artwork you're looking for doesn't exist.</p>
+          <Button onClick={() => navigate('/explore')}>Browse Artworks</Button>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 px-4 py-4 md:p-6">
@@ -91,7 +234,11 @@ const ArtworkPage = () => {
         <div>
           <Card noPadding>
             <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-9xl">
-              {artwork.image}
+              {artwork.imageUrl ? (
+                <img src={artwork.imageUrl} alt={artwork.title} className="w-full h-full object-cover" />
+              ) : (
+                artwork.image
+              )}
             </div>
           </Card>
         </div>
@@ -101,14 +248,26 @@ const ArtworkPage = () => {
             <p className="text-sm md:text-base text-[#f2e9dd]/90 mb-4 md:mb-6">{artwork.description}</p>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-base text-[#f2e9dd]/70 mb-4 md:mb-6">
-              <span>👁 2.3K views</span>
+              <span>👁 {artwork.views?.toLocaleString() || '2.3K'} views</span>
               <span>•</span>
-              <span>{artwork.likes} likes</span>
+              <button
+                onClick={handleLike}
+                className={`transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}
+              >
+                {isLiked ? '❤️' : '🤍'} {likesCount} likes
+              </button>
             </div>
 
             <div className="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3">
-              <Button onClick={handleFollowArtist} className="w-full md:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
-                <Star size={16} className="mr-2" /> Follow Artist
+              <Button
+                onClick={handleFollowArtist}
+                className={`w-full md:w-auto shadow-lg transform hover:scale-105 transition-all duration-300 ${
+                  isFollowing
+                    ? 'bg-gray-600 hover:bg-gray-700 shadow-gray-600/30 hover:shadow-gray-600/50'
+                    : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50'
+                }`}
+              >
+                <Star size={16} className="mr-2" /> {isFollowing ? 'Following' : 'Follow Artist'}
               </Button>
               <Button variant="secondary" onClick={handleShare} className="w-full md:w-auto transform hover:scale-105 transition-all duration-300">
                 <Share size={16} className="mr-2" /> Share
@@ -147,24 +306,14 @@ const ArtworkPage = () => {
             disabled={isFreeUser || isSubmitting}
           ></textarea>
 
-          <div className="mt-3 md:mt-4 flex flex-col md:flex-row items-stretch md:items-center gap-2 md:gap-4">
-              <Button type="submit" disabled={isSubmitting || isFreeUser} className="w-full md:w-auto">
-                {isSubmitting ? "Submitting..." : "Submit Comment"}
-              </Button>
-              {submissionError && (
-                <Button onClick={handleCommentSubmit} variant="secondary" className="w-full md:w-auto">
-                  Retry
-                </Button>
-              )}
+          <div className="mt-3 md:mt-4">
+            <Button type="submit" disabled={isSubmitting || isFreeUser} className="w-full md:w-auto">
+              {isSubmitting ? "Submitting..." : "Submit Comment"}
+            </Button>
           </div>
         </form>
-        {submissionError && (
-            <div className="mt-3 md:mt-4 flex items-center gap-2 text-red-400 p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-                <AlertCircle size={16} />
-                <p className="text-xs md:text-sm">{submissionError}</p>
-            </div>
-        )}
-         {isFreeUser && (
+
+        {isFreeUser && (
             <Card className="mt-3 md:mt-4 p-3 md:p-4 bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30">
                 <p className="text-orange-400 font-bold mb-1 flex items-center gap-2 text-sm md:text-base">
                   <Lock size={16} /> Commenting is a Plus feature

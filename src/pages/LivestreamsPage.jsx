@@ -1,104 +1,164 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Wifi, Users, Clock, ArrowLeft } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { livestreamService, mockLiveStreams, mockUpcomingStreams, mockComments } from '../services/livestream.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
+
 const LivestreamsPage = () => {
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('live');
   const [selectedStream, setSelectedStream] = useState(null);
-  const [comments, setComments] = useState([
-    {
-      user: 'ArtLover_22',
-      comment: 'This is breathtaking!',
-      profilePicture: 'https://randomuser.me/api/portraits/women/11.jpg',
-    },
-    {
-      user: 'NFTCollector_1',
-      comment: 'bids $500',
-      isBid: true,
-      profilePicture: 'https://randomuser.me/api/portraits/men/22.jpg',
-    },
-  ]);
   const [newComment, setNewComment] = useState('');
   const [isBidding, setIsBidding] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
 
-  const streams = [
-    {
-      artist: 'meizzuuuuuuu',
-      title: 'Digital Painting Process',
-      viewers: 987,
-      live: true,
-      auction: true,
-      thumbnail: '💻',
-      profilePicture: 'https://randomuser.me/api/portraits/women/8.jpg',
-      followers: '2.1M',
-      description: 'Join me as I create a new digital masterpiece from scratch!',
-    },
-    {
-      artist: 'jnorman',
-      title: 'Sculpting in VR',
-      viewers: 654,
-      live: true,
-      auction: false,
-      thumbnail: '🗿',
-      profilePicture: 'https://randomuser.me/api/portraits/men/12.jpg',
-      followers: '950K',
-      description: 'Exploring new forms and textures in virtual reality.',
-    },
-    {
-      artist: 'AbstractFlow',
-      title: 'Watercolor Tutorial',
-      viewers: 234,
-      live: false,
-      scheduled: 'Tomorrow 8PM',
-      thumbnail: '💧',
-      profilePicture: 'https://randomuser.me/api/portraits/women/68.jpg',
-      followers: '300K',
-    },
-    {
-      artist: 'ArtistThree',
-      title: 'Abstract Painting',
-      viewers: 789,
-      live: true,
-      auction: true,
-      thumbnail: '🖌️',
-      profilePicture: 'https://randomuser.me/api/portraits/men/47.jpg',
-      followers: '500K',
-    },
-  ];
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [streams, setStreams] = useState([]);
+  const [upcomingStreams, setUpcomingStreams] = useState([]);
+  const [comments, setComments] = useState([]);
 
-  const displayStreams = streams.filter(s => (activeTab === 'live' ? s.live : !s.live));
+  // Fetch streams based on active tab
+  useEffect(() => {
+    fetchStreams();
+  }, [activeTab]);
 
-  const handleCommentSubmit = e => {
-    e.preventDefault();
-    if (newComment.trim()) {
-      setComments([
-        ...comments,
-        {
-          user: 'You',
-          comment: newComment,
-          profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
-        },
-      ]);
-      setNewComment('');
+  // Fetch comments when a stream is selected
+  useEffect(() => {
+    if (selectedStream) {
+      fetchComments(selectedStream.id);
+    }
+  }, [selectedStream]);
+
+  const fetchStreams = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (activeTab === 'live') {
+          setStreams(mockLiveStreams);
+        } else {
+          setUpcomingStreams(mockUpcomingStreams);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (activeTab === 'live') {
+        const response = await livestreamService.getLiveStreams();
+        setStreams(response.streams || []);
+      } else {
+        const response = await livestreamService.getUpcomingStreams();
+        setUpcomingStreams(response.streams || []);
+      }
+    } catch (err) {
+      console.error('Error fetching streams:', err);
+      setError(err.message || 'Failed to load streams. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleBidSubmit = e => {
+  const fetchComments = async (streamId) => {
+    try {
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        setComments(mockComments);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await livestreamService.getComments(streamId);
+      setComments(response.comments || []);
+    } catch (err) {
+      console.error('Error fetching comments:', err);
+      toast.error('Failed to load comments');
+    }
+  };
+
+  const displayStreams = activeTab === 'live' ? streams : upcomingStreams;
+
+  const handleCommentSubmit = async (e) => {
     e.preventDefault();
-    if (bidAmount.trim() && !isNaN(bidAmount)) {
-      const newBid = {
-        user: 'You',
-        comment: `bids $${bidAmount}`,
-        isBid: true,
-        profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
-      };
-      setComments([...comments, newBid]);
-      setBidAmount('');
-      setIsBidding(false);
+    if (!newComment.trim()) return;
+
+    const tempComment = {
+      id: Date.now(),
+      user: 'You',
+      comment: newComment,
+      profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
+      timestamp: new Date().toISOString(),
+    };
+
+    // Optimistic update
+    setComments([...comments, tempComment]);
+    setNewComment('');
+
+    try {
+      // DEMO MODE: Just show in UI
+      if (USE_DEMO_MODE) {
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await livestreamService.postComment(selectedStream.id, { comment: newComment });
+    } catch (error) {
+      // Revert on error
+      setComments(comments.filter(c => c.id !== tempComment.id));
+      toast.error('Failed to post comment');
+    }
+  };
+
+  const handleBidSubmit = async (e) => {
+    e.preventDefault();
+    if (!bidAmount.trim() || isNaN(bidAmount)) return;
+
+    const tempBid = {
+      id: Date.now(),
+      user: 'You',
+      comment: `bids $${bidAmount}`,
+      isBid: true,
+      profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
+      timestamp: new Date().toISOString(),
+    };
+
+    // Optimistic update
+    setComments([...comments, tempBid]);
+    const amount = bidAmount;
+    setBidAmount('');
+    setIsBidding(false);
+
+    try {
+      // DEMO MODE: Just show in UI
+      if (USE_DEMO_MODE) {
+        toast.success(`Bid placed: $${amount}`);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await livestreamService.placeBid(selectedStream.id, { amount: parseFloat(amount) });
+      toast.success(`Bid placed: $${amount}`);
+    } catch (error) {
+      // Revert on error
+      setComments(comments.filter(c => c.id !== tempBid.id));
+      setBidAmount(amount);
+      setIsBidding(true);
+      toast.error('Failed to place bid');
     }
   };
 
@@ -221,6 +281,27 @@ const LivestreamsPage = () => {
             </form>
           </Modal>
         )}
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-6 md:mb-8">Livestreams</h1>
+        <LoadingPaint message="Loading streams..." />
+        <div className="mt-8">
+          <SkeletonGrid count={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-6 md:mb-8">Livestreams</h1>
+        <APIError error={error} retry={fetchStreams} />
       </div>
     );
   }

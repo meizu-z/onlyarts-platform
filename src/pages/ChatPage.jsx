@@ -1,26 +1,39 @@
 import React, { useState, useEffect } from 'react';
 import { Send, Search, Menu, X, ArrowLeft } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { chatService, mockContacts, mockMessages } from '../services/chat.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
-const ChatPage = () => {
-  const [contacts, setContacts] = useState([
-    { id: 1, name: 'meizzuuuuuuu', avatarUrl: 'https://i.pravatar.cc/150?u=meizzuuuuuuu', online: true, lastMessage: 'Right? By the way, are you going...', unread: 2 },
-    { id: 2, name: 'jnorman', avatarUrl: 'https://i.pravatar.cc/150?u=jnorman', online: false, lastMessage: 'Definitely! I wouldn\'t miss it...' },
-    { id: 3, name: 'artist1', avatarUrl: 'https://i.pravatar.cc/150?u=artist1', online: true, lastMessage: 'Thanks for the support!' },
-    { id: 4, name: 'SarahChen', avatarUrl: 'https://i.pravatar.cc/150?u=SarahChen', online: false, lastMessage: 'See you there.' },
-    { id: 5, name: 'MikeJ', avatarUrl: 'https://i.pravatar.cc/150?u=MikeJ', online: true, lastMessage: 'Sounds good.' },
-  ]);
-  const [activeChat, setActiveChat] = useState(contacts[0]);
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
 
-  const [messages, setMessages] = useState([
-    { id: 1, user: 'meizzuuuuuuu', text: 'Hey, did you see that new digital art piece by @artist1? It\'s amazing!', timestamp: '10:00 AM', isYou: false },
-    { id: 2, user: 'jnorman', text: 'Yeah, I saw it! The colors are incredible. I wish I could afford it.', timestamp: '10:01 AM', isYou: true },
-    { id: 3, user: 'meizzuuuuuuu', text: 'Right? By the way, are you going to the virtual exhibition next week?', timestamp: '10:02 AM', isYou: false },
-    { id: 4, user: 'jnorman', text: 'Definitely! I wouldn\'t miss it for the world. Maybe we can catch up there.', timestamp: '10:03 AM', isYou: true },
-  ]);
+const ChatPage = () => {
+  const toast = useToast();
+
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [contacts, setContacts] = useState([]);
+  const [activeChat, setActiveChat] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch conversations on mount
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  // Fetch messages when active chat changes
+  useEffect(() => {
+    if (activeChat) {
+      fetchMessages(activeChat.id);
+    }
+  }, [activeChat]);
 
   // Close sidebar when screen size changes to desktop
   useEffect(() => {
@@ -33,24 +46,155 @@ const ChatPage = () => {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
-  const handleSendMessage = (e) => {
+  const fetchConversations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setContacts(mockContacts);
+        setActiveChat(mockContacts[0]);
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await chatService.getConversations();
+      const conversations = response.conversations || response;
+      setContacts(conversations);
+      if (conversations.length > 0) {
+        setActiveChat(conversations[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching conversations:', err);
+      setError(err.message || 'Failed to load conversations. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMessages = async (conversationId) => {
+    try {
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+        setMessages(mockMessages[conversationId] || []);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await chatService.getMessages(conversationId);
+      setMessages(response.messages || response);
+
+      // Mark as read
+      await chatService.markAsRead(conversationId);
+
+      // Update contact unread count
+      setContacts(prev => prev.map(c =>
+        c.id === conversationId ? { ...c, unread: 0 } : c
+      ));
+    } catch (err) {
+      console.error('Error fetching messages:', err);
+      toast.error('Failed to load messages');
+    }
+  };
+
+  const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (newMessage.trim() === '') return;
-    const newMsg = {
-      id: messages.length + 1,
-      user: 'jnorman',
+    if (newMessage.trim() === '' || !activeChat) return;
+
+    const tempMessage = {
+      id: Date.now(),
+      senderId: 'current_user',
+      user: 'You',
       text: newMessage,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       isYou: true,
     };
-    setMessages([...messages, newMsg]);
+
+    // Optimistic UI update
+    setMessages([...messages, tempMessage]);
+    const messageText = newMessage;
     setNewMessage('');
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        toast.success('Message sent!');
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const response = await chatService.sendMessage(activeChat.id, { text: messageText });
+
+      // Replace temp message with real message from API
+      setMessages(prev => prev.map(msg =>
+        msg.id === tempMessage.id ? response.message : msg
+      ));
+
+      toast.success('Message sent!');
+    } catch (error) {
+      // Revert on error
+      setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
+      setNewMessage(messageText);
+      toast.error('Failed to send message. Please try again.');
+    }
   };
 
   const handleContactClick = (contact) => {
     setActiveChat(contact);
     setIsSidebarOpen(false); // Close sidebar on mobile when selecting a contact
   };
+
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+
+    if (!query.trim()) {
+      fetchConversations();
+      return;
+    }
+
+    try {
+      // DEMO MODE: Filter mock data
+      if (USE_DEMO_MODE) {
+        const filtered = mockContacts.filter(c =>
+          c.name.toLowerCase().includes(query.toLowerCase())
+        );
+        setContacts(filtered);
+        return;
+      }
+
+      // REAL API MODE: Call backend search
+      const response = await chatService.searchConversations(query);
+      setContacts(response.conversations || response);
+    } catch (error) {
+      console.error('Error searching conversations:', error);
+      toast.error('Failed to search conversations');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="p-3 md:p-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Messages</h1>
+        <LoadingPaint message="Loading conversations..." />
+        <div className="mt-8">
+          <SkeletonGrid count={4} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-3 md:p-6 max-w-7xl mx-auto">
+        <h1 className="text-2xl md:text-3xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Messages</h1>
+        <APIError error={error} retry={fetchConversations} />
+      </div>
+    );
+  }
 
   return (
     <div className="p-3 md:p-6 max-w-7xl mx-auto pb-20 md:pb-6">
@@ -102,6 +246,8 @@ const ChatPage = () => {
               <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
+                value={searchQuery}
+                onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Search contacts..."
                 className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-2 pl-9 text-sm md:text-base text-[#f2e9dd] focus:outline-none focus:ring-1 focus:ring-[#7C5FFF]"
               />
@@ -133,57 +279,65 @@ const ChatPage = () => {
 
         {/* Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Chat header - mobile back button */}
-          <div className="md:hidden flex items-center gap-3 p-3 border-b border-white/10 bg-[#1a1a1a]">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors -ml-2"
-              aria-label="Open contacts"
-            >
-              <ArrowLeft size={20} />
-            </button>
-            <div className="relative w-8 h-8 rounded-full flex-shrink-0">
-              <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
-              {activeChat.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-sm text-white truncate">{activeChat.name}</p>
-              <p className="text-xs text-gray-400">{activeChat.online ? 'Online' : 'Offline'}</p>
-            </div>
-          </div>
-
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-6">
-            {messages.map((msg) => (
-              <div key={msg.id} className={`flex items-end gap-2 md:gap-3 ${msg.isYou ? 'justify-end' : 'justify-start'}`}>
-                {!msg.isYou &&
-                  <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0">
-                    <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
-                  </div>
-                }
-                <div className={`max-w-[75%] md:max-w-md px-3 md:px-4 py-2 md:py-3 rounded-2xl ${msg.isYou ? 'bg-[#3a3a3a] text-gray-200' : 'bg-[#2a2a2a] text-gray-300'}`}>
-                  <p className="text-sm md:text-base break-words">{msg.text}</p>
-                  <p className="text-xs text-right mt-1 md:mt-2 opacity-50">{msg.timestamp}</p>
+          {activeChat ? (
+            <>
+              {/* Chat header - mobile back button */}
+              <div className="md:hidden flex items-center gap-3 p-3 border-b border-white/10 bg-[#1a1a1a]">
+                <button
+                  onClick={() => setIsSidebarOpen(true)}
+                  className="p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors -ml-2"
+                  aria-label="Open contacts"
+                >
+                  <ArrowLeft size={20} />
+                </button>
+                <div className="relative w-8 h-8 rounded-full flex-shrink-0">
+                  <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
+                  {activeChat.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-white truncate">{activeChat.name}</p>
+                  <p className="text-xs text-gray-400">{activeChat.online ? 'Online' : 'Offline'}</p>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Message input - fixed at bottom with bottom nav padding */}
-          <div className="p-3 md:p-4 border-t border-white/10 bg-[#1a1a1a] md:bg-transparent pb-safe">
-            <form onSubmit={handleSendMessage} className="flex items-center gap-2 md:gap-3">
-              <input
-                type="text"
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                placeholder={`Message ${activeChat.name}...`}
-                className="flex-1 bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-2.5 md:p-3 text-sm md:text-base text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
-              />
-              <Button type="submit" variant="primary" size="icon" className="flex-shrink-0 w-10 h-10 md:w-auto md:h-auto">
-                <Send size={18} className="md:w-5 md:h-5" />
-              </Button>
-            </form>
-          </div>
+              {/* Messages */}
+              <div className="flex-1 overflow-y-auto p-3 md:p-6 space-y-3 md:space-y-6">
+                {messages.map((msg) => (
+                  <div key={msg.id} className={`flex items-end gap-2 md:gap-3 ${msg.isYou ? 'justify-end' : 'justify-start'}`}>
+                    {!msg.isYou &&
+                      <div className="w-6 h-6 md:w-8 md:h-8 rounded-full flex-shrink-0">
+                        <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
+                      </div>
+                    }
+                    <div className={`max-w-[75%] md:max-w-md px-3 md:px-4 py-2 md:py-3 rounded-2xl ${msg.isYou ? 'bg-[#3a3a3a] text-gray-200' : 'bg-[#2a2a2a] text-gray-300'}`}>
+                      <p className="text-sm md:text-base break-words">{msg.text}</p>
+                      <p className="text-xs text-right mt-1 md:mt-2 opacity-50">{msg.timestamp}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Message input - fixed at bottom with bottom nav padding */}
+              <div className="p-3 md:p-4 border-t border-white/10 bg-[#1a1a1a] md:bg-transparent pb-safe">
+                <form onSubmit={handleSendMessage} className="flex items-center gap-2 md:gap-3">
+                  <input
+                    type="text"
+                    value={newMessage}
+                    onChange={(e) => setNewMessage(e.target.value)}
+                    placeholder={`Message ${activeChat.name}...`}
+                    className="flex-1 bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-2.5 md:p-3 text-sm md:text-base text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+                  />
+                  <Button type="submit" variant="primary" size="icon" className="flex-shrink-0 w-10 h-10 md:w-auto md:h-auto">
+                    <Send size={18} className="md:w-5 md:h-5" />
+                  </Button>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-[#f2e9dd]/50">
+              <p>Select a conversation to start messaging</p>
+            </div>
+          )}
         </div>
       </Card>
     </div>

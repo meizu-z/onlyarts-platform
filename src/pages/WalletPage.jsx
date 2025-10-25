@@ -1,13 +1,90 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { useToast } from '../components/ui/Toast';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { walletService, mockWallet, mockTransactions } from '../services/wallet.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
+
 const WalletPage = () => {
-  const transactions = [
-    { date: 'Oct 19, 2025', description: 'Premium Subscription', amount: -249, status: 'completed' },
-    { date: 'Oct 15, 2025', description: 'NFT Purchase', amount: -5000, status: 'completed' },
-    { date: 'Oct 10, 2025', description: 'Wallet Top-up', amount: 10000, status: 'completed' },
-  ];
+  const toast = useToast();
+
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [balance, setBalance] = useState(0);
+  const [transactions, setTransactions] = useState([]);
+
+  useEffect(() => {
+    fetchWalletData();
+  }, []);
+
+  const fetchWalletData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        setBalance(mockWallet.balance);
+        setTransactions(mockTransactions);
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      const [walletData, transactionsData] = await Promise.all([
+        walletService.getBalance(),
+        walletService.getTransactions({ limit: 10 }),
+      ]);
+
+      setBalance(walletData.balance);
+      setTransactions(transactionsData.transactions || []);
+    } catch (err) {
+      console.error('Error fetching wallet data:', err);
+      setError(err.message || 'Failed to load wallet data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAddFunds = () => {
+    toast.info('Add funds feature coming soon!');
+  };
+
+  const handleWithdraw = () => {
+    toast.info('Withdraw feature coming soon!');
+  };
+
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  };
+
+  if (loading) {
+    return (
+      <div className="flex-1 max-w-4xl mx-auto">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-4 md:mb-8 px-3 md:px-0">Wallet</h1>
+        <LoadingPaint message="Loading wallet..." />
+        <div className="mt-8">
+          <SkeletonGrid count={4} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1 max-w-4xl mx-auto">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-4 md:mb-8 px-3 md:px-0">Wallet</h1>
+        <APIError error={error} retry={fetchWalletData} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 max-w-4xl mx-auto">
@@ -21,13 +98,20 @@ const WalletPage = () => {
         <div className="relative z-10">
           <p className="text-[#f2e9dd]/70 mb-2">Available Balance</p>
           <p className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent mb-4 md:mb-6 transform group-hover:scale-105 transition-transform duration-300">
-            ₱2,500.00
+            ₱{balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
-            <Button className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300">
+            <Button
+              onClick={handleAddFunds}
+              className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
+            >
               Add Funds
             </Button>
-            <Button variant="secondary" className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300">
+            <Button
+              onClick={handleWithdraw}
+              variant="secondary"
+              className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300"
+            >
               Withdraw
             </Button>
           </div>
@@ -70,7 +154,7 @@ const WalletPage = () => {
                 <p className="text-sm md:text-base font-bold text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors truncate">
                   {tx.description}
                 </p>
-                <p className="text-xs md:text-sm text-[#f2e9dd]/50">{tx.date}</p>
+                <p className="text-xs md:text-sm text-[#f2e9dd]/50">{formatDate(tx.date)}</p>
               </div>
               <div className="text-right ml-2">
                 <p className={`text-sm md:text-base font-bold transform group-hover:scale-110 transition-transform ${

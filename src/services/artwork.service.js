@@ -131,4 +131,45 @@ export const artworkService = {
   },
 };
 
+// Mock data for demo mode
+export const mockArtworkDetail = {
+  id: '1',
+  title: 'Digital Sunset',
+  artist: '@artist1',
+  artistName: 'Sarah Chen',
+  artistAvatar: 'https://i.pravatar.cc/150?u=artist1',
+  price: 5000,
+  image: '🌅',
+  imageUrl: null,
+  description: 'A beautiful digital painting of a sunset over the ocean. Created with a custom set of brushes in Procreate.',
+  isFollowing: false,
+  isLiked: false,
+  timeAgo: '2h ago',
+  likes: 234,
+  views: 2345,
+  tags: ['digital art', 'landscape', 'sunset'],
+  createdAt: '2025-10-25T10:00:00Z',
+};
+
+export const mockArtworkComments = [
+  {
+    id: 1,
+    user: '@artlover',
+    userName: 'Art Lover',
+    userAvatar: 'https://i.pravatar.cc/150?u=artlover',
+    text: 'This collection is amazing! 🤩',
+    timestamp: '1h ago',
+    createdAt: '2025-10-25T11:00:00Z',
+  },
+  {
+    id: 2,
+    user: '@critic',
+    userName: 'Art Critic',
+    userAvatar: 'https://i.pravatar.cc/150?u=critic',
+    text: 'Interesting use of color and texture.',
+    timestamp: '30m ago',
+    createdAt: '2025-10-25T11:30:00Z',
+  },
+];
+
 export default artworkService;

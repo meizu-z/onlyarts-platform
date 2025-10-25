@@ -6,11 +6,15 @@
 export { default as apiClient, api, uploadFile, uploadFiles } from './api.client';
 export { authService } from './auth.service';
 export { userService } from './user.service';
-export { artworkService } from './artwork.service';
+export { artworkService, mockArtworkDetail, mockArtworkComments } from './artwork.service';
 export { dashboardService, mockDashboardData } from './dashboard.service';
 export { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from './profile.service';
 export { settingsService, mockSettings } from './settings.service';
 export { favoritesService, mockFavorites, mockFollowingArtists, mockCollections } from './favorites.service';
+export { walletService, mockWallet, mockTransactions, mockPaymentMethods } from './wallet.service';
+export { livestreamService, mockLiveStreams, mockUpcomingStreams, mockComments } from './livestream.service';
+export { chatService, mockContacts, mockMessages } from './chat.service';
+export { exhibitionService, mockExhibition, mockExhibitionArtworks, mockExhibitionComments } from './exhibition.service';
 
 // Export API configuration
 export { API_CONFIG, API_ENDPOINTS } from '../config/api.config';

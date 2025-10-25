@@ -1,38 +1,141 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useToast } from '../components/ui/Toast'; // 🆕
-import { EmptyFavorites } from '../components/ui/EmptyStates'; // 🆕
+import { useToast } from '../components/ui/Toast';
+import { EmptyFavorites } from '../components/ui/EmptyStates';
+import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
+import { APIError } from '../components/ui/ErrorStates';
+import { favoritesService, mockFavorites, mockFollowingArtists, mockCollections } from '../services/favorites.service';
+import { profileService } from '../services/profile.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { Heart, Filter, ChevronDown, Users, Calendar } from 'lucide-react';
 
+// Demo mode flag - set to false when backend is ready
+const USE_DEMO_MODE = true;
+
 const FavoritesPage = () => {
   const navigate = useNavigate();
-  const toast = useToast(); // 🆕
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState('favorites');
 
-  const favorites = [
-    { title: 'Sunset Dreams', artist: '@artist1', image: '🌅' },
-    { title: 'Digital Abstract', artist: '@artist2', image: '🎨' },
-    { title: 'Urban Nights', artist: '@artist3', image: '🌃' },
-    { title: 'Nature Flow', artist: '@artist4', image: '🌿' },
-  ];
+  // API state management
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [favorites, setFavorites] = useState([]);
+  const [following, setFollowing] = useState([]);
+  const [collections, setCollections] = useState([]);
 
-  const following = [
-    { name: 'Artist One', username: '@artist1', artworks: 234, isLive: false },
-    { name: 'Artist Two', username: '@artist2', artworks: 89, isLive: true },
-    { name: 'Artist Three', username: '@artist3', artworks: 456, isLive: false },
-  ];
+  // Fetch data based on active tab
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
 
-  // 🆕 Handle remove from favorites
-  const handleRemoveFavorite = (artwork) => {
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // DEMO MODE: Use mock data
+      if (USE_DEMO_MODE) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        if (activeTab === 'favorites') {
+          setFavorites(mockFavorites);
+        } else if (activeTab === 'following') {
+          setFollowing(mockFollowingArtists);
+        } else if (activeTab === 'collections') {
+          setCollections(mockCollections);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      if (activeTab === 'favorites') {
+        const response = await favoritesService.getFavorites();
+        setFavorites(response.favorites || []);
+      } else if (activeTab === 'following') {
+        const response = await favoritesService.getFollowing();
+        setFollowing(response.following || []);
+      } else if (activeTab === 'collections') {
+        const response = await favoritesService.getCollections();
+        setCollections(response.collections || []);
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError(err.message || 'Failed to load data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle remove from favorites with optimistic update
+  const handleRemoveFavorite = async (artwork) => {
+    const oldFavorites = [...favorites];
+
+    // Optimistic update
+    setFavorites(favorites.filter(f => f.id !== artwork.id));
     toast.info(`Removed "${artwork.title}" from favorites`);
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await favoritesService.removeFavorite(artwork.id);
+    } catch (error) {
+      // Revert on error
+      setFavorites(oldFavorites);
+      toast.error('Failed to remove from favorites. Please try again.');
+    }
   };
 
-  // 🆕 Handle unfollow
-  const handleUnfollow = (artist) => {
+  // Handle unfollow with optimistic update
+  const handleUnfollow = async (artist) => {
+    const oldFollowing = [...following];
+
+    // Optimistic update
+    setFollowing(following.filter(a => a.id !== artist.id));
     toast.info(`Unfollowed ${artist.name}`);
+
+    try {
+      // DEMO MODE: Just show toast
+      if (USE_DEMO_MODE) {
+        return;
+      }
+
+      // REAL API MODE: Call backend
+      await profileService.unfollowUser(artist.username.replace('@', ''));
+    } catch (error) {
+      // Revert on error
+      setFollowing(oldFollowing);
+      toast.error('Failed to unfollow. Please try again.');
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Following</h1>
+        <LoadingPaint message="Loading..." />
+        <div className="mt-8">
+          <SkeletonGrid count={6} />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex-1">
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Following</h1>
+        <APIError error={error} retry={fetchData} />
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1">
@@ -185,9 +288,9 @@ const FavoritesPage = () => {
             + Create New Collection
           </Button>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {['Abstract', 'Portraits', 'Landscapes'].map((collection, idx) => (
+            {collections.map((collection, idx) => (
               <Card
-                key={idx}
+                key={collection.id || idx}
                 hover
                 className="cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
@@ -195,14 +298,14 @@ const FavoritesPage = () => {
                 <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                    🎨
+                    {collection.coverImage || '🎨'}
                   </span>
                 </div>
                 <div className="p-3 md:p-4">
                   <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
-                    {collection}
+                    {collection.name}
                   </h3>
-                  <p className="text-sm text-[#f2e9dd]/50 mb-3">{Math.floor(Math.random() * 30) + 10} items</p>
+                  <p className="text-sm text-[#f2e9dd]/50 mb-3">{collection.itemCount} items</p>
                   <Button
                     variant="ghost"
                     size="sm"

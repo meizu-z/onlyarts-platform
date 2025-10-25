@@ -200,8 +200,9 @@ const Dashboard = () => {
             <Button onClick={() => setCreateModalOpen(true)} className="w-full sm:w-auto" size="sm">
               <Plus size={16} className="mr-2" />
               Make a Post
-          </Button>
-        )}
+            </Button>
+          )}
+        </div>
       </div>
 
       <Modal isOpen={isCreateModalOpen} onClose={() => setCreateModalOpen(false)} title="What would you like to create?">
@@ -214,12 +215,45 @@ const Dashboard = () => {
 
       {user?.subscription !== 'free' && (
         <Card className="mb-6 bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 border-[#7C5FFF]/30 animate-fadeIn">
-            {/* ... Premium Banner ... */}
+          <div className="p-4 md:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="flex-1">
+              <h3 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-2 flex items-center gap-2">
+                <Sparkles size={24} className="text-[#B15FFF]" />
+                {user?.subscription === 'premium' ? 'Premium Member' : 'Basic Member'}
+              </h3>
+              <p className="text-sm md:text-base text-[#f2e9dd]/70">
+                Enjoy exclusive features and content
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" className="w-full md:w-auto">
+              Manage Subscription
+            </Button>
+          </div>
         </Card>
       )}
 
       <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-4 md:mb-6 overflow-x-auto scrollbar-hide">
-        {/* ... Tabs ... */}
+        {[
+          { key: 'foryou', label: 'For You', icon: Sparkles },
+          { key: 'following', label: 'Following', icon: Users },
+          { key: 'trending', label: 'Trending', icon: TrendingUp }
+        ].map(tab => (
+          <button
+            key={tab.key}
+            onClick={() => setActiveTab(tab.key)}
+            className={`relative pb-3 md:pb-4 text-sm md:text-lg whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
+              activeTab === tab.key
+                ? 'text-[#f2e9dd]'
+                : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+            }`}
+          >
+            <tab.icon size={18} />
+            {tab.label}
+            {activeTab === tab.key && (
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+            )}
+          </button>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
@@ -276,7 +310,6 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
-      {/* ... Live Stream Card ... */}
     </div>
   );
 };
