@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
+import { mockCartItems } from '../services/cart.service';
 
 const CartContext = createContext();
 
@@ -7,15 +8,51 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  const [cartItems, setCartItems] = useState([]);
+  // Initialize with mock items for demo
+  const [cartItems, setCartItems] = useState(mockCartItems);
 
   const addToCart = (item) => {
-    setCartItems((prevItems) => [...prevItems, item]);
+    setCartItems((prevItems) => {
+      // Check if item already exists
+      const existingItem = prevItems.find(i => i.id === item.id);
+      if (existingItem) {
+        // Update quantity if exists
+        return prevItems.map(i =>
+          i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+        );
+      }
+      // Add new item
+      return [...prevItems, item];
+    });
+  };
+
+  const removeFromCart = (itemId) => {
+    setCartItems((prevItems) => prevItems.filter(item => item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId, quantity) => {
+    setCartItems((prevItems) =>
+      prevItems.map(item =>
+        item.id === itemId ? { ...item, quantity } : item
+      )
+    );
+  };
+
+  const clearCart = () => {
+    setCartItems([]);
+  };
+
+  const getCartCount = () => {
+    return cartItems.reduce((total, item) => total + item.quantity, 0);
   };
 
   const value = {
     cartItems,
     addToCart,
+    removeFromCart,
+    updateQuantity,
+    clearCart,
+    getCartCount,
   };
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;

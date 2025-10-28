@@ -9,6 +9,7 @@ import { APIError } from '../components/ui/ErrorStates';
 import { cartService, mockCart } from '../services/cart.service';
 import { checkoutService } from '../services/checkout.service';
 import { useToast } from '../components/ui/Toast';
+import { Trash2, ShoppingBag } from 'lucide-react';
 
 const USE_DEMO_MODE = true; // Set to false when backend is ready
 
@@ -22,10 +23,18 @@ const CartPage = () => {
   const [cart, setCart] = useState(null);
   const [promoCode, setPromoCode] = useState('');
   const [applyingPromo, setApplyingPromo] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
 
   useEffect(() => {
     fetchCart();
   }, []);
+
+  // Auto-select all items when cart is loaded
+  useEffect(() => {
+    if (cart && cart.items && cart.items.length > 0) {
+      setSelectedItems(cart.items.map(item => item.id));
+    }
+  }, [cart?.items?.length]);
 
   const fetchCart = async () => {
     try {
@@ -47,6 +56,38 @@ const CartPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Handle individual item selection
+  const handleToggleItem = (itemId) => {
+    setSelectedItems(prev =>
+      prev.includes(itemId)
+        ? prev.filter(id => id !== itemId)
+        : [...prev, itemId]
+    );
+  };
+
+  // Handle select all / deselect all
+  const handleToggleAll = () => {
+    if (selectedItems.length === cart.items.length) {
+      setSelectedItems([]);
+    } else {
+      setSelectedItems(cart.items.map(item => item.id));
+    }
+  };
+
+  // Calculate totals for selected items only
+  const calculateSelectedTotals = () => {
+    if (!cart || !cart.items) return { subtotal: 0, tax: 0, total: 0 };
+
+    const selectedCartItems = cart.items.filter(item => selectedItems.includes(item.id));
+    const subtotal = selectedCartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    const tax = Math.round(subtotal * 0.1);
+    const shipping = selectedCartItems.length > 0 ? cart.shipping : 0;
+    const discount = cart.discount || 0;
+    const total = subtotal + tax + shipping - discount;
+
+    return { subtotal, tax, shipping, discount, total, itemCount: selectedCartItems.length };
   };
 
   const handleRemoveItem = async (itemId) => {
@@ -225,13 +266,18 @@ const CartPage = () => {
     navigate('/checkout');
   };
 
-  const handleBuyAllNow = async () => {
-    if (!cart || cart.items.length === 0) return;
+  const handleBuyNow = async () => {
+    if (!cart || cart.items.length === 0 || selectedItems.length === 0) {
+      toast.error('Please select at least one item to purchase');
+      return;
+    }
+
+    const selectedTotals = calculateSelectedTotals();
 
     // For demo mode, show a quick purchase flow
     if (USE_DEMO_MODE) {
       const confirmed = window.confirm(
-        `Buy all ${cart.itemCount} item(s) for $${cart.total.toLocaleString()}?\n\nThis will use your default payment method.`
+        `Buy ${selectedTotals.itemCount} selected item(s) for ₱${selectedTotals.total.toLocaleString()}?\n\nThis will use your default payment method.`
       );
 
       if (confirmed) {
@@ -239,17 +285,38 @@ const CartPage = () => {
         await new Promise(resolve => setTimeout(resolve, 1500));
         toast.success('Purchase successful! 🎉 Your artworks will be delivered shortly.');
 
-        // Clear cart after purchase
-        setCart({
-          items: [],
-          subtotal: 0,
-          tax: 0,
-          shipping: 0,
-          discount: 0,
-          total: 0,
-          promoCode: null,
-          itemCount: 0,
-        });
+        // Remove purchased items from cart
+        const remainingItems = cart.items.filter(item => !selectedItems.includes(item.id));
+
+        if (remainingItems.length === 0) {
+          // Clear cart if all items were purchased
+          setCart({
+            items: [],
+            subtotal: 0,
+            tax: 0,
+            shipping: 0,
+            discount: 0,
+            total: 0,
+            promoCode: null,
+            itemCount: 0,
+          });
+          setSelectedItems([]);
+        } else {
+          // Update cart with remaining items
+          const newSubtotal = remainingItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+          const newTax = Math.round(newSubtotal * 0.1);
+          const newTotal = newSubtotal + newTax + cart.shipping - (cart.discount || 0);
+
+          setCart({
+            ...cart,
+            items: remainingItems,
+            subtotal: newSubtotal,
+            tax: newTax,
+            total: newTotal,
+            itemCount: remainingItems.length,
+          });
+          setSelectedItems([]);
+        }
       }
       return;
     }
@@ -258,9 +325,10 @@ const CartPage = () => {
     try {
       toast.info('Processing purchase...');
 
-      // Create order with default payment method
+      // Create order with selected items only
       const orderData = {
-        paymentMethodId: 'default', // Use default payment method
+        items: selectedItems,
+        paymentMethodId: 'default',
         quickCheckout: true,
       };
 
@@ -274,21 +342,14 @@ const CartPage = () => {
 
       toast.success('Purchase successful! 🎉');
 
-      // Clear cart
-      await cartService.clearCart();
-      setCart({
-        items: [],
-        subtotal: 0,
-        tax: 0,
-        shipping: 0,
-        discount: 0,
-        total: 0,
-        promoCode: null,
-        itemCount: 0,
-      });
+      // Remove purchased items from cart
+      for (const itemId of selectedItems) {
+        await cartService.removeItem(itemId);
+      }
 
-      // Navigate to orders page or dashboard
-      navigate('/dashboard');
+      // Refresh cart
+      await fetchCart();
+      setSelectedItems([]);
     } catch (err) {
       toast.error(err.message || 'Purchase failed. Please try checkout instead.');
     }
@@ -341,9 +402,46 @@ const CartPage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Cart Items */}
             <div className="lg:col-span-2 space-y-4">
+              {/* Select All Checkbox */}
+              <Card className="p-4 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedItems.length === cart.items.length}
+                    onChange={handleToggleAll}
+                    className="w-5 h-5 rounded border-2 border-[#f2e9dd]/30 bg-[#1a1a1a] checked:bg-gradient-to-r checked:from-purple-500 checked:to-pink-500 cursor-pointer accent-purple-500"
+                  />
+                  <span className="text-[#f2e9dd] font-semibold">
+                    Select All ({cart.items.length} items)
+                  </span>
+                  {selectedItems.length > 0 && selectedItems.length < cart.items.length && (
+                    <span className="text-[#f2e9dd]/60 text-sm">
+                      ({selectedItems.length} selected)
+                    </span>
+                  )}
+                </label>
+              </Card>
+
               {cart.items.map((item) => (
-                <Card key={item.id} className="p-4">
+                <Card
+                  key={item.id}
+                  className={`p-4 transition-all ${
+                    selectedItems.includes(item.id)
+                      ? 'border-purple-500/50 bg-purple-500/5'
+                      : ''
+                  }`}
+                >
                   <div className="flex gap-4">
+                    {/* Selection Checkbox */}
+                    <div className="flex items-start pt-2">
+                      <input
+                        type="checkbox"
+                        checked={selectedItems.includes(item.id)}
+                        onChange={() => handleToggleItem(item.id)}
+                        className="w-5 h-5 rounded border-2 border-[#f2e9dd]/30 bg-[#1a1a1a] checked:bg-gradient-to-r checked:from-purple-500 checked:to-pink-500 cursor-pointer accent-purple-500"
+                      />
+                    </div>
+
                     {/* Artwork Image */}
                     <div className="text-5xl flex-shrink-0">
                       {item.artwork?.image || item.image || '🎨'}
@@ -358,35 +456,29 @@ const CartPage = () => {
                         by {item.artwork?.artistName || item.artistName}
                       </p>
                       <p className="text-[#f2e9dd] font-semibold mt-2">
-                        ${item.price.toLocaleString()}
+                        ₱{item.price.toLocaleString()}
                       </p>
+                      {item.quantity > 1 && (
+                        <p className="text-[#f2e9dd]/50 text-sm mt-1">
+                          Quantity: {item.quantity}
+                        </p>
+                      )}
                     </div>
 
-                    {/* Quantity Controls */}
+                    {/* Remove Button */}
                     <div className="flex flex-col items-end gap-2">
-                      <div className="flex items-center gap-2 bg-[#1a1a1a] rounded-lg p-1">
-                        <button
-                          onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
-                          className="w-8 h-8 rounded bg-[#f2e9dd]/10 hover:bg-[#f2e9dd]/20 text-[#f2e9dd] flex items-center justify-center transition-colors"
-                        >
-                          -
-                        </button>
-                        <span className="w-8 text-center text-[#f2e9dd]">
-                          {item.quantity}
-                        </span>
-                        <button
-                          onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
-                          className="w-8 h-8 rounded bg-[#f2e9dd]/10 hover:bg-[#f2e9dd]/20 text-[#f2e9dd] flex items-center justify-center transition-colors"
-                        >
-                          +
-                        </button>
-                      </div>
                       <button
                         onClick={() => handleRemoveItem(item.id)}
-                        className="text-red-400 hover:text-red-300 text-sm transition-colors"
+                        className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-all"
+                        title="Remove from cart"
                       >
-                        Remove
+                        <Trash2 size={20} />
                       </button>
+                      {selectedItems.includes(item.id) && (
+                        <span className="text-xs text-purple-400 font-semibold px-2 py-1 bg-purple-500/20 rounded-full">
+                          Selected
+                        </span>
+                      )}
                     </div>
                   </div>
                 </Card>
@@ -396,7 +488,22 @@ const CartPage = () => {
             {/* Order Summary */}
             <div className="lg:col-span-1">
               <Card className="p-6 sticky top-4">
-                <h2 className="text-xl font-bold text-[#f2e9dd] mb-4">Order Summary</h2>
+                <h2 className="text-xl font-bold text-[#f2e9dd] mb-4">
+                  Order Summary
+                  {selectedItems.length > 0 && (
+                    <span className="block text-sm font-normal text-purple-400 mt-1">
+                      {selectedItems.length} {selectedItems.length === 1 ? 'item' : 'items'} selected
+                    </span>
+                  )}
+                </h2>
+
+                {selectedItems.length === 0 && (
+                  <div className="mb-4 p-4 bg-yellow-500/10 border border-yellow-500/30 rounded-lg">
+                    <p className="text-yellow-400 text-sm text-center">
+                      Please select at least one item to purchase
+                    </p>
+                  </div>
+                )}
 
                 {/* Promo Code */}
                 <form onSubmit={handleApplyPromo} className="mb-4">
@@ -442,42 +549,50 @@ const CartPage = () => {
                 </form>
 
                 <div className="border-t border-[#f2e9dd]/10 pt-4 space-y-3">
-                  <div className="flex justify-between text-[#f2e9dd]/70">
-                    <span>Subtotal</span>
-                    <span>${cart.subtotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-[#f2e9dd]/70">
-                    <span>Shipping</span>
-                    <span>${cart.shipping.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-[#f2e9dd]/70">
-                    <span>Tax (10%)</span>
-                    <span>${cart.tax.toLocaleString()}</span>
-                  </div>
-                  {cart.discount > 0 && (
-                    <div className="flex justify-between text-green-400">
-                      <span>Discount</span>
-                      <span>-${cart.discount.toLocaleString()}</span>
-                    </div>
-                  )}
-                  <div className="border-t border-[#f2e9dd]/10 pt-3 flex justify-between text-[#f2e9dd] font-bold text-lg">
-                    <span>Total</span>
-                    <span>${cart.total.toLocaleString()}</span>
-                  </div>
+                  {(() => {
+                    const selectedTotals = calculateSelectedTotals();
+                    return (
+                      <>
+                        <div className="flex justify-between text-[#f2e9dd]/70">
+                          <span>Subtotal</span>
+                          <span>₱{selectedTotals.subtotal.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-[#f2e9dd]/70">
+                          <span>Shipping</span>
+                          <span>₱{selectedTotals.shipping.toLocaleString()}</span>
+                        </div>
+                        <div className="flex justify-between text-[#f2e9dd]/70">
+                          <span>Tax (10%)</span>
+                          <span>₱{selectedTotals.tax.toLocaleString()}</span>
+                        </div>
+                        {selectedTotals.discount > 0 && (
+                          <div className="flex justify-between text-green-400">
+                            <span>Discount</span>
+                            <span>-₱{selectedTotals.discount.toLocaleString()}</span>
+                          </div>
+                        )}
+                        <div className="border-t border-[#f2e9dd]/10 pt-3 flex justify-between text-[#f2e9dd] font-bold text-lg">
+                          <span>Total</span>
+                          <span>₱{selectedTotals.total.toLocaleString()}</span>
+                        </div>
+                      </>
+                    );
+                  })()}
                 </div>
 
                 <Button
-                  onClick={handleBuyAllNow}
-                  className="w-full mt-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-bold"
+                  onClick={handleBuyNow}
+                  disabled={selectedItems.length === 0}
+                  className={`w-full mt-6 font-bold flex items-center justify-center gap-2 ${
+                    selectedItems.length === 0
+                      ? 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600'
+                  }`}
                 >
-                  💳 Buy All Now - ${cart.total.toLocaleString()}
-                </Button>
-
-                <Button
-                  onClick={handleCheckout}
-                  className="w-full mt-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-                >
-                  Proceed to Checkout
+                  <ShoppingBag size={20} />
+                  {selectedItems.length === 0
+                    ? 'Select Items to Buy'
+                    : `Buy Now (${selectedItems.length}) - ₱${calculateSelectedTotals().total.toLocaleString()}`}
                 </Button>
 
                 <button
@@ -486,6 +601,13 @@ const CartPage = () => {
                 >
                   Continue Shopping
                 </button>
+
+                {/* Info Box */}
+                <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+                  <p className="text-blue-400 text-xs">
+                    ℹ️ Select items by clicking the checkboxes. Only selected items will be purchased.
+                  </p>
+                </div>
               </Card>
             </div>
           </div>

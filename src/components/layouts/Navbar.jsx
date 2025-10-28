@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Bell, MessageSquare, ChevronDown, User, Settings, Wallet, Sparkles, LogOut, Menu, X, Heart, MessageCircle, ShoppingCart, Trash2 } from 'lucide-react';
+import { Search, Bell, MessageSquare, ChevronDown, User, Settings, Wallet, Sparkles, LogOut, Menu, X, Heart, MessageCircle, ShoppingCart, Trash2, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
+import { useToast } from '../ui/Toast';
 import Button from '../common/Button';
 import onlyArtsLogo from '../../assets/onlyartslogo.png';
 
@@ -34,14 +35,16 @@ const OnlyArtsLogo = ({ size = 'md', withText = true }) => {
 
 const Navbar = () => {
     const { user, isAuthenticated, logout } = useAuth();
-    const { cartItems, removeFromCart } = useCart(); // Destructure removeFromCart
+    const { cartItems, removeFromCart, clearCart } = useCart(); // Destructure removeFromCart and clearCart
     const navigate = useNavigate();
+    const toast = useToast();
     const [showUserMenu, setShowUserMenu] = useState(false);
     const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showCartDropdown, setShowCartDropdown] = useState(false); // New state for cart dropdown
     const [scrolled, setScrolled] = useState(false);
     const [hasChatNotification, setHasChatNotification] = useState(true);
+    const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
 
     const mockNotifications = [
         { id: 1, type: 'like', text: 'meizzuuuuuuu liked your artwork Cosmic Dreams.', time: '2 hours ago', read: false },
@@ -99,7 +102,36 @@ const Navbar = () => {
     };
 
     const calculateCartTotal = () => {
-        return cartItems.reduce((total, item) => total + item.price * item.quantity, 0).toFixed(2);
+        return cartItems.reduce((total, item) => total + item.price * item.quantity, 0);
+    };
+
+    const handleBuyNow = async () => {
+        if (cartItems.length === 0) {
+            toast.error('Your cart is empty');
+            return;
+        }
+
+        const total = calculateCartTotal();
+        const tax = Math.round(total * 0.1);
+        const shipping = 500;
+        const grandTotal = total + tax + shipping;
+
+        const confirmed = window.confirm(
+            `Buy all ${cartItems.length} item(s) for ₱${grandTotal.toLocaleString()}?\n\nThis will use your default payment method.`
+        );
+
+        if (confirmed) {
+            setIsProcessingPurchase(true);
+            toast.info('Processing purchase...');
+
+            // Simulate API call
+            await new Promise(resolve => setTimeout(resolve, 1500));
+
+            toast.success('Purchase successful! 🎉 Your artworks will be delivered shortly.');
+            clearCart();
+            setShowCartDropdown(false);
+            setIsProcessingPurchase(false);
+        }
     };
 
     return (
@@ -202,15 +234,24 @@ const Navbar = () => {
                                             <div className="max-h-96 overflow-y-auto custom-scrollbar">
                                                 {cartItems.length > 0 ? (
                                                     cartItems.map(item => (
-                                                        <div key={item.id} className="flex items-center gap-3 p-3 border-b border-white/5 last:border-b-0">
-                                                            <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded-md flex-shrink-0" />
-                                                            <div className="flex-grow">
-                                                                <p className="text-sm text-gray-200 font-semibold truncate">{item.name}</p>
-                                                                <p className="text-xs text-gray-400">{item.quantity} x ${item.price.toFixed(2)}</p>
+                                                        <div key={item.id} className="flex items-center gap-3 p-3 border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
+                                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-md flex items-center justify-center text-2xl flex-shrink-0">
+                                                                {item.artwork?.image || item.image || '🎨'}
                                                             </div>
-                                                            <button 
+                                                            <div className="flex-grow min-w-0">
+                                                                <p className="text-sm text-gray-200 font-semibold truncate">
+                                                                    {item.artwork?.title || item.title || item.name}
+                                                                </p>
+                                                                <p className="text-xs text-gray-400">
+                                                                    {item.artwork?.artistName || item.artistName || 'Unknown Artist'}
+                                                                </p>
+                                                                <p className="text-xs text-green-400 font-semibold">
+                                                                    ₱{item.price.toLocaleString()}
+                                                                </p>
+                                                            </div>
+                                                            <button
                                                                 onClick={() => removeFromCart(item.id)}
-                                                                className="p-1 text-red-400 hover:bg-red-500/20 rounded-full transition-colors"
+                                                                className="p-1.5 text-red-400 hover:bg-red-500/20 rounded-lg transition-colors"
                                                                 title="Remove from cart"
                                                             >
                                                                 <Trash2 size={16} />
@@ -223,16 +264,36 @@ const Navbar = () => {
                                             </div>
                                             {cartItems.length > 0 && (
                                                 <div className="p-3 border-t border-white/10">
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-gray-400 text-sm">Subtotal:</span>
+                                                        <span className="text-white text-sm">₱{calculateCartTotal().toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center mb-1">
+                                                        <span className="text-gray-400 text-sm">Tax (10%):</span>
+                                                        <span className="text-white text-sm">₱{Math.round(calculateCartTotal() * 0.1).toLocaleString()}</span>
+                                                    </div>
+                                                    <div className="flex justify-between items-center mb-3 pb-2 border-b border-white/10">
+                                                        <span className="text-gray-400 text-sm">Shipping:</span>
+                                                        <span className="text-white text-sm">₱500</span>
+                                                    </div>
                                                     <div className="flex justify-between items-center mb-3">
                                                         <span className="text-white font-bold">Total:</span>
-                                                        <span className="text-white font-bold">${calculateCartTotal()}</span>
+                                                        <span className="text-white font-bold">₱{(calculateCartTotal() + Math.round(calculateCartTotal() * 0.1) + 500).toLocaleString()}</span>
                                                     </div>
-                                                    <Button 
-                                                        onClick={() => { navigate('/cart'); setShowCartDropdown(false); }}
-                                                        className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] hover:shadow-lg hover:shadow-[#7C5FFF]/30 transition-all"
+                                                    <Button
+                                                        onClick={handleBuyNow}
+                                                        disabled={isProcessingPurchase}
+                                                        className="w-full bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 hover:shadow-lg hover:shadow-green-500/30 transition-all font-bold flex items-center justify-center gap-2"
                                                     >
-                                                        View Cart
+                                                        <ShoppingBag size={18} />
+                                                        {isProcessingPurchase ? 'Processing...' : 'Buy Now'}
                                                     </Button>
+                                                    <button
+                                                        onClick={() => { navigate('/cart'); setShowCartDropdown(false); }}
+                                                        className="w-full mt-2 text-[#f2e9dd]/60 hover:text-[#f2e9dd] text-sm transition-colors py-2"
+                                                    >
+                                                        View Cart Details
+                                                    </button>
                                                 </div>
                                             )}
                                         </div>
