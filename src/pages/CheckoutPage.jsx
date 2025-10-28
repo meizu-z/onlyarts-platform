@@ -8,11 +8,12 @@ import { LoadingPaint } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { cartService, mockCart } from '../services/cart.service';
 import { checkoutService, mockPaymentMethods, mockOrder } from '../services/checkout.service';
-import { toast } from 'react-hot-toast';
+import { useToast } from '../components/ui/Toast';
 
 const USE_DEMO_MODE = true; // Set to false when backend is ready
 
 const CheckoutPage = () => {
+  const toast = useToast();
   const navigate = useNavigate();
   const { user } = useAuth();
 

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Wifi, Users, Clock, ArrowLeft } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Wifi, Users, Clock, ArrowLeft, Lock } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { livestreamService, mockLiveStreams, mockUpcomingStreams, mockComments } from '../services/livestream.service';
+import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
@@ -13,12 +15,18 @@ import Modal from '../components/common/Modal';
 const USE_DEMO_MODE = true;
 
 const LivestreamsPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
   const [activeTab, setActiveTab] = useState('live');
   const [selectedStream, setSelectedStream] = useState(null);
   const [newComment, setNewComment] = useState('');
   const [isBidding, setIsBidding] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
+
+  // Check if user can bid (Plus or Premium only)
+  const canBid = user?.subscription === 'plus' || user?.subscription === 'premium';
+  const isPremium = user?.subscription === 'premium';
 
   // API state management
   const [loading, setLoading] = useState(true);
@@ -124,21 +132,45 @@ const LivestreamsPage = () => {
     }
   };
 
+  const handleBidClick = () => {
+    if (!canBid) {
+      toast.error('Bidding is only available for Plus and Premium members');
+      setTimeout(() => navigate('/subscriptions'), 1500);
+      return;
+    }
+    setIsBidding(true);
+  };
+
   const handleBidSubmit = async (e) => {
     e.preventDefault();
     if (!bidAmount.trim() || isNaN(bidAmount)) return;
+    if (!canBid) {
+      toast.error('You need Plus or Premium subscription to bid');
+      return;
+    }
 
     const tempBid = {
       id: Date.now(),
       user: 'You',
       comment: `bids $${bidAmount}`,
       isBid: true,
+      isPremium: isPremium, // Premium users get priority
+      subscription: user?.subscription,
       profilePicture: 'https://randomuser.me/api/portraits/lego/1.jpg',
       timestamp: new Date().toISOString(),
     };
 
-    // Optimistic update
-    setComments([...comments, tempBid]);
+    // Optimistic update - Premium bids appear at top
+    if (isPremium) {
+      // Insert premium bids near the top (after other premium bids)
+      const lastPremiumIndex = comments.findLastIndex(c => c.isPremium);
+      const newComments = [...comments];
+      newComments.splice(lastPremiumIndex + 1, 0, tempBid);
+      setComments(newComments);
+    } else {
+      setComments([...comments, tempBid]);
+    }
+
     const amount = bidAmount;
     setBidAmount('');
     setIsBidding(false);
@@ -146,13 +178,24 @@ const LivestreamsPage = () => {
     try {
       // DEMO MODE: Just show in UI
       if (USE_DEMO_MODE) {
-        toast.success(`Bid placed: $${amount}`);
+        toast.success(
+          isPremium
+            ? `Premium Bid placed: $${amount} - Your bid has priority!`
+            : `Bid placed: $${amount}`
+        );
         return;
       }
 
       // REAL API MODE: Call backend
-      await livestreamService.placeBid(selectedStream.id, { amount: parseFloat(amount) });
-      toast.success(`Bid placed: $${amount}`);
+      await livestreamService.placeBid(selectedStream.id, {
+        amount: parseFloat(amount),
+        priority: isPremium ? 'high' : 'normal'
+      });
+      toast.success(
+        isPremium
+          ? `Premium Bid placed: $${amount} - Your bid has priority!`
+          : `Bid placed: $${amount}`
+      );
     } catch (error) {
       // Revert on error
       setComments(comments.filter(c => c.id !== tempBid.id));
@@ -180,10 +223,22 @@ const LivestreamsPage = () => {
               </h1>
               {selectedStream.auction && (
                 <Button
-                  onClick={() => setIsBidding(true)}
-                  className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg hover:scale-105"
+                  onClick={handleBidClick}
+                  className={`w-full sm:w-auto shadow-lg hover:scale-105 ${
+                    canBid
+                      ? 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]'
+                      : 'bg-gray-600 cursor-not-allowed'
+                  }`}
+                  disabled={!canBid}
                 >
-                  Place Bid
+                  {canBid ? (
+                    <>Place Bid</>
+                  ) : (
+                    <>
+                      <Lock size={16} className="mr-2" />
+                      Plus/Premium Only
+                    </>
+                  )}
                 </Button>
               )}
             </div>
@@ -216,29 +271,45 @@ const LivestreamsPage = () => {
                 {comments.map((comment, index) => (
                   <div
                     key={index}
-                    className={`flex items-start gap-2 md:gap-3 p-2 rounded-lg ${comment.isBid ? 'bg-yellow-500/10' : ''
-                      }`}
+                    className={`flex items-start gap-2 md:gap-3 p-2 rounded-lg ${
+                      comment.isBid
+                        ? comment.isPremium
+                          ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30'
+                          : 'bg-yellow-500/10'
+                        : ''
+                    }`}
                   >
                     <img
                       src={comment.profilePicture}
                       alt={comment.user}
                       className="w-7 h-7 md:w-8 md:h-8 rounded-full"
                     />
-                    <div>
-                      <p className="font-semibold text-xs md:text-sm text-[#f2e9dd]">
-                        {comment.user}
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="font-semibold text-xs md:text-sm text-[#f2e9dd]">
+                          {comment.user}
+                        </p>
+                        {comment.subscription && comment.subscription !== 'free' && (
+                          <PremiumBadge tier={comment.subscription} size="sm" showLabel={false} />
+                        )}
                         {comment.isBid && (
-                          <span className="ml-2 text-xs font-bold text-yellow-400 bg-yellow-900/50 px-2 py-0.5 rounded-md">
-                            BIDDER
+                          <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
+                            comment.isPremium
+                              ? 'text-amber-300 bg-amber-900/50'
+                              : 'text-yellow-400 bg-yellow-900/50'
+                          }`}>
+                            {comment.isPremium ? 'PRIORITY BID' : 'BIDDER'}
                           </span>
                         )}
-                      </p>
+                      </div>
                       <p
                         className={`text-xs md:text-sm ${
                           comment.isBid
-                            ? 'text-yellow-300 font-bold'
+                            ? comment.isPremium
+                              ? 'text-amber-200 font-bold'
+                              : 'text-yellow-300 font-bold'
                             : 'text-[#f2e9dd]/80'
-                          }`}
+                        }`}
                       >
                         {comment.comment}
                       </p>

@@ -6,9 +6,12 @@ import { LoadingPaint } from '../components/ui/LoadingStates';
 import { EmptySearchResults } from '../components/ui/EmptyStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { exhibitionService } from '../services/exhibition.service';
+import { useClientPagination } from '../hooks/usePagination';
+import Pagination from '../components/common/Pagination';
+import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
-import { ChevronDown, Filter, Grid, List, Lock } from 'lucide-react';
+import { ChevronDown, Filter, Grid, List, Lock, Crown, Sparkles } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = true;
@@ -44,12 +47,14 @@ const ExplorePage = () => {
       if (USE_DEMO_MODE) {
         await new Promise(resolve => setTimeout(resolve, 500));
         const mockData = [
-          { id: 1, title: 'Digital Dreams', curator: '@curator1', pieces: 20, status: 'live', image: '🎨' },
-          { id: 2, title: 'Abstract Visions', curator: '@curator2', pieces: 15, status: 'upcoming', image: '🖼️' },
-          { id: 3, title: 'Modern Masters', curator: '@curator3', pieces: 12, status: 'live', image: '🎭', premium: true },
-          { id: 4, title: 'Urban Landscapes', curator: '@curator4', pieces: 18, status: 'live', image: '🌆' },
-          { id: 5, title: 'Nature & Tech', curator: '@curator5', pieces: 25, status: 'upcoming', image: '🌿' },
-          { id: 6, title: 'Portraits 2024', curator: '@curator6', pieces: 10, status: 'past', image: '👤' },
+          { id: 1, title: 'Digital Dreams', curator: '@curator1', curatorTier: 'premium', pieces: 20, status: 'live', image: '🎨', featured: true },
+          { id: 2, title: 'Abstract Visions', curator: '@curator2', curatorTier: 'plus', pieces: 15, status: 'upcoming', image: '🖼️' },
+          { id: 3, title: 'Modern Masters', curator: '@curator3', curatorTier: 'premium', pieces: 12, status: 'live', image: '🎭', premium: true, featured: true },
+          { id: 4, title: 'Urban Landscapes', curator: '@curator4', curatorTier: 'free', pieces: 18, status: 'live', image: '🌆' },
+          { id: 5, title: 'Nature & Tech', curator: '@curator5', curatorTier: 'plus', pieces: 25, status: 'upcoming', image: '🌿' },
+          { id: 6, title: 'Portraits 2024', curator: '@curator6', curatorTier: 'free', pieces: 10, status: 'past', image: '👤' },
+          { id: 7, title: 'Futuristic Visions', curator: '@curator7', curatorTier: 'premium', pieces: 30, status: 'live', image: '🚀', featured: true },
+          { id: 8, title: 'Ocean Depths', curator: '@curator8', curatorTier: 'plus', pieces: 22, status: 'live', image: '🌊' },
         ];
         setAllExhibitions(mockData);
         setLoading(false);
@@ -87,8 +92,21 @@ const ExplorePage = () => {
       );
     }
 
-    setExhibitions(filtered);
+    // Sort by premium placement: premium > plus > free
+    filtered.sort((a, b) => {
+      const tierPriority = { premium: 3, plus: 2, free: 1 };
+      const aPriority = tierPriority[a.curatorTier] || 0;
+      const bPriority = tierPriority[b.curatorTier] || 0;
+      return bPriority - aPriority;
+    });
+
+    // Duplicate data to simulate pagination with more items
+    const extendedFiltered = [...filtered, ...filtered, ...filtered];
+    setExhibitions(extendedFiltered);
   };
+
+  // Client-side pagination for filtered exhibitions
+  const pagination = useClientPagination(exhibitions, 9);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
@@ -230,13 +248,59 @@ const ExplorePage = () => {
         </Card>
       )}
 
+      {/* Featured Premium Exhibitions */}
+      {activeTab === 'current' && exhibitions.some(e => e.featured) && (
+        <div className="mb-8">
+          <div className="flex items-center gap-3 mb-4">
+            <Crown size={24} className="text-amber-400" />
+            <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd]">Featured Premium</h2>
+            <div className="flex-1 h-px bg-gradient-to-r from-amber-500/50 to-transparent"></div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+            {exhibitions.filter(e => e.featured).slice(0, 3).map((exhibition, idx) => (
+              <Card
+                key={`featured-${exhibition.id}`}
+                hover
+                className="relative cursor-pointer transform hover:scale-105 transition-all duration-300 animate-fadeIn border-2 border-amber-500/30 bg-gradient-to-br from-amber-500/5 to-transparent"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+                onClick={() => {
+                  toast.success('Entering exhibition...');
+                  setTimeout(() => navigate('/exhibition'), 500);
+                }}
+              >
+                <div className="absolute top-3 right-3 z-10">
+                  <div className="bg-gradient-to-r from-amber-400 to-yellow-500 text-black px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                    <Sparkles size={12} /> FEATURED
+                  </div>
+                </div>
+                <div className="aspect-video bg-gradient-to-br from-amber-500/20 to-yellow-500/20 flex items-center justify-center text-5xl md:text-6xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent"></div>
+                  <span className="relative z-10">{exhibition.image}</span>
+                </div>
+                <div className="p-3 md:p-4">
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] flex-1">
+                      {exhibition.title}
+                    </h3>
+                    <PremiumBadge tier={exhibition.curatorTier} size="sm" showLabel={false} />
+                  </div>
+                  <p className="text-xs md:text-sm text-[#f2e9dd]/60 mb-2">{exhibition.curator}</p>
+                  <p className="text-xs text-[#f2e9dd]/50">{exhibition.pieces} pieces</p>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Show Empty State if no results */}
       {exhibitions.length === 0 ? (
         <EmptySearchResults searchQuery={searchQuery} />
       ) : (
-        /* Exhibitions Grid */
-        <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-4 md:gap-6`}>
-          {exhibitions.map((exhibition, idx) => (
+        <>
+          {/* All Exhibitions Grid */}
+          <div className={`grid ${viewMode === 'grid' ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'} gap-4 md:gap-6 mb-6`}>
+            {pagination.items.map((exhibition, idx) => (
             <Card
               key={idx}
               hover
@@ -255,9 +319,14 @@ const ExplorePage = () => {
                 </span>
               </div>
               <div className="p-3 md:p-4">
-                <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
-                  {exhibition.title}
-                </h3>
+                <div className="flex items-start justify-between gap-2 mb-2">
+                  <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] group-hover:text-[#7C5FFF] transition-colors flex-1">
+                    {exhibition.title}
+                  </h3>
+                  {exhibition.curatorTier && exhibition.curatorTier !== 'free' && (
+                    <PremiumBadge tier={exhibition.curatorTier} size="sm" showLabel={false} />
+                  )}
+                </div>
                 <p className="text-xs md:text-sm text-[#f2e9dd]/50 mb-2">{exhibition.curator}</p>
                 <p className="text-xs md:text-sm text-[#f2e9dd]/70 mb-3">{exhibition.pieces} pieces</p>
                 {exhibition.premium && user?.subscription === 'free' ? (
@@ -283,8 +352,24 @@ const ExplorePage = () => {
                 )}
               </div>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+
+          {/* Pagination Controls */}
+          {pagination.totalPages > 1 && (
+            <Pagination
+              currentPage={pagination.currentPage}
+              totalPages={pagination.totalPages}
+              onPageChange={pagination.goToPage}
+              canGoNext={pagination.canGoNext}
+              canGoPrev={pagination.canGoPrev}
+              getPageNumbers={pagination.getPageNumbers}
+              range={pagination.range}
+              totalItems={pagination.totalItems}
+              showInfo={true}
+            />
+          )}
+        </>
       )}
     </div>
   );

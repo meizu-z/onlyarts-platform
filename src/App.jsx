@@ -30,6 +30,8 @@ import CreateArtworkPage from './pages/CreateArtworkPage';
 import HostExhibitionPage from './pages/HostExhibitionPage';
 import StartLivePage from './pages/StartLivePage';
 import CartPage from './pages/CartPage';
+import { ConsultationPage } from './pages/ConsultationPage';
+import CheckoutPage from './pages/CheckoutPage';
 
 // This component handles the initial redirection logic based on auth state.
 const RootRedirect = () => {
@@ -99,6 +101,8 @@ const App = () => {
                 <Route path="/host-exhibition" element={<HostExhibitionPage />} />
                 <Route path="/start-live" element={<StartLivePage />} />
                 <Route path="/cart" element={<CartPage />} />
+                <Route path="/checkout" element={<CheckoutPage />} />
+                <Route path="/consultations" element={<ConsultationPage />} />
               </Route>
 
               {/* A catch-all route for any undefined paths. */}

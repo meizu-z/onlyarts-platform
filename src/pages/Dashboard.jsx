@@ -6,6 +6,8 @@ import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { dashboardService, mockDashboardData, artworkService } from '../services';
+import { usePagination } from '../hooks/usePagination';
+import Pagination from '../components/common/Pagination';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
@@ -22,7 +24,15 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [artworks, setArtworks] = useState([]);
+  const [totalItems, setTotalItems] = useState(0);
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+
+  // Pagination hook
+  const pagination = usePagination({
+    initialPage: 1,
+    initialPageSize: 12,
+    totalItems: totalItems,
+  });
 
   // Fetch feed data
   const fetchFeedData = async () => {
@@ -30,36 +40,51 @@ const Dashboard = () => {
       setLoading(true);
       setError(null);
 
-      // DEMO MODE: Use mock data
+      // DEMO MODE: Use mock data with pagination
       if (USE_DEMO_MODE) {
         // Simulate API delay
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        let data;
+        let allData;
         if (activeTab === 'following') {
-          data = mockDashboardData.following;
+          allData = mockDashboardData.following;
         } else if (activeTab === 'trending') {
-          data = mockDashboardData.trending;
+          allData = mockDashboardData.trending;
         } else {
-          data = mockDashboardData.forYou;
+          allData = mockDashboardData.forYou;
         }
 
-        setArtworks(data);
+        // Simulate pagination - duplicate data to have more items
+        const extendedData = [...allData, ...allData, ...allData, ...allData];
+        setTotalItems(extendedData.length);
+
+        // Get current page data
+        const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+        const endIndex = startIndex + pagination.pageSize;
+        const pageData = extendedData.slice(startIndex, endIndex);
+
+        setArtworks(pageData);
         setLoading(false);
         return;
       }
 
-      // REAL API MODE: Call backend
+      // REAL API MODE: Call backend with pagination params
+      const params = {
+        page: pagination.currentPage,
+        limit: pagination.pageSize,
+      };
+
       let response;
       if (activeTab === 'following') {
-        response = await dashboardService.getFollowingFeed();
+        response = await dashboardService.getFollowingFeed(params);
       } else if (activeTab === 'trending') {
-        response = await dashboardService.getTrending();
+        response = await dashboardService.getTrending(params);
       } else {
-        response = await dashboardService.getFeed();
+        response = await dashboardService.getFeed(params);
       }
 
-      setArtworks(response.artworks || response);
+      setArtworks(response.artworks || response.data || response);
+      setTotalItems(response.total || response.artworks?.length || 0);
     } catch (err) {
       console.error('Error fetching feed:', err);
       setError(err.message || 'Failed to load feed. Please try again.');
@@ -68,9 +93,14 @@ const Dashboard = () => {
     }
   };
 
-  // Load feed on mount and when tab changes
+  // Load feed on mount and when tab or page changes
   useEffect(() => {
     fetchFeedData();
+  }, [activeTab, pagination.currentPage]);
+
+  // Reset to page 1 when changing tabs
+  useEffect(() => {
+    pagination.firstPage();
   }, [activeTab]);
 
   const toggleLike = async (id) => {
@@ -310,6 +340,21 @@ const Dashboard = () => {
           </Card>
         ))}
       </div>
+
+      {/* Pagination Controls */}
+      {totalItems > pagination.pageSize && (
+        <Pagination
+          currentPage={pagination.currentPage}
+          totalPages={pagination.totalPages}
+          onPageChange={pagination.goToPage}
+          canGoNext={pagination.canGoNext}
+          canGoPrev={pagination.canGoPrev}
+          getPageNumbers={pagination.getPageNumbers}
+          range={pagination.range}
+          totalItems={totalItems}
+          showInfo={true}
+        />
+      )}
     </div>
   );
 };

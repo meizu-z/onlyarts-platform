@@ -7,12 +7,14 @@ import Button from '../components/common/Button';
 import { LoadingPaint } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { cartService, mockCart } from '../services/cart.service';
-import { toast } from 'react-hot-toast';
+import { checkoutService } from '../services/checkout.service';
+import { useToast } from '../components/ui/Toast';
 
 const USE_DEMO_MODE = true; // Set to false when backend is ready
 
 const CartPage = () => {
   const navigate = useNavigate();
+  const toast = useToast();
   const { cartItems: contextCartItems, removeFromCart } = useCart();
 
   const [loading, setLoading] = useState(true);
@@ -223,6 +225,75 @@ const CartPage = () => {
     navigate('/checkout');
   };
 
+  const handleBuyAllNow = async () => {
+    if (!cart || cart.items.length === 0) return;
+
+    // For demo mode, show a quick purchase flow
+    if (USE_DEMO_MODE) {
+      const confirmed = window.confirm(
+        `Buy all ${cart.itemCount} item(s) for $${cart.total.toLocaleString()}?\n\nThis will use your default payment method.`
+      );
+
+      if (confirmed) {
+        toast.info('Processing purchase...');
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        toast.success('Purchase successful! 🎉 Your artworks will be delivered shortly.');
+
+        // Clear cart after purchase
+        setCart({
+          items: [],
+          subtotal: 0,
+          tax: 0,
+          shipping: 0,
+          discount: 0,
+          total: 0,
+          promoCode: null,
+          itemCount: 0,
+        });
+      }
+      return;
+    }
+
+    // REAL API MODE - Quick checkout with default payment
+    try {
+      toast.info('Processing purchase...');
+
+      // Create order with default payment method
+      const orderData = {
+        paymentMethodId: 'default', // Use default payment method
+        quickCheckout: true,
+      };
+
+      const orderResponse = await checkoutService.createOrder(orderData);
+      const order = orderResponse.order || orderResponse;
+
+      // Process payment immediately
+      await checkoutService.processPayment(order.id, {
+        paymentMethodId: 'default',
+      });
+
+      toast.success('Purchase successful! 🎉');
+
+      // Clear cart
+      await cartService.clearCart();
+      setCart({
+        items: [],
+        subtotal: 0,
+        tax: 0,
+        shipping: 0,
+        discount: 0,
+        total: 0,
+        promoCode: null,
+        itemCount: 0,
+      });
+
+      // Navigate to orders page or dashboard
+      navigate('/dashboard');
+    } catch (err) {
+      toast.error(err.message || 'Purchase failed. Please try checkout instead.');
+    }
+  };
+
   if (loading) {
     return (
       <MainLayout>
@@ -396,8 +467,15 @@ const CartPage = () => {
                 </div>
 
                 <Button
+                  onClick={handleBuyAllNow}
+                  className="w-full mt-6 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 font-bold"
+                >
+                  💳 Buy All Now - ${cart.total.toLocaleString()}
+                </Button>
+
+                <Button
                   onClick={handleCheckout}
-                  className="w-full mt-6 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                  className="w-full mt-3 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                 >
                   Proceed to Checkout
                 </Button>

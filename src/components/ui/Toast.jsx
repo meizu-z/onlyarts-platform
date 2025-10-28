@@ -21,12 +21,12 @@ const Toast = ({ id, type, message, onClose }) => {
     };
   }, [id, onClose]);
 
-  const baseClasses = "max-w-sm w-full bg-white dark:bg-gray-800 shadow-lg rounded-lg pointer-events-auto ring-1 ring-black ring-opacity-5 overflow-hidden";
+  const baseClasses = "w-full bg-[#1a1a1a] shadow-lg rounded-lg pointer-events-auto border overflow-hidden backdrop-blur-sm";
   const typeClasses = {
-    success: "dark:ring-emerald-500/50",
-    error: "dark:ring-rose-500/50",
-    info: "dark:ring-indigo-500/50",
-    warning: "dark:ring-amber-500/50",
+    success: "border-emerald-500/50 bg-emerald-500/10",
+    error: "border-rose-500/50 bg-rose-500/10",
+    info: "border-indigo-500/50 bg-indigo-500/10",
+    warning: "border-amber-500/50 bg-amber-500/10",
   };
 
   return (
@@ -39,8 +39,8 @@ const Toast = ({ id, type, message, onClose }) => {
           </div>
 
           {/* Message */}
-          <div className="ml-3 w-0 flex-1 pt-0.5">
-            <p className={"text-sm font-medium text-gray-900 dark:text-gray-100"}>
+          <div className="ml-3 flex-1">
+            <p className="text-sm font-medium text-[#f2e9dd]">
               {message}
             </p>
           </div>
@@ -49,7 +49,7 @@ const Toast = ({ id, type, message, onClose }) => {
           <div className="ml-4 flex-shrink-0 flex">
             <button
               onClick={() => onClose(id)}
-              className="bg-white dark:bg-gray-800 rounded-md inline-flex text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 dark:focus:ring-offset-gray-800"
+              className="rounded-md inline-flex text-[#f2e9dd]/40 hover:text-[#f2e9dd]/70 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-[#1a1a1a] focus:ring-[#f2e9dd]/20 transition-colors"
             >
               <span className="sr-only">Close</span>
               <XCircle className="h-5 w-5" />
@@ -64,7 +64,7 @@ const Toast = ({ id, type, message, onClose }) => {
 // 🎯 TOAST CONTAINER
 const ToastContainer = ({ toasts, removeToast }) => {
   return (
-    <div className="fixed top-4 md:top-4 md:right-4 left-4 right-4 md:left-auto bottom-auto md:bottom-auto z-50 space-y-3 pointer-events-none w-auto md:max-w-sm">
+    <div className="fixed top-4 right-4 z-50 pointer-events-none w-full max-w-sm px-4 md:px-0">
       <div className="pointer-events-auto space-y-3">
         {toasts.map(toast => (
           <Toast
