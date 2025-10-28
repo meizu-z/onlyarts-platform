@@ -20,6 +20,7 @@ export { checkoutService, mockPaymentMethods as mockCheckoutPaymentMethods, mock
 export { searchService, mockSearchResults, mockFilterOptions, mockTrendingSearches } from './search.service';
 export { websocketService } from './websocket.service';
 export { consultationService, mockArtists, mockConsultations, mockTimeSlots } from './consultation.service';
+export { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from './analytics.service';
 
 // Export API configuration
 export { API_CONFIG, API_ENDPOINTS } from '../config/api.config';

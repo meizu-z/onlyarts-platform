@@ -6,10 +6,12 @@ import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from '../services/profile.service';
+import { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from '../services/analytics.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar } from 'lucide-react';
+import PremiumBadge from '../components/common/PremiumBadge';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = true;
@@ -35,8 +37,13 @@ const ProfilePage = () => {
   const [savedForLater, setSavedForLater] = useState([]);
   const [followers, setFollowers] = useState([]);
   const [following, setFollowing] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [audienceDemographics, setAudienceDemographics] = useState(null);
+  const [engagementTimeline, setEngagementTimeline] = useState(null);
+  const [revenueAnalytics, setRevenueAnalytics] = useState(null);
 
   const isOwnProfile = user?.username === username;
+  const isPremiumOrPlus = user?.subscription === 'premium' || user?.subscription === 'plus';
 
   // Fetch profile data
   const fetchProfileData = async () => {
@@ -73,6 +80,14 @@ const ProfilePage = () => {
         setFollowers(mockFollowers);
         setFollowing(mockFollowing);
         setSavedForLater(mockSavedItems);
+
+        // Load analytics for own profile if premium/plus
+        if (isOwnProfile && isPremiumOrPlus && profile.isArtist) {
+          setAnalytics(mockProfileAnalytics);
+          setAudienceDemographics(mockAudienceDemographics);
+          setEngagementTimeline(mockEngagementTimeline);
+          setRevenueAnalytics(mockRevenueAnalytics);
+        }
 
         // Load shared posts from localStorage for own profile
         if (isOwnProfile) {
@@ -492,6 +507,224 @@ const ProfilePage = () => {
           </div>
         ) : <EmptyFollowing isOwnProfile={isOwnProfile} />;
 
+      case 'analytics':
+        if (!isPremiumOrPlus || !profileData.isArtist) {
+          return (
+            <Card className="p-6 bg-gradient-to-r from-indigo-500/10 to-purple-500/10 border-indigo-500/30">
+              <div className="flex items-start gap-4">
+                <Crown size={32} className="text-amber-400 flex-shrink-0" />
+                <div className="flex-1">
+                  <h3 className="font-bold text-xl text-[#f2e9dd] mb-2">Premium Analytics</h3>
+                  <p className="text-[#f2e9dd]/70 mb-4">
+                    Get detailed insights about your audience, engagement, and revenue with Plus or Premium membership.
+                  </p>
+                  <Button
+                    onClick={() => navigate('/subscriptions')}
+                    className="bg-gradient-to-r from-indigo-500 to-purple-500"
+                  >
+                    <Crown size={16} className="mr-2" />
+                    Upgrade to Premium
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          );
+        }
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Overview Cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
+              <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Eye size={18} className="text-purple-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Total Views</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{analytics?.overview.totalViews.toLocaleString()}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-pink-500/10 to-red-500/10 border-pink-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Heart size={18} className="text-pink-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Total Likes</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{analytics?.overview.totalLikes.toLocaleString()}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Users size={18} className="text-blue-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Followers</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{analytics?.overview.totalFollowers.toLocaleString()}</p>
+                <p className="text-xs text-green-400">{analytics?.overview.followerGrowth}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <TrendingUp size={18} className="text-green-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Engagement</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{analytics?.overview.engagementRate}</p>
+              </Card>
+            </div>
+
+            {/* Revenue Section */}
+            <Card className="p-6 bg-gradient-to-br from-amber-500/5 to-yellow-500/5 border-amber-500/30">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-[#f2e9dd] flex items-center gap-2">
+                  <DollarSign size={24} className="text-amber-400" />
+                  Revenue Analytics
+                </h3>
+                <PremiumBadge tier={user?.subscription} size="sm" />
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                  <p className="text-sm text-[#f2e9dd]/70 mb-1">Total Revenue</p>
+                  <p className="text-2xl font-bold text-amber-400">₱{revenueAnalytics?.totalRevenue.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#f2e9dd]/70 mb-1">This Month</p>
+                  <p className="text-2xl font-bold text-[#f2e9dd]">₱{revenueAnalytics?.thisMonth.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#f2e9dd]/70 mb-1">Last Month</p>
+                  <p className="text-xl font-semibold text-[#f2e9dd]/70">₱{revenueAnalytics?.lastMonth.toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-[#f2e9dd]/70 mb-1">Growth</p>
+                  <p className="text-2xl font-bold text-green-400">{revenueAnalytics?.growth}</p>
+                </div>
+              </div>
+              <div>
+                <h4 className="font-semibold text-[#f2e9dd] mb-3">Top Earning Artworks</h4>
+                <div className="space-y-2">
+                  {revenueAnalytics?.topEarningArtworks.slice(0, 5).map((artwork, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div>
+                        <p className="text-sm font-semibold text-[#f2e9dd]">{artwork.title}</p>
+                        <p className="text-xs text-[#f2e9dd]/50">{artwork.sales} sales</p>
+                      </div>
+                      <p className="text-lg font-bold text-amber-400">₱{artwork.revenue.toLocaleString()}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+
+            {/* Top Artworks */}
+            <Card className="p-6">
+              <h3 className="text-xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                <BarChart3 size={24} className="text-blue-400" />
+                Top Performing Artworks
+              </h3>
+              <div className="space-y-4">
+                {analytics?.topArtworks.map((artwork, idx) => (
+                  <div key={idx} className="p-4 bg-gradient-to-r from-white/5 to-transparent rounded-lg border border-white/10 hover:border-[#7C5FFF]/50 transition-all cursor-pointer">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-bold text-[#f2e9dd] mb-1">{artwork.title}</h4>
+                        <p className="text-xs text-[#f2e9dd]/50">Conversion Rate: {artwork.conversionRate}</p>
+                      </div>
+                      <span className="px-3 py-1 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] rounded-full text-xs font-bold">
+                        #{idx + 1}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <p className="text-[#f2e9dd]/70 mb-1 flex items-center gap-1">
+                          <Eye size={14} /> Views
+                        </p>
+                        <p className="font-bold text-[#f2e9dd]">{artwork.views.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#f2e9dd]/70 mb-1 flex items-center gap-1">
+                          <Heart size={14} /> Likes
+                        </p>
+                        <p className="font-bold text-[#f2e9dd]">{artwork.likes.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[#f2e9dd]/70 mb-1 flex items-center gap-1">
+                          <MessageCircle size={14} /> Comments
+                        </p>
+                        <p className="font-bold text-[#f2e9dd]">{artwork.comments.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Audience Demographics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="p-6">
+                <h3 className="text-xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                  <Users size={24} className="text-purple-400" />
+                  Age Groups
+                </h3>
+                <div className="space-y-3">
+                  {audienceDemographics?.ageGroups.map((group, idx) => (
+                    <div key={idx}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-sm text-[#f2e9dd]/70">{group.range}</span>
+                        <span className="text-sm font-semibold text-[#f2e9dd]">{group.percentage}%</span>
+                      </div>
+                      <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                          style={{ width: `${group.percentage}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-xs text-[#f2e9dd]/50 mt-1">{group.count.toLocaleString()} followers</p>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              <Card className="p-6">
+                <h3 className="text-xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                  <MapPin size={24} className="text-green-400" />
+                  Top Locations
+                </h3>
+                <div className="space-y-3">
+                  {audienceDemographics?.topLocations.map((location, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-white/5 rounded-lg">
+                      <div>
+                        <p className="text-sm font-semibold text-[#f2e9dd]">{location.city}</p>
+                        <p className="text-xs text-[#f2e9dd]/50">{location.country}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-green-400">{location.percentage}%</p>
+                        <p className="text-xs text-[#f2e9dd]/50">{location.count.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Peak Engagement Times */}
+            <Card className="p-6">
+              <h3 className="text-xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+                <Clock size={24} className="text-orange-400" />
+                Peak Engagement Times
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {analytics?.peakTimes.map((time, idx) => (
+                  <div key={idx} className="p-4 bg-gradient-to-br from-orange-500/10 to-amber-500/10 border border-orange-500/30 rounded-lg">
+                    <p className="text-sm text-[#f2e9dd]/70 mb-1">{time.day}</p>
+                    <p className="font-bold text-[#f2e9dd] mb-2">{time.hour}</p>
+                    <div className="flex items-center gap-2">
+                      <TrendingUp size={16} className="text-orange-400" />
+                      <span className="text-lg font-bold text-orange-400">{time.engagement}%</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -691,6 +924,24 @@ const ProfilePage = () => {
             >
               Shared Posts
               {activeTab === 'shared_artworks' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
+          {isOwnProfile && profileData.isArtist && (
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`relative pb-3 md:pb-4 text-sm md:text-lg whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
+                activeTab === 'analytics'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+            >
+              <BarChart3 size={18} className="hidden md:block" />
+              <BarChart3 size={16} className="md:hidden" />
+              Analytics
+              {isPremiumOrPlus && <PremiumBadge tier={user?.subscription} size="sm" showLabel={false} />}
+              {activeTab === 'analytics' && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
               )}
             </button>

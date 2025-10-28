@@ -88,7 +88,9 @@ export const mockContacts = [
     online: true,
     lastMessage: 'Right? By the way, are you going...',
     unread: 2,
-    lastMessageTime: '2025-10-25T10:02:00'
+    lastMessageTime: '2025-10-25T10:02:00',
+    isArtist: false,
+    isPremium: false
   },
   {
     id: 2,
@@ -96,7 +98,9 @@ export const mockContacts = [
     avatarUrl: 'https://i.pravatar.cc/150?u=jnorman',
     online: false,
     lastMessage: 'Definitely! I wouldn\'t miss it...',
-    lastMessageTime: '2025-10-25T09:45:00'
+    lastMessageTime: '2025-10-25T09:45:00',
+    isArtist: false,
+    isPremium: false
   },
   {
     id: 3,
@@ -104,7 +108,9 @@ export const mockContacts = [
     avatarUrl: 'https://i.pravatar.cc/150?u=artist1',
     online: true,
     lastMessage: 'Thanks for the support!',
-    lastMessageTime: '2025-10-25T08:30:00'
+    lastMessageTime: '2025-10-25T08:30:00',
+    isArtist: true,
+    isPremium: true
   },
   {
     id: 4,
@@ -112,7 +118,9 @@ export const mockContacts = [
     avatarUrl: 'https://i.pravatar.cc/150?u=SarahChen',
     online: false,
     lastMessage: 'See you there.',
-    lastMessageTime: '2025-10-24T18:20:00'
+    lastMessageTime: '2025-10-24T18:20:00',
+    isArtist: true,
+    isPremium: true
   },
   {
     id: 5,
@@ -120,7 +128,9 @@ export const mockContacts = [
     avatarUrl: 'https://i.pravatar.cc/150?u=MikeJ',
     online: true,
     lastMessage: 'Sounds good.',
-    lastMessageTime: '2025-10-24T16:15:00'
+    lastMessageTime: '2025-10-24T16:15:00',
+    isArtist: false,
+    isPremium: false
   },
 ];
 

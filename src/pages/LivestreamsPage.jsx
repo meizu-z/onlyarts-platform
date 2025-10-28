@@ -274,8 +274,10 @@ const LivestreamsPage = () => {
                     className={`flex items-start gap-2 md:gap-3 p-2 rounded-lg ${
                       comment.isBid
                         ? comment.isPremium
-                          ? 'bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/30'
+                          ? 'bg-gradient-to-br from-amber-400/25 via-yellow-500/25 to-amber-600/25 border-2 border-amber-400/50 shadow-lg shadow-amber-500/20'
                           : 'bg-yellow-500/10'
+                        : comment.subscription === 'premium'
+                        ? 'bg-amber-500/5 border border-amber-500/20'
                         : ''
                     }`}
                   >
@@ -295,7 +297,7 @@ const LivestreamsPage = () => {
                         {comment.isBid && (
                           <span className={`text-xs font-bold px-2 py-0.5 rounded-md ${
                             comment.isPremium
-                              ? 'text-amber-300 bg-amber-900/50'
+                              ? 'text-amber-200 bg-gradient-to-r from-amber-600 to-yellow-600 shadow-md shadow-amber-500/30'
                               : 'text-yellow-400 bg-yellow-900/50'
                           }`}>
                             {comment.isPremium ? 'PRIORITY BID' : 'BIDDER'}
@@ -306,7 +308,7 @@ const LivestreamsPage = () => {
                         className={`text-xs md:text-sm ${
                           comment.isBid
                             ? comment.isPremium
-                              ? 'text-amber-200 font-bold'
+                              ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-200 font-bold'
                               : 'text-yellow-300 font-bold'
                             : 'text-[#f2e9dd]/80'
                         }`}

@@ -1,9 +1,12 @@
 import React, { useState, useEffect } from 'react';
-import { Send, Search, Menu, X, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Send, Search, Menu, X, ArrowLeft, Video, Calendar } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { chatService, mockContacts, mockMessages } from '../services/chat.service';
+import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
@@ -11,6 +14,8 @@ import Button from '../components/common/Button';
 const USE_DEMO_MODE = true;
 
 const ChatPage = () => {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast();
 
   // API state management
@@ -22,6 +27,8 @@ const ChatPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const isPremium = user?.subscription === 'premium';
 
   // Fetch conversations on mount
   useEffect(() => {
@@ -281,23 +288,44 @@ const ChatPage = () => {
         <div className="flex-1 flex flex-col min-w-0">
           {activeChat ? (
             <>
-              {/* Chat header - mobile back button */}
-              <div className="md:hidden flex items-center gap-3 p-3 border-b border-white/10 bg-[#1a1a1a]">
-                <button
-                  onClick={() => setIsSidebarOpen(true)}
-                  className="p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors -ml-2"
-                  aria-label="Open contacts"
-                >
-                  <ArrowLeft size={20} />
-                </button>
-                <div className="relative w-8 h-8 rounded-full flex-shrink-0">
-                  <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
-                  {activeChat.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}
+              {/* Chat header - mobile/desktop */}
+              <div className="flex items-center justify-between gap-3 p-3 md:p-4 border-b border-white/10 bg-[#1a1a1a] md:bg-transparent">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <button
+                    onClick={() => setIsSidebarOpen(true)}
+                    className="md:hidden p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors -ml-2"
+                    aria-label="Open contacts"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="relative w-8 h-8 md:w-10 md:h-10 rounded-full flex-shrink-0">
+                    <img src={activeChat.avatarUrl} alt={activeChat.name} className="w-full h-full rounded-full object-cover" />
+                    {activeChat.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-sm md:text-base text-white truncate">{activeChat.name}</p>
+                      {activeChat.isPremium && <PremiumBadge tier="premium" size="sm" showLabel={false} />}
+                    </div>
+                    <p className="text-xs text-gray-400">{activeChat.online ? 'Online' : 'Offline'}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm text-white truncate">{activeChat.name}</p>
-                  <p className="text-xs text-gray-400">{activeChat.online ? 'Online' : 'Offline'}</p>
-                </div>
+
+                {/* Consultation Button - Premium Only */}
+                {isPremium && activeChat.isArtist && (
+                  <Button
+                    onClick={() => {
+                      toast.info('Opening 1v1 Consultations...');
+                      setTimeout(() => navigate('/consultations'), 800);
+                    }}
+                    size="sm"
+                    variant="secondary"
+                    className="flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <Video size={16} />
+                    <span className="hidden sm:inline">Book 1v1</span>
+                  </Button>
+                )}
               </div>
 
               {/* Messages */}
