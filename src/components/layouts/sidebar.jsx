@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ChevronsLeft } from 'lucide-react';
+import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ChevronsLeft, ShoppingBag } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const NavItem = ({ to, icon, children, isCollapsed }) => {
@@ -127,6 +127,7 @@ const Sidebar = () => {
             </p>
             <div className="space-y-1">
               <NavItem to={`/portfolio/${user.username}`} icon={<User size={22} />} isCollapsed={isCollapsed}>Portfolio</NavItem>
+              <NavItem to="/orders" icon={<ShoppingBag size={22} />} isCollapsed={isCollapsed}>My Orders</NavItem>
               <NavItem to="/wallet" icon={<Wallet size={22} />} isCollapsed={isCollapsed}>Wallet</NavItem>
               <NavItem to="/settings" icon={<Settings size={22} />} isCollapsed={isCollapsed}>Settings</NavItem>
             </div>
