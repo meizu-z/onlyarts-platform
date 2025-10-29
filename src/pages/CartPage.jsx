@@ -283,7 +283,42 @@ const CartPage = () => {
       if (confirmed) {
         toast.info('Processing purchase...');
         await new Promise(resolve => setTimeout(resolve, 1500));
-        toast.success('Purchase successful! 🎉 Your artworks will be delivered shortly.');
+
+        // Get purchased items and ensure they have the correct structure
+        const purchasedItems = cart.items
+          .filter(item => selectedItems.includes(item.id))
+          .map(item => ({
+            id: item.id,
+            artwork: item.artwork || {
+              id: item.id,
+              title: item.title,
+              artistName: item.artistName,
+              image: item.image,
+              price: item.price,
+            },
+            title: item.artwork?.title || item.title,
+            artistName: item.artwork?.artistName || item.artistName,
+            price: item.price,
+            quantity: item.quantity || 1,
+            image: item.artwork?.image || item.image,
+          }));
+
+        // Prepare order data
+        const orderData = {
+          items: purchasedItems,
+          subtotal: selectedTotals.subtotal,
+          tax: selectedTotals.tax,
+          shipping: selectedTotals.shipping,
+          discount: selectedTotals.discount || 0,
+          total: selectedTotals.total,
+        };
+
+        console.log('[CartPage] Navigating to order confirmation with data:', orderData);
+        console.log('[CartPage] Purchased items:', purchasedItems);
+
+        // Save to sessionStorage as backup (in case state is lost)
+        sessionStorage.setItem('pendingOrder', JSON.stringify(orderData));
+        console.log('[CartPage] Saved order to sessionStorage');
 
         // Remove purchased items from cart
         const remainingItems = cart.items.filter(item => !selectedItems.includes(item.id));
@@ -300,7 +335,6 @@ const CartPage = () => {
             promoCode: null,
             itemCount: 0,
           });
-          setSelectedItems([]);
         } else {
           // Update cart with remaining items
           const newSubtotal = remainingItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -315,8 +349,10 @@ const CartPage = () => {
             total: newTotal,
             itemCount: remainingItems.length,
           });
-          setSelectedItems([]);
         }
+
+        // Navigate to order confirmation
+        navigate('/order-confirmation', { state: { orderData } });
       }
       return;
     }

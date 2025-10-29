@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './components/ui/Toast';
+import { initializeMockOrders } from './services/order.service';
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
@@ -32,6 +33,10 @@ import StartLivePage from './pages/StartLivePage';
 import CartPage from './pages/CartPage';
 import { ConsultationPage } from './pages/ConsultationPage';
 import CheckoutPage from './pages/CheckoutPage';
+import OrderConfirmationPage from './pages/OrderConfirmationPage';
+import MyOrdersPage from './pages/MyOrdersPage';
+import SalesDashboardPage from './pages/SalesDashboardPage';
+import CommissionRequestPage from './pages/CommissionRequestPage';
 
 // This component handles the initial redirection logic based on auth state.
 const RootRedirect = () => {
@@ -62,6 +67,11 @@ const PublicRoute = ({ children }) => {
 };
 
 const App = () => {
+  // Initialize mock data on app mount
+  useEffect(() => {
+    initializeMockOrders();
+  }, []);
+
   return (
     <AuthProvider>
       <CartProvider>
@@ -91,6 +101,7 @@ const App = () => {
                 <Route path="/favorites" element={<FavoritesPage />} />
                 <Route path="/create-artist" element={<CreateArtistPage />} />
                 <Route path="/portfolio/:username" element={<ProfilePage />} />
+                <Route path="/profile/:username" element={<ProfilePage />} />
                 <Route path="/subscriptions" element={<SubscriptionsPage />} />
                 <Route path="/settings" element={<SettingsPage />} />
                 <Route path="/wallet" element={<WalletPage />} />
@@ -103,6 +114,10 @@ const App = () => {
                 <Route path="/cart" element={<CartPage />} />
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/consultations" element={<ConsultationPage />} />
+                <Route path="/order-confirmation" element={<OrderConfirmationPage />} />
+                <Route path="/orders" element={<MyOrdersPage />} />
+                <Route path="/sales" element={<SalesDashboardPage />} />
+                <Route path="/request-commission" element={<CommissionRequestPage />} />
               </Route>
 
               {/* A catch-all route for any undefined paths. */}

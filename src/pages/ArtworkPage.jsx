@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
-import { Lock, Star, MessageSquare, Share, ShoppingCart, AlertCircle } from 'lucide-react';
+import { Lock, Star, MessageSquare, Share, ShoppingCart, AlertCircle, Plus } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { useCart } from '../context/CartContext';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
@@ -190,11 +190,66 @@ const ArtworkPage = () => {
     toast.success(`Sharing "${artwork.title}"...`);
   };
 
-  const handleBuyNow = () => {
+  const handleAddToCart = () => {
     if (!artwork) return;
-    addToCart({ ...artwork, quantity: 1 });
+    addToCart({
+      id: artwork.id,
+      artwork: artwork,
+      title: artwork.title,
+      price: artwork.price,
+      quantity: 1,
+      image: artwork.image,
+    });
     toast.success(`"${artwork.title}" added to cart!`);
-    navigate('/cart');
+  };
+
+  const handleBuyNow = async () => {
+    if (!artwork) return;
+
+    // Prepare order data for immediate purchase
+    const price = artwork.price;
+    const tax = Math.round(price * 0.1);
+    const shipping = 500; // Standard shipping
+    const total = price + tax + shipping;
+
+    const confirmed = window.confirm(
+      `Buy "${artwork.title}" for ₱${total.toLocaleString()}?\n\nPrice: ₱${price.toLocaleString()}\nTax: ₱${tax.toLocaleString()}\nShipping: ₱${shipping.toLocaleString()}\n\nThis will use your default payment method.`
+    );
+
+    if (confirmed) {
+      toast.info('Processing purchase...');
+      await new Promise(resolve => setTimeout(resolve, 1500));
+
+      // Prepare order data with complete artwork information
+      const orderData = {
+        items: [{
+          id: artwork.id,
+          artwork: {
+            ...artwork,
+            artistName: artwork.artistName || artwork.artist,
+          },
+          title: artwork.title,
+          artistName: artwork.artistName || artwork.artist,
+          price: artwork.price,
+          quantity: 1,
+          image: artwork.image,
+        }],
+        subtotal: price,
+        tax: tax,
+        shipping: shipping,
+        discount: 0,
+        total: total,
+      };
+
+      console.log('[ArtworkPage] Navigating to order confirmation with data:', orderData);
+
+      // Save to sessionStorage as backup (in case state is lost)
+      sessionStorage.setItem('pendingOrder', JSON.stringify(orderData));
+      console.log('[ArtworkPage] Saved order to sessionStorage');
+
+      // Navigate to order confirmation
+      navigate('/order-confirmation', { state: { orderData } });
+    }
   };
 
   if (loading) {
@@ -273,12 +328,21 @@ const ArtworkPage = () => {
                 <Share size={16} className="mr-2" /> Share
               </Button>
               {artwork.price && (
-                <Button
-                  onClick={handleBuyNow}
-                  className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transform hover:scale-105 transition-all duration-300"
-                >
-                  <ShoppingCart size={16} className="mr-2" /> Buy Now (₱{artwork.price.toLocaleString()})
-                </Button>
+                <>
+                  <Button
+                    onClick={handleAddToCart}
+                    variant="secondary"
+                    className="w-full md:w-auto transform hover:scale-105 transition-all duration-300"
+                  >
+                    <Plus size={16} className="mr-2" /> Add to Cart
+                  </Button>
+                  <Button
+                    onClick={handleBuyNow}
+                    className="w-full md:w-auto bg-green-500 hover:bg-green-600 text-white shadow-lg shadow-green-500/30 hover:shadow-green-500/50 transform hover:scale-105 transition-all duration-300"
+                  >
+                    <ShoppingCart size={16} className="mr-2" /> Buy Now (₱{artwork.price.toLocaleString()})
+                  </Button>
+                </>
               )}
             </div>
         </div>

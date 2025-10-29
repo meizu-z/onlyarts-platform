@@ -11,7 +11,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import PremiumBadge from '../components/common/PremiumBadge';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown } from 'lucide-react';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3 } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = true;
@@ -41,6 +41,7 @@ const ProfilePage = () => {
   const [audienceDemographics, setAudienceDemographics] = useState(null);
   const [engagementTimeline, setEngagementTimeline] = useState(null);
   const [revenueAnalytics, setRevenueAnalytics] = useState(null);
+  const [commissions, setCommissions] = useState([]);
 
   const isOwnProfile = user?.username === username;
   const isPremiumOrPlus = user?.subscription === 'premium' || user?.subscription === 'plus';
@@ -93,6 +94,13 @@ const ProfilePage = () => {
         if (isOwnProfile) {
           const posts = JSON.parse(localStorage.getItem('sharedPosts') || '[]');
           setSharedPosts(posts);
+        }
+
+        // Load commissions for artists
+        if (profile.isArtist) {
+          const allCommissions = JSON.parse(localStorage.getItem('commissionRequests') || '[]');
+          const artistCommissions = allCommissions.filter(c => c.artistId === user?.id || c.artistName === profile.displayName);
+          setCommissions(artistCommissions);
         }
 
         // Set initial tab
@@ -229,6 +237,20 @@ const ProfilePage = () => {
     } else if (type === 'live') {
       navigate('/start-live');
     }
+  };
+
+  const handleUpdateCommissionStatus = (commissionId, newStatus) => {
+    // Update commission status in localStorage
+    const allCommissions = JSON.parse(localStorage.getItem('commissionRequests') || '[]');
+    const updatedCommissions = allCommissions.map(c =>
+      c.id === commissionId ? { ...c, status: newStatus, updatedAt: new Date().toISOString() } : c
+    );
+    localStorage.setItem('commissionRequests', JSON.stringify(updatedCommissions));
+
+    // Update local state
+    setCommissions(updatedCommissions.filter(c => c.artistId === user?.id || c.artistName === profileData.displayName));
+
+    toast.success(`Commission marked as ${newStatus}!`);
   };
 
   const renderContent = () => {
@@ -725,6 +747,205 @@ const ProfilePage = () => {
           </div>
         );
 
+      case 'commissions':
+        // Get commission status badges
+        const getStatusBadge = (status) => {
+          const badges = {
+            pending: { icon: Clock3, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'Pending' },
+            queued: { icon: Clock, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'Queued' },
+            'in-progress': { icon: Loader, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', label: 'In Progress' },
+            completed: { icon: CheckCircle, color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'Completed' },
+          };
+          return badges[status] || badges.pending;
+        };
+
+        // Group commissions by status
+        const pendingCommissions = commissions.filter(c => c.status === 'pending');
+        const queuedCommissions = commissions.filter(c => c.status === 'queued');
+        const inProgressCommissions = commissions.filter(c => c.status === 'in-progress');
+        const completedCommissions = commissions.filter(c => c.status === 'completed');
+
+        return (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Commission Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <Card className="p-4 bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border-yellow-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock3 size={18} className="text-yellow-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Pending</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{pendingCommissions.length}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Clock size={18} className="text-blue-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Queued</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{queuedCommissions.length}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Loader size={18} className="text-purple-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">In Progress</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{inProgressCommissions.length}</p>
+              </Card>
+
+              <Card className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={18} className="text-green-400" />
+                  <p className="text-xs text-[#f2e9dd]/70">Completed</p>
+                </div>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{completedCommissions.length}</p>
+              </Card>
+            </div>
+
+            {/* Commission List */}
+            {commissions.length > 0 ? (
+              <div className="space-y-4">
+                {commissions.map((commission, idx) => {
+                  const statusInfo = getStatusBadge(commission.status);
+                  const StatusIcon = statusInfo.icon;
+
+                  return (
+                    <Card
+                      key={commission.id}
+                      className="p-6 hover:border-purple-500/50 transition-all animate-fadeIn"
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                    >
+                      <div className="flex flex-col md:flex-row gap-4">
+                        {/* Client Info */}
+                        <div className="flex items-start gap-4 flex-1">
+                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                            {commission.userName?.charAt(0) || 'U'}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
+                              <h3 className="font-bold text-[#f2e9dd]">{commission.userName || 'Anonymous'}</h3>
+                              <span className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${statusInfo.color}`}>
+                                <StatusIcon size={12} />
+                                {statusInfo.label}
+                              </span>
+                            </div>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-[#f2e9dd]/70">
+                                <span className="font-semibold text-[#f2e9dd]">Type:</span> {commission.artworkType}
+                              </p>
+                              <p className="text-[#f2e9dd]/70">
+                                <span className="font-semibold text-[#f2e9dd]">Format:</span> {commission.deliveryFormat === 'nft' ? '🎨 NFT' : commission.deliveryFormat === 'physical' ? '📦 Physical' : '💾 Digital'}
+                              </p>
+                              {commission.size && (
+                                <p className="text-[#f2e9dd]/70">
+                                  <span className="font-semibold text-[#f2e9dd]">Size:</span> {commission.size}
+                                </p>
+                              )}
+                              <p className="text-[#f2e9dd]/70">
+                                <span className="font-semibold text-[#f2e9dd]">Budget:</span> ₱{parseInt(commission.budgetMin).toLocaleString()}{commission.budgetMax ? ` - ₱${parseInt(commission.budgetMax).toLocaleString()}` : '+'}
+                              </p>
+                              {commission.deadline && (
+                                <p className="text-[#f2e9dd]/70">
+                                  <span className="font-semibold text-[#f2e9dd]">Deadline:</span> {new Date(commission.deadline).toLocaleDateString()}
+                                </p>
+                              )}
+                              <p className="text-[#f2e9dd]/90 mt-3 p-3 bg-white/5 rounded-lg">
+                                {commission.description}
+                              </p>
+                              {commission.referenceImages && commission.referenceImages.length > 0 && (
+                                <div className="flex gap-2 mt-2 overflow-x-auto">
+                                  {commission.referenceImages.map((img, imgIdx) => (
+                                    <img
+                                      key={imgIdx}
+                                      src={img.url}
+                                      alt="Reference"
+                                      className="w-16 h-16 object-cover rounded border border-white/10"
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Actions (Only for own profile) */}
+                        {isOwnProfile && (
+                          <div className="flex flex-col gap-2 min-w-[140px]">
+                            <p className="text-xs text-[#f2e9dd]/50 mb-1">Update Status:</p>
+                            <Button
+                              size="sm"
+                              variant={commission.status === 'pending' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'pending')}
+                              disabled={commission.status === 'pending'}
+                              className="text-xs"
+                            >
+                              <Clock3 size={14} className="mr-1" />
+                              Pending
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={commission.status === 'queued' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'queued')}
+                              disabled={commission.status === 'queued'}
+                              className="text-xs"
+                            >
+                              <Clock size={14} className="mr-1" />
+                              Queued
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={commission.status === 'in-progress' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'in-progress')}
+                              disabled={commission.status === 'in-progress'}
+                              className="text-xs"
+                            >
+                              <Loader size={14} className="mr-1" />
+                              In Progress
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={commission.status === 'completed' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'completed')}
+                              disabled={commission.status === 'completed'}
+                              className="text-xs"
+                            >
+                              <CheckCircle size={14} className="mr-1" />
+                              Completed
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs mt-2"
+                              onClick={() => navigate('/messages')}
+                            >
+                              <MessageCircle size={14} className="mr-1" />
+                              Chat
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-[#f2e9dd]/40 mt-4">
+                        Requested {new Date(commission.createdAt).toLocaleDateString()}
+                      </p>
+                    </Card>
+                  );
+                })}
+              </div>
+            ) : (
+              <Card className="p-12 text-center">
+                <Briefcase size={48} className="mx-auto mb-4 text-[#f2e9dd]/30" />
+                <h3 className="text-xl font-bold text-[#f2e9dd] mb-2">No Commissions Yet</h3>
+                <p className="text-[#f2e9dd]/70">
+                  {isOwnProfile
+                    ? "You haven't received any commission requests yet."
+                    : "This artist doesn't have any active commissions."}
+                </p>
+              </Card>
+            )}
+          </div>
+        );
+
       default:
         return null;
     }
@@ -841,6 +1062,15 @@ const ProfilePage = () => {
                 >
                   {isFollowing ? 'Following' : 'Follow'}
                 </Button>
+                {profileData.isArtist && (
+                  <Button
+                    onClick={() => navigate('/request-commission', { state: { artist: { id: profileData.id || 'artist-1', name: profileData.displayName, profileImage: profileData.avatar, username: profileData.username } } })}
+                    className="w-full md:w-auto bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300"
+                  >
+                    <Sparkles size={16} className="mr-2" />
+                    Request Commission
+                  </Button>
+                )}
                 <div className="flex gap-2">
                   <Button variant="secondary" size="sm" className="flex-1 md:flex-none transform hover:scale-105 transition-all duration-200">
                     <MessageCircle size={16} />
@@ -942,6 +1172,28 @@ const ProfilePage = () => {
               Analytics
               {isPremiumOrPlus && <PremiumBadge tier={user?.subscription} size="sm" showLabel={false} />}
               {activeTab === 'analytics' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
+          {profileData.isArtist && (
+            <button
+              onClick={() => setActiveTab('commissions')}
+              className={`relative pb-3 md:pb-4 text-sm md:text-lg whitespace-nowrap transition-all duration-300 flex items-center gap-2 ${
+                activeTab === 'commissions'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+            >
+              <Briefcase size={18} className="hidden md:block" />
+              <Briefcase size={16} className="md:hidden" />
+              My Commissions
+              {commissions.length > 0 && (
+                <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full">
+                  {commissions.length}
+                </span>
+              )}
+              {activeTab === 'commissions' && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
               )}
             </button>
