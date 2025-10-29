@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { ShoppingBag, Download, Eye, Calendar, DollarSign, Package, ArrowLeft } from 'lucide-react';
@@ -39,36 +38,33 @@ const MyOrdersPage = () => {
 
   if (orders.length === 0) {
     return (
-      <MainLayout>
-        <div className="max-w-6xl mx-auto px-3 md:px-6 py-8">
-          <div className="flex items-center justify-between mb-6">
-            <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] flex items-center gap-3">
-              <ShoppingBag size={32} />
-              My Orders
-            </h1>
-          </div>
-
-          <Card className="p-12 text-center">
-            <div className="text-6xl mb-4">📦</div>
-            <h2 className="text-2xl font-bold text-[#f2e9dd] mb-2">No Orders Yet</h2>
-            <p className="text-[#f2e9dd]/70 mb-6">
-              You haven't made any purchases yet. Start exploring amazing artworks!
-            </p>
-            <Button
-              onClick={() => navigate('/explore')}
-              className="bg-gradient-to-r from-purple-500 to-pink-500"
-            >
-              Explore Artworks
-            </Button>
-          </Card>
+      <div className="max-w-6xl mx-auto px-3 md:px-6 py-8">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] flex items-center gap-3">
+            <ShoppingBag size={32} />
+            My Orders
+          </h1>
         </div>
-      </MainLayout>
+
+        <Card className="p-12 text-center">
+          <div className="text-6xl mb-4">📦</div>
+          <h2 className="text-2xl font-bold text-[#f2e9dd] mb-2">No Orders Yet</h2>
+          <p className="text-[#f2e9dd]/70 mb-6">
+            You haven't made any purchases yet. Start exploring amazing artworks!
+          </p>
+          <Button
+            onClick={() => navigate('/explore')}
+            className="bg-gradient-to-r from-purple-500 to-pink-500"
+          >
+            Explore Artworks
+          </Button>
+        </Card>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
-      <div className="max-w-6xl mx-auto px-3 md:px-6 py-8">
+    <div className="max-w-6xl mx-auto px-3 md:px-6 py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] flex items-center gap-3">
@@ -224,8 +220,7 @@ const MyOrdersPage = () => {
             Back to Dashboard
           </Button>
         </div>
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 

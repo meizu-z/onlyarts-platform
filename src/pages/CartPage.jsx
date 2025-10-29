@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { LoadingPaint } from '../components/ui/LoadingStates';
@@ -392,26 +391,17 @@ const CartPage = () => {
   };
 
   if (loading) {
-    return (
-      <MainLayout>
-        <LoadingPaint message="Loading your cart..." />
-      </MainLayout>
-    );
+    return <LoadingPaint message="Loading your cart..." />;
   }
 
   if (error) {
-    return (
-      <MainLayout>
-        <APIError error={error} retry={fetchCart} />
-      </MainLayout>
-    );
+    return <APIError error={error} retry={fetchCart} />;
   }
 
   const isEmpty = !cart || !cart.items || cart.items.length === 0;
 
   return (
-    <MainLayout>
-      <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8">
+    <div className="max-w-7xl mx-auto px-3 md:px-6 py-4 md:py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd]">
             Shopping Cart {!isEmpty && `(${cart.itemCount})`}
@@ -648,8 +638,7 @@ const CartPage = () => {
             </div>
           </div>
         )}
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 
