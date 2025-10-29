@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Sparkles, Upload, X, DollarSign, Calendar, MessageSquare, ArrowLeft } from 'lucide-react';
-import MainLayout from '../components/layouts/MainLayout';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useToast } from '../components/ui/Toast';
@@ -118,19 +117,16 @@ const CommissionRequestPage = () => {
 
   if (!artist) {
     return (
-      <MainLayout>
-        <div className="max-w-2xl mx-auto text-center py-12">
-          <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4">Artist Not Found</h2>
-          <p className="text-[#f2e9dd]/70 mb-6">Please select an artist to request a commission.</p>
-          <Button onClick={() => navigate('/explore')}>Browse Artists</Button>
-        </div>
-      </MainLayout>
+      <div className="max-w-2xl mx-auto text-center py-12">
+        <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4">Artist Not Found</h2>
+        <p className="text-[#f2e9dd]/70 mb-6">Please select an artist to request a commission.</p>
+        <Button onClick={() => navigate('/explore')}>Browse Artists</Button>
+      </div>
     );
   }
 
   return (
-    <MainLayout>
-      <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <button
@@ -372,8 +368,7 @@ const CommissionRequestPage = () => {
             <li>• You'll receive progress updates and the final artwork</li>
           </ul>
         </Card>
-      </div>
-    </MainLayout>
+    </div>
   );
 };
 

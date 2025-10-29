@@ -39,7 +39,6 @@ const Navbar = () => {
     const navigate = useNavigate();
     const toast = useToast();
     const [showUserMenu, setShowUserMenu] = useState(false);
-    const [showMobileMenu, setShowMobileMenu] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
     const [showCartDropdown, setShowCartDropdown] = useState(false); // New state for cart dropdown
     const [scrolled, setScrolled] = useState(false);
@@ -331,6 +330,20 @@ const Navbar = () => {
                                             <Link to={`/portfolio/${user?.username}`} onClick={() => setShowUserMenu(false)} className="w-full px-4 py-3 text-left text-[#f2e9dd] hover:bg-white/5 flex items-center gap-2 transition-colors group">
                                                 <User size={18} className="group-hover:scale-110 transition-transform" /> My Profile
                                             </Link>
+                                            {/* Cart - only show on mobile/tablet, hidden on desktop since cart icon is in navbar */}
+                                            <Link to="/cart" onClick={() => setShowUserMenu(false)} className="md:hidden w-full px-4 py-3 text-left text-[#f2e9dd] hover:bg-white/5 flex items-center gap-2 transition-colors group">
+                                                <ShoppingCart size={18} className="group-hover:scale-110 transition-transform" />
+                                                <span className="flex-1">Cart</span>
+                                                {cartItems.length > 0 && (
+                                                    <span className="bg-red-500 text-white text-xs font-bold rounded-full px-2 py-0.5">
+                                                        {cartItems.length}
+                                                    </span>
+                                                )}
+                                            </Link>
+                                            <Link to="/orders" onClick={() => setShowUserMenu(false)} className="w-full px-4 py-3 text-left text-[#f2e9dd] hover:bg-white/5 flex items-center gap-2 transition-colors group">
+                                                <ShoppingBag size={18} className="group-hover:scale-110 transition-transform" /> My Orders
+                                            </Link>
+                                            <div className="border-t border-white/10"></div>
                                             <Link to="/settings" onClick={() => setShowUserMenu(false)} className="w-full px-4 py-3 text-left text-[#f2e9dd] hover:bg-white/5 flex items-center gap-2 transition-colors group">
                                                 <Settings size={18} className="group-hover:rotate-90 transition-transform duration-300" /> Settings
                                             </Link>
@@ -351,10 +364,6 @@ const Navbar = () => {
                                     </>
                                 )}
                             </div>
-
-                            <button onClick={() => setShowMobileMenu(!showMobileMenu)} className="md:hidden p-1.5 text-[#f2e9dd] hover:bg-white/5 rounded-lg">
-                                {showMobileMenu ? <X size={20} /> : <Menu size={20} />}
-                            </button>
                         </div>
                     ) : (
                         <div className="flex items-center gap-2 md:gap-4">
@@ -366,19 +375,6 @@ const Navbar = () => {
                 </div>
             </div>
 
-            {showMobileMenu && isAuthenticated && (
-                <div className="md:hidden border-t border-white/10 bg-[#121212] p-4 animate-slideDown">
-                    <div className="space-y-2">
-                        <Link to="/dashboard" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Dashboard</Link>
-                        <Link to="/explore" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Explore</Link>
-                        <Link to="/livestreams" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Livestreams</Link>
-                        <Link to="/chat" onClick={() => { setShowMobileMenu(false); handleChatClick(); }} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Messages</Link>
-                        <Link to="/favorites" onClick={() => setShowMobileMenu(false)} className="block px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Favorites</Link>
-                        {/* The cart link in mobile menu should also close the dropdown if open */}
-                        <button onClick={() => { setShowMobileMenu(false); setShowCartDropdown(true); }} className="w-full text-left px-4 py-3 text-[#f2e9dd] hover:bg-white/5 rounded-lg">Cart</button>
-                    </div>
-                </div>
-            )}
 
             <style>{`
                 @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
