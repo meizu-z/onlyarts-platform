@@ -190,6 +190,10 @@ const ConsultationPage = () => {
           <p className="text-sm md:text-base text-[#f2e9dd]/70">
             Book private sessions with expert artists
           </p>
+          <div className="mt-2 inline-flex items-center gap-2 px-3 py-1.5 bg-green-500/20 border border-green-500/30 rounded-full">
+            <Check size={16} className="text-green-400" />
+            <span className="text-sm text-green-400 font-semibold">FREE for Premium Members</span>
+          </div>
         </div>
       </div>
 
@@ -198,6 +202,7 @@ const ConsultationPage = () => {
         {[
           { key: 'browse', label: 'Browse Artists' },
           { key: 'my-bookings', label: 'My Bookings' },
+          { key: 'calendar', label: 'Calendar' },
         ].map(tab => (
           <button
             key={tab.key}
@@ -257,17 +262,25 @@ const ConsultationPage = () => {
                 </div>
 
                 <div className="flex items-center justify-between">
-                  <span className="text-lg font-bold text-[#f2e9dd]">
-                    ${artist.hourlyRate}/hr
-                  </span>
+                  {isPremium ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg font-bold text-green-400">FREE</span>
+                      <span className="text-sm text-[#f2e9dd]/50 line-through">${artist.hourlyRate}/hr</span>
+                    </div>
+                  ) : (
+                    <span className="text-lg font-bold text-[#f2e9dd]">
+                      ${artist.hourlyRate}/hr
+                    </span>
+                  )}
                 </div>
               </div>
 
               <Button
                 onClick={() => handleBookClick(artist)}
-                className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]"
+                className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
               >
-                Book Session
+                <Calendar size={16} className="mr-2" />
+                Book Free Session
               </Button>
             </Card>
           ))}
@@ -350,6 +363,114 @@ const ConsultationPage = () => {
         </div>
       )}
 
+      {/* Calendar View */}
+      {activeTab === 'calendar' && (
+        <div className="space-y-6">
+          <Card className="p-6">
+            <h2 className="text-xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+              <Calendar size={24} />
+              Your Consultation Schedule
+            </h2>
+            <p className="text-sm text-[#f2e9dd]/70 mb-6">
+              View all your booked consultation sessions in calendar format
+            </p>
+
+            {/* Simple Calendar Grid */}
+            <div className="grid grid-cols-7 gap-2">
+              {/* Day Headers */}
+              {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
+                <div key={day} className="text-center text-sm font-semibold text-[#f2e9dd]/70 py-2">
+                  {day}
+                </div>
+              ))}
+
+              {/* Calendar Days (simplified - showing current month) */}
+              {Array.from({ length: 35 }, (_, i) => {
+                const dayNum = i - 2; // Start from -2 to show previous month days
+                const hasBooking = consultations.some(c => {
+                  const bookingDay = new Date(c.date).getDate();
+                  return bookingDay === dayNum + 1;
+                });
+
+                return (
+                  <div
+                    key={i}
+                    className={`aspect-square flex flex-col items-center justify-center rounded-lg border transition-all ${
+                      dayNum < 1 || dayNum > 30
+                        ? 'border-transparent text-[#f2e9dd]/20'
+                        : hasBooking
+                        ? 'border-green-500 bg-green-500/20 text-green-400'
+                        : 'border-white/10 text-[#f2e9dd]/70 hover:border-purple-500/50'
+                    }`}
+                  >
+                    {dayNum > 0 && dayNum <= 30 && (
+                      <>
+                        <span className="text-sm font-semibold">{dayNum}</span>
+                        {hasBooking && (
+                          <div className="w-1.5 h-1.5 bg-green-400 rounded-full mt-1"></div>
+                        )}
+                      </>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Legend */}
+            <div className="mt-6 flex items-center gap-6 text-sm">
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 bg-green-500/20 border border-green-500 rounded"></div>
+                <span className="text-[#f2e9dd]/70">Booked Sessions</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 border border-white/10 rounded"></div>
+                <span className="text-[#f2e9dd]/70">Available</span>
+              </div>
+            </div>
+          </Card>
+
+          {/* Upcoming Sessions List */}
+          <Card className="p-6">
+            <h3 className="text-lg font-bold text-[#f2e9dd] mb-4">Upcoming Sessions</h3>
+            {consultations.filter(c => c.status === 'upcoming').length === 0 ? (
+              <p className="text-[#f2e9dd]/50 text-center py-4">No upcoming sessions scheduled</p>
+            ) : (
+              <div className="space-y-3">
+                {consultations
+                  .filter(c => c.status === 'upcoming')
+                  .map((consultation) => (
+                    <div
+                      key={consultation.id}
+                      className="flex items-center justify-between p-4 bg-white/5 rounded-lg border border-white/10"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="text-2xl">{consultation.artist.avatar}</div>
+                        <div>
+                          <p className="font-semibold text-[#f2e9dd]">{consultation.artist.name}</p>
+                          <p className="text-sm text-[#f2e9dd]/60">{consultation.topic}</p>
+                          <div className="flex items-center gap-3 text-xs text-[#f2e9dd]/50 mt-1">
+                            <span>{consultation.date}</span>
+                            <span>•</span>
+                            <span>{consultation.time}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Button
+                        onClick={() => handleJoinCall(consultation)}
+                        size="sm"
+                        className="bg-gradient-to-r from-green-500 to-emerald-500"
+                      >
+                        <Video size={14} className="mr-1" />
+                        Join
+                      </Button>
+                    </div>
+                  ))}
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
       {/* Booking Modal */}
       <Modal
         isOpen={isBookingModalOpen}
@@ -427,15 +548,24 @@ const ConsultationPage = () => {
 
           {/* Price Summary */}
           {selectedArtist && (
-            <div className="bg-[#1e1e1e] rounded-lg p-4 border border-white/10">
+            <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded-lg p-4 border border-green-500/30">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-sm text-[#f2e9dd]/70">Session Rate</span>
-                <span className="text-lg font-bold text-[#f2e9dd]">
-                  ${selectedArtist.hourlyRate}
-                </span>
+                {isPremium ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl font-bold text-green-400">FREE</span>
+                    <span className="text-sm text-[#f2e9dd]/50 line-through">
+                      ${selectedArtist.hourlyRate}
+                    </span>
+                  </div>
+                ) : (
+                  <span className="text-lg font-bold text-[#f2e9dd]">
+                    ${selectedArtist.hourlyRate}
+                  </span>
+                )}
               </div>
-              <p className="text-xs text-[#f2e9dd]/50">
-                1-hour private video consultation
+              <p className="text-xs text-green-400">
+                {isPremium ? '✓ Included with your Premium membership' : '1-hour private video consultation'}
               </p>
             </div>
           )}

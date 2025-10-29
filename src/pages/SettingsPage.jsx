@@ -49,6 +49,9 @@ const SettingsPage = () => {
       setLoading(true);
       setError(null);
 
+      // Get current theme from localStorage (don't override it)
+      const currentTheme = localStorage.getItem('theme') || 'dark';
+
       // DEMO MODE: Use mock data
       if (USE_DEMO_MODE) {
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -56,7 +59,8 @@ const SettingsPage = () => {
         setSettings(mockSettings);
         setPrivacySettings(mockSettings.privacy);
         setNotificationSettings(mockSettings.notifications);
-        setTheme(mockSettings.appearance.theme);
+        // Use current theme instead of mock theme
+        setTheme(currentTheme);
 
         setLoading(false);
         return;
@@ -67,7 +71,8 @@ const SettingsPage = () => {
       setSettings(response.settings);
       setPrivacySettings(response.settings.privacy || {});
       setNotificationSettings(response.settings.notifications || {});
-      setTheme(response.settings.appearance?.theme || 'dark');
+      // Use current theme from localStorage instead of backend
+      setTheme(currentTheme);
     } catch (err) {
       console.error('Error fetching settings:', err);
       setError(err.message || 'Failed to load settings. Please try again.');
@@ -78,31 +83,54 @@ const SettingsPage = () => {
 
   useEffect(() => {
     const root = document.documentElement;
-    
-    if (theme === 'light') {
-      root.classList.remove('dark');
-      root.classList.add('light');
-    } else if (theme === 'dark') {
-      root.classList.remove('light');
-      root.classList.add('dark');
-    } else if (theme === 'auto') {
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      if (prefersDark) {
-        root.classList.remove('light');
-        root.classList.add('dark');
-      } else {
+
+    const applyTheme = (themeToApply) => {
+      if (themeToApply === 'light') {
         root.classList.remove('dark');
         root.classList.add('light');
+      } else if (themeToApply === 'dark') {
+        root.classList.remove('light');
+        root.classList.add('dark');
+      } else if (themeToApply === 'auto') {
+        const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (prefersDark) {
+          root.classList.remove('light');
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+          root.classList.add('light');
+        }
+      }
+    };
+
+    applyTheme(theme);
+    localStorage.setItem('theme', theme);
+
+    // Listen for system theme changes when in auto mode
+    if (theme === 'auto') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handleChange = (e) => {
+        if (e.matches) {
+          root.classList.remove('light');
+          root.classList.add('dark');
+        } else {
+          root.classList.remove('dark');
+          root.classList.add('light');
+        }
+      };
+
+      // Modern browsers
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handleChange);
+        return () => mediaQuery.removeEventListener('change', handleChange);
+      }
+      // Older browsers
+      else if (mediaQuery.addListener) {
+        mediaQuery.addListener(handleChange);
+        return () => mediaQuery.removeListener(handleChange);
       }
     }
-    
-    localStorage.setItem('theme', theme);
   }, [theme]);
-
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('theme') || 'dark';
-    setTheme(savedTheme);
-  }, []);
 
   // Handle theme change with toast
   const handleThemeChange = async (newTheme) => {

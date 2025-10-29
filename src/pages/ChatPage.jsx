@@ -207,14 +207,25 @@ const ChatPage = () => {
     <div className="p-3 md:p-6 max-w-7xl mx-auto pb-20 md:pb-6">
       <div className="flex items-center justify-between mb-4 md:mb-6">
         <h1 className="text-2xl md:text-3xl font-bold text-[#f2e9dd]">Messages</h1>
-        {/* Mobile menu toggle - only visible on mobile */}
-        <button
-          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-          className="md:hidden p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors"
-          aria-label="Toggle contacts"
-        >
-          <Menu size={24} />
-        </button>
+        <div className="flex items-center gap-2 md:gap-3">
+          {/* Consultations Button */}
+          <Button
+            onClick={() => navigate('/consultations')}
+            className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 flex items-center gap-2"
+            size="sm"
+          >
+            <Calendar size={16} />
+            <span className="hidden sm:inline">Consultations</span>
+          </Button>
+          {/* Mobile menu toggle - only visible on mobile */}
+          <button
+            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+            className="md:hidden p-2 text-[#f2e9dd] hover:bg-white/5 rounded-lg transition-colors"
+            aria-label="Toggle contacts"
+          >
+            <Menu size={24} />
+          </button>
+        </div>
       </div>
 
       <Card className="h-[calc(100vh-180px)] md:h-[75vh] flex relative overflow-hidden" noPadding>

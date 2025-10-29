@@ -67,9 +67,30 @@ const PublicRoute = ({ children }) => {
 };
 
 const App = () => {
-  // Initialize mock data on app mount
+  // Initialize mock data and theme on app mount
   useEffect(() => {
     initializeMockOrders();
+
+    // Initialize theme from localStorage
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    const root = document.documentElement;
+
+    if (savedTheme === 'light') {
+      root.classList.remove('dark');
+      root.classList.add('light');
+    } else if (savedTheme === 'dark') {
+      root.classList.remove('light');
+      root.classList.add('dark');
+    } else if (savedTheme === 'auto') {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (prefersDark) {
+        root.classList.remove('light');
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+        root.classList.add('light');
+      }
+    }
   }, []);
 
   return (
