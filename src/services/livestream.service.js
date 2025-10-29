@@ -102,6 +102,13 @@ export const mockLiveStreams = [
     profilePicture: 'https://randomuser.me/api/portraits/women/8.jpg',
     followers: '2.1M',
     description: 'Join me as I create a new digital masterpiece from scratch!',
+    highestBid: {
+      amount: 850,
+      bidder: 'PremiumCollector_99',
+      isPremium: true,
+      profilePicture: 'https://randomuser.me/api/portraits/men/32.jpg',
+      timestamp: '2025-10-25T10:35:00',
+    },
   },
   {
     id: 2,

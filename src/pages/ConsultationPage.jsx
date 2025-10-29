@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Calendar, Clock, Star, Video, MessageCircle, Lock, Check } from 'lucide-react';
+import { Calendar, Clock, Star, Video, MessageCircle, Lock, Check, ArrowLeft } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint } from '../components/ui/LoadingStates';
@@ -180,6 +180,16 @@ const ConsultationPage = () => {
 
   return (
     <div className="flex-1">
+      {/* Back Button */}
+      <Button
+        onClick={() => navigate(-1)}
+        variant="ghost"
+        className="mb-4 flex items-center gap-2 text-[#f2e9dd]/70 hover:text-[#f2e9dd]"
+      >
+        <ArrowLeft size={20} />
+        Back
+      </Button>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
         <div>

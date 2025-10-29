@@ -176,13 +176,30 @@ const LivestreamsPage = () => {
     setIsBidding(false);
 
     try {
-      // DEMO MODE: Just show in UI
-      if (USE_DEMO_MODE) {
+      // Update highest bid if this bid is higher
+      const bidAmountNum = parseFloat(amount);
+      if (!selectedStream.highestBid || bidAmountNum > selectedStream.highestBid.amount) {
+        setSelectedStream({
+          ...selectedStream,
+          highestBid: {
+            amount: bidAmountNum,
+            bidder: user?.username || 'You',
+            isPremium: isPremium,
+            profilePicture: user?.profilePicture || 'https://randomuser.me/api/portraits/lego/1.jpg',
+            timestamp: new Date().toISOString(),
+          }
+        });
+        toast.success(`🏆 You are now the highest bidder at $${amount}!`);
+      } else {
         toast.success(
           isPremium
             ? `Premium Bid placed: $${amount} - Your bid has priority!`
             : `Bid placed: $${amount}`
         );
+      }
+
+      // DEMO MODE: Just show in UI
+      if (USE_DEMO_MODE) {
         return;
       }
 
@@ -191,11 +208,6 @@ const LivestreamsPage = () => {
         amount: parseFloat(amount),
         priority: isPremium ? 'high' : 'normal'
       });
-      toast.success(
-        isPremium
-          ? `Premium Bid placed: $${amount} - Your bid has priority!`
-          : `Bid placed: $${amount}`
-      );
     } catch (error) {
       // Revert on error
       setComments(comments.filter(c => c.id !== tempBid.id));
@@ -267,6 +279,43 @@ const LivestreamsPage = () => {
               <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3 md:mb-4 border-b border-white/10 pb-2 md:pb-3">
                 Live Chat & Bids
               </h2>
+
+              {/* Highest Bidder Display */}
+              {selectedStream.auction && selectedStream.highestBid && (
+                <div className="mb-4 p-3 md:p-4 bg-gradient-to-br from-amber-500/20 via-yellow-500/20 to-amber-600/20 border-2 border-amber-400/60 rounded-xl shadow-xl shadow-amber-500/30">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-amber-200 uppercase tracking-wide">
+                      🏆 Highest Bid
+                    </span>
+                    <span className="text-xs text-amber-300/80">
+                      {new Date(selectedStream.highestBid.timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={selectedStream.highestBid.profilePicture}
+                      alt={selectedStream.highestBid.bidder}
+                      className="w-10 h-10 rounded-full ring-2 ring-amber-400"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-sm text-[#f2e9dd]">
+                          {selectedStream.highestBid.bidder}
+                        </p>
+                        {selectedStream.highestBid.isPremium && (
+                          <span className="text-xs font-bold px-2 py-0.5 rounded-md bg-gradient-to-r from-amber-600 to-yellow-600 text-amber-200">
+                            PREMIUM
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-xl md:text-2xl font-black text-transparent bg-clip-text bg-gradient-to-r from-amber-200 via-yellow-300 to-amber-200">
+                        ${selectedStream.highestBid.amount}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div className="flex-1 space-y-3 md:space-y-4 overflow-y-auto pr-2">
                 {comments.map((comment, index) => (
                   <div
