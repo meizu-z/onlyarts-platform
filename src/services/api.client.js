@@ -96,16 +96,16 @@ apiClient.interceptors.response.use(
           { headers: { 'Content-Type': 'application/json' } }
         );
 
-        const { token, refreshToken: newRefreshToken } = response.data;
+        const { accessToken, refreshToken: newRefreshToken } = response.data.data;
 
         // Save new tokens
-        localStorage.setItem(API_CONFIG.tokenKey, token);
+        localStorage.setItem(API_CONFIG.tokenKey, accessToken);
         if (newRefreshToken) {
           localStorage.setItem(API_CONFIG.refreshTokenKey, newRefreshToken);
         }
 
         // Retry original request with new token
-        originalRequest.headers.Authorization = `Bearer ${token}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
         // Refresh failed - dispatch a global event to trigger logout
