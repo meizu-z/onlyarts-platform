@@ -455,60 +455,84 @@ const LivestreamsPage = () => {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {displayStreams.map((stream, idx) => (
-          <Card
-            key={idx}
-            hover
-            noPadding
-            className="group cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300"
-            onClick={() => setSelectedStream(stream)}
-          >
-            <div className="relative">
-              <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-teal-600/20 flex items-center justify-center text-5xl md:text-6xl">
-                {stream.thumbnail}
-              </div>
-              <div className="absolute top-2 left-2 flex gap-2">
-                {stream.live ? (
-                  <>
-                    <span className="px-2 py-0.5 bg-red-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
-                      <Wifi size={12} />
-                      LIVE
+      {displayStreams.length === 0 ? (
+        <Card className="p-8 md:p-12 text-center">
+          <div className="max-w-md mx-auto">
+            <div className="text-6xl md:text-7xl mb-4">📡</div>
+            <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3">
+              {activeTab === 'live' ? 'No Live Streams' : 'No Scheduled Streams'}
+            </h2>
+            <p className="text-sm md:text-base text-[#f2e9dd]/60 mb-6">
+              {activeTab === 'live'
+                ? 'There are no artists streaming right now. Check back later or explore scheduled streams!'
+                : 'There are no upcoming streams scheduled at the moment. Check back soon!'}
+            </p>
+            {activeTab === 'live' && (
+              <Button
+                onClick={() => setActiveTab('scheduled')}
+                className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]"
+              >
+                View Scheduled Streams
+              </Button>
+            )}
+          </div>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {displayStreams.map((stream, idx) => (
+            <Card
+              key={idx}
+              hover
+              noPadding
+              className="group cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300"
+              onClick={() => setSelectedStream(stream)}
+            >
+              <div className="relative">
+                <div className="aspect-video bg-gradient-to-br from-blue-600/20 to-teal-600/20 flex items-center justify-center text-5xl md:text-6xl">
+                  {stream.thumbnail}
+                </div>
+                <div className="absolute top-2 left-2 flex gap-2">
+                  {stream.live ? (
+                    <>
+                      <span className="px-2 py-0.5 bg-red-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                        <Wifi size={12} />
+                        LIVE
+                      </span>
+                      <span className="px-2 py-0.5 bg-black/50 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                        <Users size={12} />
+                        {stream.viewers}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="px-2 py-0.5 bg-blue-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
+                      <Clock size={12} />
+                      {stream.scheduled}
                     </span>
-                    <span className="px-2 py-0.5 bg-black/50 text-white rounded-md text-xs font-bold flex items-center gap-1">
-                      <Users size={12} />
-                      {stream.viewers}
-                    </span>
-                  </>
-                ) : (
-                  <span className="px-2 py-0.5 bg-blue-600 text-white rounded-md text-xs font-bold flex items-center gap-1">
-                    <Clock size={12} />
-                    {stream.scheduled}
+                  )}
+                </div>
+                {stream.auction && (
+                  <span className="absolute top-2 right-2 px-2 py-0.5 bg-[#7C5FFF] text-white rounded-md text-xs font-bold">
+                    AUCTION
                   </span>
                 )}
               </div>
-              {stream.auction && (
-                <span className="absolute top-2 right-2 px-2 py-0.5 bg-[#7C5FFF] text-white rounded-md text-xs font-bold">
-                  AUCTION
-                </span>
-              )}
-            </div>
-            <div className="p-3 md:p-4">
-              <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
-                {stream.title}
-              </h3>
-              <div className="flex items-center gap-3">
-                <img
-                  src={stream.profilePicture}
-                  alt={stream.artist}
-                  className="w-8 h-8 rounded-full"
-                />
-                <p className="text-xs md:text-sm text-[#f2e9dd]/80">{stream.artist}</p>
+              <div className="p-3 md:p-4">
+                <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
+                  {stream.title}
+                </h3>
+                <div className="flex items-center gap-3">
+                  <img
+                    src={stream.profilePicture}
+                    alt={stream.artist}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <p className="text-xs md:text-sm text-[#f2e9dd]/80">{stream.artist}</p>
+                </div>
               </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
