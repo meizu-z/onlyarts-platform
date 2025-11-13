@@ -13,7 +13,7 @@ import { exhibitionService, mockExhibition, mockExhibitionArtworks, mockExhibiti
 import { favoritesService } from '../services/favorites.service';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const ExhibitionPage = () => {
   const { user } = useAuth();

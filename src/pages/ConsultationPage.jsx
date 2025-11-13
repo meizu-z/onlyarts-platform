@@ -12,7 +12,7 @@ import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 
 // Demo mode flag
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const ConsultationPage = () => {
   const { user } = useAuth();

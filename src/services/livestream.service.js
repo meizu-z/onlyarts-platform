@@ -12,7 +12,9 @@ export const livestreamService = {
    * @returns {Promise<{streams}>}
    */
   getLiveStreams: async (params = {}) => {
-    const response = await api.get('/livestreams', { params });
+    const response = await api.get('/livestreams', {
+      params: { ...params, status: 'live' }
+    });
     return response.data;
   },
 
@@ -22,7 +24,9 @@ export const livestreamService = {
    * @returns {Promise<{streams}>}
    */
   getUpcomingStreams: async (params = {}) => {
-    const response = await api.get('/livestreams/upcoming', { params });
+    const response = await api.get('/livestreams', {
+      params: { ...params, status: 'scheduled' }
+    });
     return response.data;
   },
 

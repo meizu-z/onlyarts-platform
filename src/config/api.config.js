@@ -4,11 +4,15 @@
  */
 
 export const API_CONFIG = {
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000/api',
+  baseURL: 'http://localhost:5000/api', // Hardcoded to fix env loading issue
   timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   tokenKey: import.meta.env.VITE_TOKEN_KEY || 'onlyarts_token',
   refreshTokenKey: import.meta.env.VITE_REFRESH_TOKEN_KEY || 'onlyarts_refresh_token',
 };
+
+// Debug: Log API configuration
+console.log('[API Config] Base URL:', API_CONFIG.baseURL);
+console.log('[API Config] Environment:', import.meta.env.VITE_API_BASE_URL);
 
 export const API_ENDPOINTS = {
   // Authentication
@@ -24,10 +28,12 @@ export const API_ENDPOINTS = {
 
   // Users
   users: {
-    profile: '/users/profile',
+    profile: '/users/profile', // Get current user's own profile
+    byId: (id) => `/users/${id}`, // Get user by ID
+    byUsername: (username) => `/users/${username}`, // Get user by username or ID
     updateProfile: '/users/profile',
-    uploadAvatar: '/users/avatar',
-    uploadCover: '/users/cover',
+    uploadAvatar: '/users/upload/avatar',
+    uploadCover: '/users/upload/cover',
     settings: '/users/settings',
     changePassword: '/users/change-password',
     deactivate: '/users/deactivate',

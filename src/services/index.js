@@ -21,6 +21,10 @@ export { searchService, mockSearchResults, mockFilterOptions, mockTrendingSearch
 export { websocketService } from './websocket.service';
 export { consultationService, mockArtists, mockConsultations, mockTimeSlots } from './consultation.service';
 export { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from './analytics.service';
+export { subscriptionService } from './subscription.service';
+export { commissionService } from './commission.service';
+export { notificationService } from './notification.service';
+export { default as adminService } from './admin.service';
 
 // Export API configuration
 export { API_CONFIG, API_ENDPOINTS } from '../config/api.config';

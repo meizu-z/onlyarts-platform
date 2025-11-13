@@ -14,7 +14,7 @@ import Button from '../components/common/Button';
 import { ChevronDown, Filter, Grid, List, Lock, Crown, Sparkles } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const ExplorePage = () => {
   const { user } = useAuth();
@@ -26,44 +26,46 @@ const ExplorePage = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [exhibitions, setExhibitions] = useState([]);
-  const [allExhibitions, setAllExhibitions] = useState([]);
 
   // Fetch exhibitions on mount
   useEffect(() => {
     fetchExhibitions();
-  }, []);
-
-  // Filter exhibitions when tab changes
-  useEffect(() => {
-    filterExhibitions();
-  }, [activeTab, allExhibitions]);
+  }, [activeTab]);
 
   const fetchExhibitions = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      // DEMO MODE: Use mock data
       if (USE_DEMO_MODE) {
+        // DEMO MODE: Use mock data
         await new Promise(resolve => setTimeout(resolve, 500));
-        const mockData = [
-          { id: 1, title: 'Digital Dreams', curator: '@curator1', curatorTier: 'premium', pieces: 20, status: 'live', image: '🎨', featured: true },
-          { id: 2, title: 'Abstract Visions', curator: '@curator2', curatorTier: 'plus', pieces: 15, status: 'upcoming', image: '🖼️' },
-          { id: 3, title: 'Modern Masters', curator: '@curator3', curatorTier: 'premium', pieces: 12, status: 'live', image: '🎭', premium: true, featured: true },
-          { id: 4, title: 'Urban Landscapes', curator: '@curator4', curatorTier: 'free', pieces: 18, status: 'live', image: '🌆' },
-          { id: 5, title: 'Nature & Tech', curator: '@curator5', curatorTier: 'plus', pieces: 25, status: 'upcoming', image: '🌿' },
-          { id: 6, title: 'Portraits 2024', curator: '@curator6', curatorTier: 'free', pieces: 10, status: 'past', image: '👤' },
-          { id: 7, title: 'Futuristic Visions', curator: '@curator7', curatorTier: 'premium', pieces: 30, status: 'live', image: '🚀', featured: true },
-          { id: 8, title: 'Ocean Depths', curator: '@curator8', curatorTier: 'plus', pieces: 22, status: 'live', image: '🌊' },
-        ];
-        setAllExhibitions(mockData);
-        setLoading(false);
-        return;
+        const mockExhibitions = {
+          current: [
+            { id: 1, title: 'Modern Masters', curator: '@curator1', curatorTier: 'premium', pieces: 42, image: '🎨', premium: false },
+            { id: 2, title: 'Digital Renaissance', curator: '@curator2', curatorTier: 'pro', pieces: 35, image: '💎', premium: false, featured: true },
+            { id: 3, title: 'Abstract Minds', curator: '@curator3', curatorTier: 'free', pieces: 28, image: '🌈', premium: false },
+            { id: 4, title: 'Street Art Revolution', curator: '@curator4', curatorTier: 'premium', pieces: 51, image: '🎪', premium: true, featured: true },
+            { id: 5, title: 'Nature\'s Canvas', curator: '@curator5', curatorTier: 'pro', pieces: 38, image: '🌺', premium: false },
+            { id: 6, title: 'Urban Expressions', curator: '@curator6', curatorTier: 'free', pieces: 22, image: '🏙️', premium: false },
+            { id: 7, title: 'Vintage Vibes', curator: '@curator7', curatorTier: 'premium', pieces: 45, image: '📻', premium: true, featured: true },
+            { id: 8, title: 'Pop Art Paradise', curator: '@curator8', curatorTier: 'pro', pieces: 33, image: '🎭', premium: false },
+          ],
+          upcoming: [
+            { id: 9, title: 'Future Visions', curator: '@curator9', curatorTier: 'premium', pieces: 40, image: '🚀', premium: false },
+            { id: 10, title: 'Cyber Aesthetics', curator: '@curator10', curatorTier: 'pro', pieces: 31, image: '🤖', premium: true },
+          ],
+          past: [
+            { id: 11, title: 'Classic Collections', curator: '@curator11', curatorTier: 'free', pieces: 25, image: '🏛️', premium: false },
+            { id: 12, title: 'Minimalist Movement', curator: '@curator12', curatorTier: 'premium', pieces: 18, image: '⬜', premium: false },
+          ],
+        };
+        setExhibitions(mockExhibitions[activeTab] || []);
+      } else {
+        // REAL API MODE: Call backend
+        const response = await exhibitionService.getExhibitions({ status: activeTab });
+        setExhibitions(response.data?.exhibitions || response.exhibitions || []);
       }
-
-      // REAL API MODE: Call backend
-      const response = await exhibitionService.getExhibitions();
-      setAllExhibitions(response.exhibitions || response);
     } catch (err) {
       console.error('Error fetching exhibitions:', err);
       setError(err.message || 'Failed to load exhibitions. Please try again.');
@@ -73,44 +75,19 @@ const ExplorePage = () => {
   };
 
   const filterExhibitions = () => {
-    let filtered = allExhibitions;
-
-    // Filter by tab
-    if (activeTab === 'current') {
-      filtered = filtered.filter(e => e.status === 'live');
-    } else if (activeTab === 'upcoming') {
-      filtered = filtered.filter(e => e.status === 'upcoming');
-    } else if (activeTab === 'past') {
-      filtered = filtered.filter(e => e.status === 'past');
-    }
-
-    // Filter by search query
-    if (searchQuery.trim()) {
-      filtered = filtered.filter(e =>
-        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        e.curator.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // Sort by premium placement: premium > plus > free
-    filtered.sort((a, b) => {
-      const tierPriority = { premium: 3, plus: 2, free: 1 };
-      const aPriority = tierPriority[a.curatorTier] || 0;
-      const bPriority = tierPriority[b.curatorTier] || 0;
-      return bPriority - aPriority;
-    });
-
-    // Duplicate data to simulate pagination with more items
-    const extendedFiltered = [...filtered, ...filtered, ...filtered];
-    setExhibitions(extendedFiltered);
+    if (!searchQuery.trim()) return exhibitions;
+    return exhibitions.filter(e =>
+      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      e.curator.toLowerCase().includes(searchQuery.toLowerCase())
+    );
   };
 
   // Client-side pagination for filtered exhibitions
-  const pagination = useClientPagination(exhibitions, 9);
+  const filteredExhibitions = filterExhibitions();
+  const pagination = useClientPagination(filteredExhibitions, 12);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
-    filterExhibitions();
   };
 
   const handlePremiumClick = () => {
@@ -294,7 +271,7 @@ const ExplorePage = () => {
       )}
 
       {/* Show Empty State if no results */}
-      {exhibitions.length === 0 ? (
+      {filteredExhibitions.length === 0 ? (
         <EmptySearchResults searchQuery={searchQuery} />
       ) : (
         <>

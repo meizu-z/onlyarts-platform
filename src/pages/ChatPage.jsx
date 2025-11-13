@@ -6,12 +6,13 @@ import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { chatService, mockContacts, mockMessages } from '../services/chat.service';
+import socketService from '../services/socket.service';
 import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const ChatPage = () => {
   const { user } = useAuth();
@@ -27,19 +28,75 @@ const ChatPage = () => {
   const [newMessage, setNewMessage] = useState('');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isTyping, setIsTyping] = useState(false);
+  const [typingTimeout, setTypingTimeout] = useState(null);
 
   const isPremium = user?.subscription === 'premium';
 
-  // Fetch conversations on mount
+  // Fetch conversations on mount and setup WebSocket
   useEffect(() => {
     fetchConversations();
+
+    // Connect to chat socket if not in demo mode
+    if (!USE_DEMO_MODE && user) {
+      const token = localStorage.getItem('accessToken');
+      if (token) {
+        socketService.connectChat(token);
+
+        // Listen for new messages
+        socketService.onNewMessage((message) => {
+          console.log('New message received:', message);
+          setMessages(prev => [...prev, {
+            id: message.id,
+            senderId: message.sender_id,
+            user: message.username,
+            text: message.content,
+            timestamp: new Date(message.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            isYou: message.sender_id === user.id
+          }]);
+        });
+
+        // Listen for typing indicators
+        socketService.onUserTyping(({ userId }) => {
+          if (activeChat && userId !== user.id) {
+            setIsTyping(true);
+          }
+        });
+
+        socketService.onUserStopTyping(({ userId }) => {
+          if (userId !== user.id) {
+            setIsTyping(false);
+          }
+        });
+      }
+    }
+
+    // Cleanup on unmount
+    return () => {
+      if (!USE_DEMO_MODE) {
+        socketService.disconnectChat();
+      }
+    };
   }, []);
 
-  // Fetch messages when active chat changes
+  // Fetch messages when active chat changes and join socket room
   useEffect(() => {
     if (activeChat) {
       fetchMessages(activeChat.id);
+
+      // Join conversation room via WebSocket
+      if (!USE_DEMO_MODE) {
+        socketService.joinConversation(activeChat.id);
+        socketService.markAsRead(activeChat.id);
+      }
     }
+
+    // Leave previous conversation room
+    return () => {
+      if (activeChat && !USE_DEMO_MODE) {
+        socketService.leaveConversation(activeChat.id);
+      }
+    };
   }, [activeChat]);
 
   // Close sidebar when screen size changes to desktop
@@ -62,7 +119,8 @@ const ChatPage = () => {
       if (USE_DEMO_MODE) {
         await new Promise(resolve => setTimeout(resolve, 500));
         setContacts(mockContacts);
-        setActiveChat(mockContacts[0]);
+        // Don't auto-select chat - show conversation list first for privacy
+        setActiveChat(null);
         setLoading(false);
         return;
       }
@@ -71,9 +129,8 @@ const ChatPage = () => {
       const response = await chatService.getConversations();
       const conversations = response.conversations || response;
       setContacts(conversations);
-      if (conversations.length > 0) {
-        setActiveChat(conversations[0]);
-      }
+      // Don't auto-select chat - show conversation list first for privacy
+      setActiveChat(null);
     } catch (err) {
       console.error('Error fetching conversations:', err);
       setError(err.message || 'Failed to load conversations. Please try again.');
@@ -126,6 +183,11 @@ const ChatPage = () => {
     const messageText = newMessage;
     setNewMessage('');
 
+    // Stop typing indicator
+    if (!USE_DEMO_MODE) {
+      socketService.stopTyping(activeChat.id);
+    }
+
     try {
       // DEMO MODE: Just show toast
       if (USE_DEMO_MODE) {
@@ -133,21 +195,37 @@ const ChatPage = () => {
         return;
       }
 
-      // REAL API MODE: Call backend
-      const response = await chatService.sendMessage(activeChat.id, { text: messageText });
+      // REAL API MODE: Send via WebSocket
+      socketService.sendMessage(activeChat.id, messageText);
 
-      // Replace temp message with real message from API
-      setMessages(prev => prev.map(msg =>
-        msg.id === tempMessage.id ? response.message : msg
-      ));
-
-      toast.success('Message sent!');
     } catch (error) {
       // Revert on error
       setMessages(prev => prev.filter(msg => msg.id !== tempMessage.id));
       setNewMessage(messageText);
       toast.error('Failed to send message. Please try again.');
     }
+  };
+
+  // Handle typing indicator
+  const handleTyping = (e) => {
+    setNewMessage(e.target.value);
+
+    if (USE_DEMO_MODE || !activeChat) return;
+
+    // Clear previous timeout
+    if (typingTimeout) {
+      clearTimeout(typingTimeout);
+    }
+
+    // Send typing indicator
+    socketService.sendTyping(activeChat.id);
+
+    // Stop typing after 2 seconds of inactivity
+    const timeout = setTimeout(() => {
+      socketService.stopTyping(activeChat.id);
+    }, 2000);
+
+    setTypingTimeout(timeout);
   };
 
   const handleContactClick = (contact) => {
@@ -278,7 +356,7 @@ const ChatPage = () => {
               <div
                 key={contact.id}
                 onClick={() => handleContactClick(contact)}
-                className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 cursor-pointer border-b border-white/5 transition-colors ${activeChat.id === contact.id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 cursor-pointer border-b border-white/5 transition-colors ${activeChat?.id === contact.id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
                 <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-full flex-shrink-0">
                   <img src={contact.avatarUrl} alt={contact.name} className="w-full h-full rounded-full object-cover" />
                   {contact.online && <span className="absolute bottom-0 right-0 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}
@@ -318,7 +396,9 @@ const ChatPage = () => {
                       <p className="font-semibold text-sm md:text-base text-white truncate">{activeChat.name}</p>
                       {activeChat.isPremium && <PremiumBadge tier="premium" size="sm" showLabel={false} />}
                     </div>
-                    <p className="text-xs text-gray-400">{activeChat.online ? 'Online' : 'Offline'}</p>
+                    <p className="text-xs text-gray-400">
+                      {isTyping ? 'typing...' : activeChat.online ? 'Online' : 'Offline'}
+                    </p>
                   </div>
                 </div>
 
@@ -362,7 +442,7 @@ const ChatPage = () => {
                   <input
                     type="text"
                     value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
+                    onChange={handleTyping}
                     placeholder={`Message ${activeChat.name}...`}
                     className="flex-1 bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-2.5 md:p-3 text-sm md:text-base text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
                   />
@@ -373,8 +453,21 @@ const ChatPage = () => {
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-[#f2e9dd]/50">
-              <p>Select a conversation to start messaging</p>
+            <div className="flex-1 flex flex-col items-center justify-center text-[#f2e9dd]/50 p-6">
+              <div className="text-center max-w-md">
+                <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-white/5 flex items-center justify-center">
+                  <Search size={32} className="text-[#f2e9dd]/30" />
+                </div>
+                <h3 className="text-xl font-semibold text-[#f2e9dd] mb-2">Your Messages</h3>
+                <p className="text-sm text-[#f2e9dd]/60">
+                  Select a conversation from the list to start messaging
+                </p>
+                {contacts.length === 0 && (
+                  <p className="text-sm text-[#f2e9dd]/40 mt-4">
+                    No conversations yet. Start chatting with artists!
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

@@ -8,32 +8,32 @@ import { API_ENDPOINTS } from '../config/api.config';
 
 export const profileService = {
   /**
-   * Get user profile by username
-   * @param {string} username
-   * @returns {Promise<{profile}>}
+   * Get user profile by username or ID
+   * @param {string} usernameOrId
+   * @returns {Promise<User>}
    */
-  getProfile: async (username) => {
-    const response = await api.get(API_ENDPOINTS.user.profile(username));
-    return response.data;
+  getProfile: async (usernameOrId) => {
+    const response = await api.get(API_ENDPOINTS.users.byUsername(usernameOrId));
+    return response.data; // Interceptor already unwrapped, so response.data is the user object
   },
 
   /**
    * Get current user's own profile
-   * @returns {Promise<{profile}>}
+   * @returns {Promise<User>}
    */
   getOwnProfile: async () => {
-    const response = await api.get(API_ENDPOINTS.user.getProfile);
-    return response.data;
+    const response = await api.get(API_ENDPOINTS.users.profile);
+    return response.data; // Interceptor already unwrapped
   },
 
   /**
    * Update profile
    * @param {Object} profileData
-   * @returns {Promise<{profile}>}
+   * @returns {Promise<User>}
    */
   updateProfile: async (profileData) => {
-    const response = await api.put(API_ENDPOINTS.user.updateProfile, profileData);
-    return response.data;
+    const response = await api.put(API_ENDPOINTS.users.updateProfile, profileData);
+    return response.data; // Interceptor already unwrapped
   },
 
   /**
@@ -53,8 +53,8 @@ export const profileService = {
    * @param {Object} params
    * @returns {Promise<{exhibitions}>}
    */
-  getUserExhibitions: async (username, params = {}) => {
-    const response = await api.get(`/users/${username}/exhibitions`, { params });
+  getUserExhibitions: async (userId, params = {}) => {
+    const response = await api.get('/exhibitions', { params: { ...params, userId } });
     return response.data;
   },
 
@@ -75,7 +75,7 @@ export const profileService = {
    * @returns {Promise<{items}>}
    */
   getSavedItems: async (params = {}) => {
-    const response = await api.get(API_ENDPOINTS.user.favorites, { params });
+    const response = await api.get(API_ENDPOINTS.favorites.list, { params });
     return response.data;
   },
 

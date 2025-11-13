@@ -9,10 +9,29 @@ import { useCart } from '../context/CartContext';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { artworkService, mockArtworkDetail, mockArtworkComments } from '../services/artwork.service';
-import { profileService } from '../services/profile.service';
+import { userService } from '../services/user.service';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
+
+// Helper function to format time ago
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+};
 
 const ArtworkPage = () => {
   const { user } = useAuth();
@@ -63,11 +82,51 @@ const ArtworkPage = () => {
         artworkService.getComments(id),
       ]);
 
-      setArtwork(artworkData.artwork || artworkData);
-      setComments(commentsData.comments || commentsData);
-      setIsFollowing(artworkData.artwork?.isFollowing || false);
-      setIsLiked(artworkData.artwork?.isLiked || false);
-      setLikesCount(artworkData.artwork?.likes || 0);
+      // Transform backend artwork data to frontend format
+      const rawArtwork = artworkData.data || artworkData.artwork || artworkData;
+      const transformedArtwork = {
+        id: rawArtwork.id,
+        title: rawArtwork.title,
+        artist: `@${rawArtwork.artist_username}`,
+        artistId: rawArtwork.artist_id, // Store artist ID for follow/unfollow
+        artistName: rawArtwork.artist_name,
+        artistAvatar: rawArtwork.artist_image,
+        price: parseFloat(rawArtwork.price),
+        image: '🎨', // Placeholder emoji
+        imageUrl: rawArtwork.primary_image || null,
+        description: rawArtwork.description,
+        isFollowing: rawArtwork.is_following || false,
+        isLiked: rawArtwork.is_liked || false,
+        timeAgo: formatTimeAgo(rawArtwork.created_at),
+        likes: rawArtwork.like_count || 0,
+        views: rawArtwork.view_count || 0,
+        tags: rawArtwork.tags ? rawArtwork.tags.split(',') : [],
+        createdAt: rawArtwork.created_at,
+        category: rawArtwork.category,
+        medium: rawArtwork.medium,
+        dimensions: rawArtwork.dimensions,
+        year: rawArtwork.year_created,
+        stock: rawArtwork.stock_quantity,
+        isForSale: rawArtwork.is_for_sale,
+      };
+
+      // Transform backend comments data to frontend format
+      const rawComments = commentsData.data?.comments || commentsData.comments || [];
+      const transformedComments = rawComments.map(comment => ({
+        id: comment.id,
+        user: `@${comment.username}`,
+        userName: comment.full_name,
+        userAvatar: comment.profile_image,
+        text: comment.content,
+        timestamp: formatTimeAgo(comment.created_at),
+        createdAt: comment.created_at,
+      }));
+
+      setArtwork(transformedArtwork);
+      setComments(transformedComments);
+      setIsFollowing(transformedArtwork.isFollowing);
+      setIsLiked(transformedArtwork.isLiked);
+      setLikesCount(transformedArtwork.likes);
     } catch (err) {
       console.error('Error fetching artwork:', err);
       setError(err.message || 'Failed to load artwork. Please try again.');
@@ -132,27 +191,29 @@ const ArtworkPage = () => {
     if (!artwork) return;
 
     const oldFollowing = isFollowing;
-    setIsFollowing(!isFollowing);
+    const newFollowing = !isFollowing;
+    setIsFollowing(newFollowing);
 
     try {
       // DEMO MODE: Just show toast
       if (USE_DEMO_MODE) {
-        toast.success(isFollowing ? `Unfollowed ${artwork.artistName}` : `Now following ${artwork.artistName}! 🎨`);
+        toast.success(newFollowing ? `Now following ${artwork.artistName}! 🎨` : `Unfollowed ${artwork.artistName}`);
         return;
       }
 
       // REAL API MODE: Call backend
-      if (isFollowing) {
-        await profileService.unfollowUser(artwork.artist);
-        toast.success(`Unfollowed ${artwork.artistName}`);
-      } else {
-        await profileService.followUser(artwork.artist);
+      if (newFollowing) {
+        await userService.followUser(artwork.artistId);
         toast.success(`Now following ${artwork.artistName}! 🎨`);
+      } else {
+        await userService.unfollowUser(artwork.artistId);
+        toast.success(`Unfollowed ${artwork.artistName}`);
       }
     } catch (error) {
       // Revert on error
       setIsFollowing(oldFollowing);
       toast.error('Failed to update follow status');
+      console.error('Follow error:', error);
     }
   };
 

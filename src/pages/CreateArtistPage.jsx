@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { useToast } from '../components/ui/Toast'; // 🆕
 import { useFormValidation, validators } from '../utils/formValidation'; // 🆕
 import { InlineError } from '../components/ui/ErrorStates'; // 🆕
@@ -7,11 +8,19 @@ import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import Button from '../components/common/Button';
 import { Upload } from 'lucide-react';
+import { userService } from '../services/user.service';
 
 const CreateArtistPage = () => {
-  const { user } = useAuth();
+  const { user, updateUser } = useAuth();
+  const navigate = useNavigate();
   const toast = useToast(); // 🆕
   const [step, setStep] = useState(1);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [profileImage, setProfileImage] = useState(null);
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [coverImage, setCoverImage] = useState(null);
+  const [coverImagePreview, setCoverImagePreview] = useState(null);
+  const [uploadingImages, setUploadingImages] = useState(false);
 
   // 🆕 Form validation for step 1
   const { values, errors, touched, handleChange, handleBlur, validateAll } = useFormValidation(
@@ -27,6 +36,54 @@ const CreateArtistPage = () => {
     }
   );
 
+  // Handle profile image selection
+  const handleProfileImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
+      return;
+    }
+
+    setProfileImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+    toast.success('Profile picture selected!');
+  };
+
+  // Handle cover image selection
+  const handleCoverImageSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    setCoverImage(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCoverImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+    toast.success('Cover image selected!');
+  };
+
   // 🆕 Handle step 1 continue
   const handleStep1Continue = () => {
     if (!validateAll()) {
@@ -38,12 +95,101 @@ const CreateArtistPage = () => {
   };
 
   // 🆕 Handle final submission
-  const handleCreateArtist = () => {
-    toast.success('Artist profile created successfully! 🎨');
-    // Navigate to profile or dashboard
-    setTimeout(() => {
-      window.location.href = '/profile/' + values.username;
-    }, 1500);
+  const handleCreateArtist = async () => {
+    if (isSubmitting) return;
+
+    try {
+      setIsSubmitting(true);
+      setUploadingImages(true);
+
+      let profileImageUrl = null;
+      let coverImageUrl = null;
+
+      // Upload profile image if selected
+      if (profileImage) {
+        try {
+          const uploadResponse = await userService.uploadAvatar(profileImage);
+          profileImageUrl = uploadResponse.data?.url || uploadResponse.url;
+          toast.success('Profile picture uploaded!');
+        } catch (error) {
+          console.error('Error uploading profile image:', error);
+          toast.error('Failed to upload profile picture');
+        }
+      }
+
+      // Upload cover image if selected
+      if (coverImage) {
+        try {
+          const uploadResponse = await userService.uploadCover(coverImage);
+          coverImageUrl = uploadResponse.data?.url || uploadResponse.url;
+          toast.success('Cover image uploaded!');
+        } catch (error) {
+          console.error('Error uploading cover image:', error);
+          toast.error('Failed to upload cover image');
+        }
+      }
+
+      setUploadingImages(false);
+
+      // Update user profile to become an artist
+      const profileData = {
+        fullName: values.artistName,
+        bio: values.bio,
+        becomeArtist: true
+      };
+
+      if (profileImageUrl) {
+        profileData.profileImage = profileImageUrl;
+      }
+      if (coverImageUrl) {
+        profileData.coverImage = coverImageUrl;
+      }
+
+      const response = await userService.updateProfile(profileData);
+
+      // Update local user state with the response data, transforming backend format to frontend format
+      if (response && response.data) {
+        const userData = response.data;
+        updateUser({
+          ...user,
+          fullName: userData.full_name || values.artistName,
+          bio: userData.bio || values.bio,
+          role: userData.role || 'artist',
+          profileImage: userData.profile_image || profileImageUrl,
+          coverImage: userData.cover_image || coverImageUrl,
+          avatar: userData.profile_image || profileImageUrl,
+          // Preserve all backend fields as well for compatibility
+          full_name: userData.full_name,
+          profile_image: userData.profile_image,
+          cover_image: userData.cover_image
+        });
+      } else {
+        updateUser({
+          ...user,
+          fullName: values.artistName,
+          bio: values.bio,
+          role: 'artist',
+          profileImage: profileImageUrl,
+          coverImage: coverImageUrl,
+          avatar: profileImageUrl,
+          full_name: values.artistName,
+          profile_image: profileImageUrl,
+          cover_image: coverImageUrl
+        });
+      }
+
+      toast.success('Artist profile created successfully! 🎨');
+
+      // Navigate to profile
+      setTimeout(() => {
+        navigate(`/portfolio/${values.username}`);
+      }, 1500);
+    } catch (error) {
+      console.error('Error creating artist profile:', error);
+      toast.error(error.message || 'Failed to create artist profile. Please try again.');
+      setIsSubmitting(false);
+      setUploadingImages(false);
+    }
   };
 
   return (
@@ -149,26 +295,52 @@ const CreateArtistPage = () => {
 
             <div>
               <label className="block text-xs md:text-sm text-[#f2e9dd]/70 mb-2">Profile Picture</label>
-              <div
-                className="border-2 border-dashed border-white/20 rounded-lg p-6 md:p-8 text-center hover:border-[#7C5FFF] transition-all duration-300 cursor-pointer group bg-gradient-to-br from-[#7C5FFF]/5 to-[#FF5F9E]/5 hover:from-[#7C5FFF]/10 hover:to-[#FF5F9E]/10"
-                onClick={() => toast.info('File upload coming soon!')}
-              >
-                <Upload className="mx-auto mb-2 text-[#f2e9dd]/50 group-hover:text-[#B15FFF] transform group-hover:scale-110 group-hover:-rotate-12 transition-all duration-300" size={24} />
-                <p className="text-sm md:text-base text-[#f2e9dd]/70 group-hover:text-[#f2e9dd] transition-colors">Click to upload or drag and drop</p>
-                <p className="text-xs md:text-sm text-[#f2e9dd]/50">PNG, JPG up to 5MB</p>
-              </div>
+              <label className="border-2 border-dashed border-white/20 rounded-lg p-6 md:p-8 text-center hover:border-[#7C5FFF] transition-all duration-300 cursor-pointer group bg-gradient-to-br from-[#7C5FFF]/5 to-[#FF5F9E]/5 hover:from-[#7C5FFF]/10 hover:to-[#FF5F9E]/10 block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleProfileImageSelect}
+                  className="hidden"
+                  disabled={uploadingImages}
+                />
+                {profileImagePreview ? (
+                  <div className="relative">
+                    <img src={profileImagePreview} alt="Profile preview" className="w-32 h-32 rounded-full mx-auto object-cover" />
+                    <p className="text-xs text-[#f2e9dd]/50 mt-2">Click to change</p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="mx-auto mb-2 text-[#f2e9dd]/50 group-hover:text-[#B15FFF] transform group-hover:scale-110 group-hover:-rotate-12 transition-all duration-300" size={24} />
+                    <p className="text-sm md:text-base text-[#f2e9dd]/70 group-hover:text-[#f2e9dd] transition-colors">Click to upload or drag and drop</p>
+                    <p className="text-xs md:text-sm text-[#f2e9dd]/50">PNG, JPG up to 5MB</p>
+                  </>
+                )}
+              </label>
             </div>
 
             <div>
-              <label className="block text-xs md:text-sm text-[#f2e9dd]/70 mb-2">Cover Image</label>
-              <div
-                className="border-2 border-dashed border-white/20 rounded-lg p-6 md:p-8 text-center hover:border-[#7C5FFF] transition-all duration-300 cursor-pointer group bg-gradient-to-br from-[#7C5FFF]/5 to-[#FF5F9E]/5 hover:from-[#7C5FFF]/10 hover:to-[#FF5F9E]/10"
-                onClick={() => toast.info('File upload coming soon!')}
-              >
-                <Upload className="mx-auto mb-2 text-[#f2e9dd]/50 group-hover:text-[#B15FFF] transform group-hover:scale-110 group-hover:-rotate-12 transition-all duration-300" size={24} />
-                <p className="text-sm md:text-base text-[#f2e9dd]/70 group-hover:text-[#f2e9dd] transition-colors">Click to upload or drag and drop</p>
-                <p className="text-xs md:text-sm text-[#f2e9dd]/50">PNG, JPG up to 10MB (16:9 recommended)</p>
-              </div>
+              <label className="block text-xs md:text-sm text-[#f2e9dd]/70 mb-2">Cover Image (Optional)</label>
+              <label className="border-2 border-dashed border-white/20 rounded-lg p-6 md:p-8 text-center hover:border-[#7C5FFF] transition-all duration-300 cursor-pointer group bg-gradient-to-br from-[#7C5FFF]/5 to-[#FF5F9E]/5 hover:from-[#7C5FFF]/10 hover:to-[#FF5F9E]/10 block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverImageSelect}
+                  className="hidden"
+                  disabled={uploadingImages}
+                />
+                {coverImagePreview ? (
+                  <div className="relative">
+                    <img src={coverImagePreview} alt="Cover preview" className="w-full h-32 rounded-lg mx-auto object-cover" />
+                    <p className="text-xs text-[#f2e9dd]/50 mt-2">Click to change</p>
+                  </div>
+                ) : (
+                  <>
+                    <Upload className="mx-auto mb-2 text-[#f2e9dd]/50 group-hover:text-[#B15FFF] transform group-hover:scale-110 group-hover:-rotate-12 transition-all duration-300" size={24} />
+                    <p className="text-sm md:text-base text-[#f2e9dd]/70 group-hover:text-[#f2e9dd] transition-colors">Click to upload or drag and drop</p>
+                    <p className="text-xs md:text-sm text-[#f2e9dd]/50">PNG, JPG up to 10MB (16:9 recommended)</p>
+                  </>
+                )}
+              </label>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
@@ -227,14 +399,16 @@ const CreateArtistPage = () => {
                 <Button
                   size="lg"
                   onClick={handleCreateArtist}
-                  className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
+                  disabled={isSubmitting || uploadingImages}
+                  className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Create Artist Page
+                  {uploadingImages ? 'Uploading images...' : isSubmitting ? 'Creating...' : 'Create Artist Page'}
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={() => setStep(2)}
-                  className="w-full sm:w-auto transform hover:scale-105 transition-all duration-200"
+                  disabled={isSubmitting}
+                  className="w-full sm:w-auto transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Back
                 </Button>

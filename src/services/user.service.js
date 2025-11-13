@@ -91,6 +91,36 @@ export const userService = {
     });
     return response.data;
   },
+
+  /**
+   * Follow a user
+   * @param {string} userId
+   * @returns {Promise<{message}>}
+   */
+  followUser: async (userId) => {
+    const response = await api.post(`/users/${userId}/follow`);
+    return response.data;
+  },
+
+  /**
+   * Unfollow a user
+   * @param {string} userId
+   * @returns {Promise<{message}>}
+   */
+  unfollowUser: async (userId) => {
+    const response = await api.delete(`/users/${userId}/follow`);
+    return response.data;
+  },
+
+  /**
+   * Get user by ID
+   * @param {string} userId
+   * @returns {Promise<{user}>}
+   */
+  getUserById: async (userId) => {
+    const response = await api.get(`/users/${userId}`);
+    return response.data;
+  },
 };
 
 export default userService;

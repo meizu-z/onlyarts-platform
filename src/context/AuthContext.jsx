@@ -6,7 +6,7 @@ import { DEMO_USERS } from '../utils/constants';
 const AuthContext = createContext(null);
 
 // Flag to use demo mode (set to false when backend is ready)
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -16,7 +16,7 @@ export const AuthProvider = ({ children }) => {
   // Initialize auth state from localStorage
   useEffect(() => {
     const initAuth = async () => {
-      const storedUser = localStorage.getItem('onlyarts_user');
+      const storedUser = localStorage.getItem('user');
       const token = localStorage.getItem(API_CONFIG.tokenKey);
 
       if (storedUser && token) {
@@ -27,7 +27,7 @@ export const AuthProvider = ({ children }) => {
         } catch (error) {
           console.error('Error parsing stored user:', error);
           // Clear invalid data
-          localStorage.removeItem('onlyarts_user');
+          localStorage.removeItem('user');
           localStorage.removeItem(API_CONFIG.tokenKey);
           localStorage.removeItem(API_CONFIG.refreshTokenKey);
         }
@@ -38,6 +38,20 @@ export const AuthProvider = ({ children }) => {
     initAuth();
   }, []);
 
+  // Listen for auth errors from the API client to trigger a global logout
+  useEffect(() => {
+    const handleAuthError = () => {
+      // Call the logout function to gracefully handle the session expiry
+      logout();
+    };
+
+    window.addEventListener('auth-error', handleAuthError);
+
+    return () => {
+      window.removeEventListener('auth-error', handleAuthError);
+    };
+  }, []);
+
   const login = async (username, password) => {
     try {
       // DEMO MODE: Check demo credentials
@@ -46,7 +60,7 @@ export const AuthProvider = ({ children }) => {
           const userData = { ...DEMO_USERS.premium };
           setUser(userData);
           setIsAuthenticated(true);
-          localStorage.setItem('onlyarts_user', JSON.stringify(userData));
+          localStorage.setItem('user', JSON.stringify(userData));
           // Store demo token
           localStorage.setItem(API_CONFIG.tokenKey, 'demo-token');
           return { success: true, user: userData };
@@ -56,13 +70,13 @@ export const AuthProvider = ({ children }) => {
 
       // REAL API MODE: Call backend
       const response = await authService.login(username, password);
-      const { user: userData, token, refreshToken } = response;
+      const { user: userData, accessToken, refreshToken } = response;
 
       // Store user data and tokens
       setUser(userData);
       setIsAuthenticated(true);
-      localStorage.setItem('onlyarts_user', JSON.stringify(userData));
-      localStorage.setItem(API_CONFIG.tokenKey, token);
+      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem(API_CONFIG.tokenKey, accessToken);
       if (refreshToken) {
         localStorage.setItem(API_CONFIG.refreshTokenKey, refreshToken);
       }
@@ -93,20 +107,20 @@ export const AuthProvider = ({ children }) => {
 
         setUser(newUser);
         setIsAuthenticated(true);
-        localStorage.setItem('onlyarts_user', JSON.stringify(newUser));
+        localStorage.setItem('user', JSON.stringify(newUser));
         localStorage.setItem(API_CONFIG.tokenKey, 'demo-token');
         return { success: true, user: newUser };
       }
 
       // REAL API MODE: Call backend
       const response = await authService.register(userData);
-      const { user: newUser, token, refreshToken } = response;
+      const { user: newUser, accessToken, refreshToken } = response;
 
       // Store user data and tokens
       setUser(newUser);
       setIsAuthenticated(true);
-      localStorage.setItem('onlyarts_user', JSON.stringify(newUser));
-      localStorage.setItem(API_CONFIG.tokenKey, token);
+      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem(API_CONFIG.tokenKey, accessToken);
       if (refreshToken) {
         localStorage.setItem(API_CONFIG.refreshTokenKey, refreshToken);
       }
@@ -122,27 +136,29 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
+    // Clear local state first - logout should always succeed locally
+    setUser(null);
+    setIsAuthenticated(false);
+    const refreshToken = localStorage.getItem(API_CONFIG.refreshTokenKey);
+    localStorage.removeItem('user');
+    localStorage.removeItem(API_CONFIG.tokenKey);
+    localStorage.removeItem(API_CONFIG.refreshTokenKey);
+
+    // Then try to notify the server (best effort, don't fail if it doesn't work)
     try {
-      // Call logout API if not in demo mode
-      if (!USE_DEMO_MODE) {
-        await authService.logout();
+      if (!USE_DEMO_MODE && refreshToken) {
+        await authService.logout(refreshToken);
       }
     } catch (error) {
-      console.error('Logout error:', error);
-    } finally {
-      // Clear local state regardless of API call result
-      setUser(null);
-      setIsAuthenticated(false);
-      localStorage.removeItem('onlyarts_user');
-      localStorage.removeItem(API_CONFIG.tokenKey);
-      localStorage.removeItem(API_CONFIG.refreshTokenKey);
+      // Silently ignore logout API errors - we've already cleared local state
+      console.log('Server logout notification failed (this is OK):', error.message);
     }
   };
 
   const updateUser = (updates) => {
     const updatedUser = { ...user, ...updates };
     setUser(updatedUser);
-    localStorage.setItem('onlyarts_user', JSON.stringify(updatedUser));
+    localStorage.setItem('user', JSON.stringify(updatedUser));
   };
 
   const updateSubscription = (tier) => {

@@ -12,7 +12,7 @@ import Input from '../components/common/Input';
 import { Moon, Sun, Monitor } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const SettingsPage = () => {
   const { user, logout } = useAuth();
@@ -68,9 +68,9 @@ const SettingsPage = () => {
 
       // REAL API MODE: Call backend
       const response = await settingsService.getSettings();
-      setSettings(response.settings);
-      setPrivacySettings(response.settings.privacy || {});
-      setNotificationSettings(response.settings.notifications || {});
+      setSettings(response);
+      setPrivacySettings(response.privacy || {});
+      setNotificationSettings(response.notifications || {});
       // Use current theme from localStorage instead of backend
       setTheme(currentTheme);
     } catch (err) {

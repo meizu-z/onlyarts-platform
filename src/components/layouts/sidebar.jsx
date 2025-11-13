@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ShoppingBag } from 'lucide-react';
+import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ShoppingBag, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 
 const NavItem = ({ to, icon, children, isHovered }) => {
@@ -103,6 +103,27 @@ const Sidebar = () => {
           <div className={`transition-all duration-200 ease-out overflow-hidden
                         ${isHovered ? 'h-px mb-6' : 'h-0 my-0'}
                         bg-gradient-to-r from-transparent via-white/10 to-transparent`} />
+
+          {/* Admin Section - Only for admin users */}
+          {user?.role === 'admin' && (
+            <div className="mb-8">
+              <p className={`px-4 mb-4 text-xs font-bold text-red-400 uppercase tracking-widest
+                          transition-all duration-200 ease-out overflow-hidden
+                          ${isHovered ? 'opacity-100 h-auto' : 'opacity-0 h-0 mb-0'}`}>
+                Admin
+              </p>
+              <div className="space-y-1">
+                <NavItem to="/admin" icon={<Shield size={20} />} isHovered={isHovered}>Admin Dashboard</NavItem>
+              </div>
+            </div>
+          )}
+
+          {/* Divider after admin section */}
+          {user?.role === 'admin' && (
+            <div className={`transition-all duration-200 ease-out overflow-hidden
+                          ${isHovered ? 'h-px mb-6' : 'h-0 my-0'}
+                          bg-gradient-to-r from-transparent via-white/10 to-transparent`} />
+          )}
 
           {/* Account Section */}
           <div className="mt-2">

@@ -118,7 +118,7 @@ export const checkoutService = {
   },
 };
 
-// Mock payment methods for demo mode
+// Mock payment methods for demo mode (includes card and PayPal options)
 export const mockPaymentMethods = [
   {
     id: 'pm_1',
@@ -143,6 +143,15 @@ export const mockPaymentMethods = [
     },
     isDefault: false,
     createdAt: '2024-02-20',
+  },
+  {
+    id: 'pm_3',
+    type: 'paypal',
+    details: {
+      email: 'user@example.com',
+    },
+    isDefault: false,
+    createdAt: '2024-03-10',
   },
 ];
 

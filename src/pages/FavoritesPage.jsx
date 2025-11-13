@@ -11,7 +11,7 @@ import Button from '../components/common/Button';
 import { Heart, Filter, ChevronDown, Users, Calendar } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const FavoritesPage = () => {
   const navigate = useNavigate();

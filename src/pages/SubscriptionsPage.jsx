@@ -1,5 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { subscriptionService } from '../services';
+import { useToast } from '../components/ui/Toast';
+import { LoadingPaint } from '../components/ui/LoadingStates';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
@@ -8,88 +11,116 @@ import { Sparkles, Check, Lock, ArrowRight } from 'lucide-react';
 
 const SubscriptionsPage = () => {
   const { user, updateSubscription } = useAuth();
+  const toast = useToast();
+  const [loading, setLoading] = useState(true);
+  const [processing, setProcessing] = useState(false);
   const [showPayment, setShowPayment] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [billingCycle, setBillingCycle] = useState('monthly');
+  const [paymentMethod, setPaymentMethod] = useState('card');
+  const [plans, setPlans] = useState([]);
 
-  const plans = [
-    {
-      name: 'free',
-      price: 0,
-      title: 'FREE',
-      features: {
-        fan: [
-          'Browse exhibitions (preview mode)',
-          'Follow artists',
-          'Basic messages',
-          '❌ No auction bidding',
-          '❌ No commission requests',
-          '❌ No badges'
-        ],
-        artist: [
-          '❌ No exhibition hosting',
-          'Basic profile views only'  // REMOVED NFT MINTING
-        ]
-      }
-    },
-    {
-      name: 'plus',
-      price: 149,
-      title: 'PLUS',
-      popular: true,
-      features: {
-        fan: [
-          '✓ All Free perks',
-          '✓ Monthly free commission coupon',
-          '✓ Auction bidding access',
-          '✓ Supporter badges',
-          '✓ Direct artist engagement'
-        ],
-        artist: [
-          '✓ All Free artist perks',
-          '✓ Featured slots in group exhibitions',
-          '✓ Expanded analytics (fans, revenue)',
-          '✓ AI content strategy (early access)'
-        ]
-      }
-    },
-    {
-      name: 'premium',
-      price: 249,
-      title: 'PREMIUM',
-      features: {
-        fan: [
-          '✓ All Plus perks',
-          '✓ Priority bidding access',
-          '✓ VIP-only showcases',
-          '✓ Exclusive NFTs & badges',
-          '✓ 1-on-1 with artists'
-        ],
-        artist: [
-          '✓ All Plus artist perks',
-          '✓ Host solo exhibitions',
-          '✓ Premium Explore placement',
-          '✓ Full audience insights',
-          '✓ Event collaborations'
-        ]
-      }
+  // Fetch subscription plans on mount
+  useEffect(() => {
+    fetchPlans();
+  }, []);
+
+  const fetchPlans = async () => {
+    try {
+      setLoading(true);
+      const response = await subscriptionService.getPlans();
+      const fetchedPlans = response.data || response;
+
+      // Transform backend plans to match frontend format
+      const transformedPlans = fetchedPlans.map(plan => ({
+        name: plan.id,
+        price: plan.price / 100, // Convert cents to dollars
+        title: plan.name.toUpperCase(),
+        popular: plan.id === 'plus',
+        features: plan.features
+      }));
+
+      setPlans(transformedPlans);
+    } catch (error) {
+      console.error('Error fetching plans:', error);
+      toast?.error?.('Failed to load subscription plans');
+      // Fallback to default plans if API fails
+      setPlans([
+        {
+          name: 'free',
+          price: 0,
+          title: 'FREE',
+          features: {
+            fan: ['Browse artworks', 'Follow artists', 'Like artworks', 'Basic profile'],
+            artist: ['Upload up to 10 artworks', 'Basic analytics', 'Standard visibility']
+          }
+        },
+        {
+          name: 'plus',
+          price: 149,
+          title: 'PLUS',
+          popular: true,
+          features: {
+            fan: ['Everything in Free', 'Comment on artworks', 'Save favorites', 'Early access to exhibitions'],
+            artist: ['Upload up to 50 artworks', 'Advanced analytics', 'Priority support', 'Commission requests']
+          }
+        },
+        {
+          name: 'premium',
+          price: 249,
+          title: 'PREMIUM',
+          features: {
+            fan: ['Everything in Plus', 'Exclusive content access', 'VIP badge', 'Premium exhibitions'],
+            artist: ['Unlimited artworks', 'Premium analytics', 'Livestream capabilities', 'Priority placement']
+          }
+        }
+      ]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
-  const handleSelectPlan = (plan) => {
+  const handleSelectPlan = async (plan) => {
     if (plan.name === 'free') {
-      updateSubscription('free');
+      try {
+        await subscriptionService.updateSubscription('free');
+        updateSubscription('free');
+        toast?.success?.('Successfully downgraded to free plan');
+      } catch (error) {
+        console.error('Error updating subscription:', error);
+        toast?.error?.('Failed to update subscription');
+      }
       return;
     }
     setSelectedPlan(plan);
     setShowPayment(true);
   };
 
-  const handlePayment = () => {
-    updateSubscription(selectedPlan.name);
-    setShowPayment(false);
-    setSelectedPlan(null);
+  const handlePayment = async () => {
+    try {
+      setProcessing(true);
+      // For now, we'll just update the subscription without payment method
+      // In production, you'd integrate Stripe here
+      await subscriptionService.createSubscription(selectedPlan.name);
+      updateSubscription(selectedPlan.name);
+      toast?.success?.(`Successfully upgraded to ${selectedPlan.title} plan!`);
+      setShowPayment(false);
+      setSelectedPlan(null);
+    } catch (error) {
+      console.error('Error processing payment:', error);
+      toast?.error?.(error.message || 'Failed to process payment');
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <LoadingPaint />
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-7xl mx-auto py-6 md:py-12">
@@ -199,31 +230,71 @@ const SubscriptionsPage = () => {
           <div>
             <h3 className="text-sm md:text-base text-[#f2e9dd] font-bold mb-2 md:mb-3">Payment Method:</h3>
             <div className="space-y-2">
-              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
-                <input type="radio" name="payment" defaultChecked />
-                <span className="text-sm md:text-base text-[#f2e9dd]">Credit/Debit Card</span>
+              <label className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 border rounded-lg cursor-pointer transition-colors ${
+                paymentMethod === 'card' ? 'border-[#7C5FFF] bg-[#7C5FFF]/10' : 'border-white/10 hover:border-[#7C5FFF]'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={paymentMethod === 'card'}
+                  onChange={() => setPaymentMethod('card')}
+                />
+                <span className="text-sm md:text-base text-[#f2e9dd]">💳 Credit/Debit Card</span>
               </label>
-              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
-                <input type="radio" name="payment" />
-                <span className="text-sm md:text-base text-[#f2e9dd]">PayPal</span>
+              <label className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 border rounded-lg cursor-pointer transition-colors ${
+                paymentMethod === 'paypal' ? 'border-[#7C5FFF] bg-[#7C5FFF]/10' : 'border-white/10 hover:border-[#7C5FFF]'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={paymentMethod === 'paypal'}
+                  onChange={() => setPaymentMethod('paypal')}
+                />
+                <span className="text-sm md:text-base text-[#f2e9dd]">🅿️ PayPal</span>
               </label>
-              <label className="flex items-center gap-2 md:gap-3 p-2 md:p-3 border border-white/10 rounded-lg cursor-pointer hover:border-[#7C5FFF] transition-colors">
-                <input type="radio" name="payment" />
-                <span className="text-sm md:text-base text-[#f2e9dd]">Crypto Wallet</span>
+              <label className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 border rounded-lg cursor-pointer transition-colors ${
+                paymentMethod === 'crypto' ? 'border-[#7C5FFF] bg-[#7C5FFF]/10' : 'border-white/10 hover:border-[#7C5FFF]'
+              }`}>
+                <input
+                  type="radio"
+                  name="payment"
+                  checked={paymentMethod === 'crypto'}
+                  onChange={() => setPaymentMethod('crypto')}
+                />
+                <span className="text-sm md:text-base text-[#f2e9dd]">🔐 Crypto Wallet</span>
               </label>
             </div>
           </div>
 
-          <div>
-            <Input label="Card Number" placeholder="1234 5678 9012 3456" />
-          </div>
+          {/* Card Payment Fields */}
+          {paymentMethod === 'card' && (
+            <>
+              <div>
+                <Input label="Card Number" placeholder="1234 5678 9012 3456" />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <Input label="Expiry" placeholder="MM / YY" />
-            <Input label="CVC" placeholder="123" />
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <Input label="Expiry" placeholder="MM / YY" />
+                <Input label="CVC" placeholder="123" />
+              </div>
 
-          <Input label="Full Name" placeholder="Your full name" />
+              <Input label="Full Name" placeholder="Your full name" />
+            </>
+          )}
+
+          {/* PayPal Payment Fields */}
+          {paymentMethod === 'paypal' && (
+            <div>
+              <Input label="PayPal Email" placeholder="your@email.com" type="email" />
+            </div>
+          )}
+
+          {/* Crypto Payment Fields */}
+          {paymentMethod === 'crypto' && (
+            <div>
+              <Input label="Wallet Address" placeholder="0x..." />
+            </div>
+          )}
 
           <div className="bg-[#121212] border border-white/10 rounded-lg p-3 md:p-4">
             <div className="flex justify-between mb-2 text-sm md:text-base">
@@ -244,12 +315,13 @@ const SubscriptionsPage = () => {
             By continuing, you agree to our Terms of Service
           </p>
 
-          <Button 
-            className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300" 
-            size="lg" 
+          <Button
+            className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
+            size="lg"
             onClick={handlePayment}
+            disabled={processing}
           >
-            Start 7-Day Free Trial
+            {processing ? 'Processing...' : 'Start 7-Day Free Trial'}
           </Button>
 
           <p className="text-xs text-center text-[#f2e9dd]/50">

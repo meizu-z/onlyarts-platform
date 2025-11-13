@@ -7,7 +7,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const WalletPage = () => {
   const toast = useToast();
@@ -42,7 +42,7 @@ const WalletPage = () => {
         walletService.getTransactions({ limit: 10 }),
       ]);
 
-      setBalance(walletData.balance);
+      setBalance(walletData.balance || 0);
       setTransactions(transactionsData.transactions || []);
     } catch (err) {
       console.error('Error fetching wallet data:', err);

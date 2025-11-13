@@ -5,6 +5,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
+import { commissionService } from '../services';
 
 const CommissionRequestPage = () => {
   const navigate = useNavigate();
@@ -62,6 +63,7 @@ const CommissionRequestPage = () => {
       id: Date.now() + Math.random(),
       name: file.name,
       url: URL.createObjectURL(file),
+      file: file // Store the actual File object
     }));
 
     setFormData(prev => ({
@@ -87,32 +89,41 @@ const CommissionRequestPage = () => {
       return;
     }
 
-    setIsSubmitting(true);
+    if (!artist?.id) {
+      toast.error('Artist information is missing');
+      return;
+    }
 
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    try {
+      setIsSubmitting(true);
 
-    // Save to localStorage
-    const newRequest = {
-      id: `COM-${Date.now()}`,
-      artistId: artist?.id || 'artist-1',
-      artistName: artist?.name || 'Unknown Artist',
-      artistImage: artist?.profileImage || 'https://via.placeholder.com/150',
-      userId: user?.id,
-      userName: user?.name || user?.username || 'Anonymous',
-      ...formData,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-    };
+      // Extract File objects from reference images
+      const imageFiles = formData.referenceImages.map(img => img.file).filter(Boolean);
 
-    const existingRequests = JSON.parse(localStorage.getItem('commissionRequests') || '[]');
-    localStorage.setItem('commissionRequests', JSON.stringify([newRequest, ...existingRequests]));
+      // Submit commission request to backend
+      const commissionData = {
+        artistId: artist.id,
+        artworkType: formData.artworkType,
+        deliveryFormat: formData.deliveryFormat,
+        size: formData.size,
+        budgetMin: parseFloat(formData.budgetMin),
+        budgetMax: formData.budgetMax ? parseFloat(formData.budgetMax) : null,
+        description: formData.description,
+        deadline: formData.deadline || null,
+      };
 
-    toast.success('Commission request submitted! 🎨');
-    setIsSubmitting(false);
+      await commissionService.createCommission(commissionData, imageFiles);
 
-    // Navigate back to artist profile
-    navigate(`/profile/${artist?.username}`);
+      toast.success('Commission request submitted! 🎨');
+
+      // Navigate back to artist profile
+      navigate(`/profile/${artist?.username || artist?.id}`);
+    } catch (error) {
+      console.error('Error submitting commission:', error);
+      toast.error(error.message || 'Failed to submit commission request');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   if (!artist) {

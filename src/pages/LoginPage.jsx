@@ -68,14 +68,14 @@ const LoginPage = () => {
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <Input
-                label="Email or Username"
-                type="text"
+                label="Email"
+                type="email"
                 name="username"
                 value={values.username}
                 onChange={handleChange}
                 onBlur={handleBlur}
-                placeholder="Enter your email or username"
-                autoComplete="username"
+                placeholder="Enter your email address"
+                autoComplete="email"
                 className={touched.username && errors.username ? 'border-red-500' : ''}
               />
               <InlineError message={touched.username ? errors.username : null} />
@@ -182,8 +182,8 @@ const LoginPage = () => {
           <div className="mt-6 p-4 bg-purple-600/10 border border-purple-500/30 rounded-lg">
             <p className="text-sm text-purple-400 font-medium mb-2">Demo Credentials:</p>
             <p className="text-xs text-[#f2e9dd]/70">
-              Username: <span className="text-purple-400 font-mono">mz123</span><br />
-              Password: <span className="text-purple-400 font-mono">12345</span>
+              Email: <span className="text-purple-400 font-mono">artist@onlyarts.com</span><br />
+              Password: <span className="text-purple-400 font-mono">password123</span>
             </p>
           </div>
         </Card>

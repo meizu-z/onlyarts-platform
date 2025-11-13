@@ -8,7 +8,7 @@ import { artworkService } from '../services/artwork.service';
 import { Upload, Image as ImageIcon, DollarSign, ArrowLeft, Loader } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
 
 const CreateArtworkPage = () => {
   const navigate = useNavigate();

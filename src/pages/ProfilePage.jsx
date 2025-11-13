@@ -7,6 +7,7 @@ import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from '../services/profile.service';
 import { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from '../services/analytics.service';
+import { API_CONFIG } from '../config/api.config';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
@@ -14,7 +15,40 @@ import PremiumBadge from '../components/common/PremiumBadge';
 import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3 } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  // Remove '/api' from baseURL to get the server base URL
+  const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+  return `${serverBaseUrl}${imagePath}`;
+};
+
+// Transform backend user data (snake_case) to frontend format (camelCase + additional fields)
+const transformUserData = (backendData) => {
+  if (!backendData) return null;
+
+  return {
+    ...backendData,
+    // Map backend fields to frontend expected fields
+    avatar: backendData.profile_image || backendData.avatar || '👤',
+    coverImage: backendData.cover_image || backendData.coverImage || '🎨',
+    displayName: backendData.full_name || backendData.displayName || backendData.username,
+    isArtist: backendData.role === 'artist' || backendData.isArtist,
+    subscription: backendData.subscription_tier || backendData.subscription || 'free',
+    followers: backendData.follower_count || backendData.followers || 0,
+    following: backendData.following_count || backendData.following || 0,
+    artworkCount: backendData.artwork_count || backendData.artworkCount || 0,
+    // Keep original fields for backend compatibility
+    profile_image: backendData.profile_image,
+    cover_image: backendData.cover_image,
+    full_name: backendData.full_name,
+  };
+};
 
 const ProfilePage = () => {
   const { username } = useParams();
@@ -26,6 +60,7 @@ const ProfilePage = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedBio, setEditedBio] = useState('');
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [notFound, setNotFound] = useState(false);
 
   // API state management
   const [loading, setLoading] = useState(true);
@@ -122,42 +157,48 @@ const ProfilePage = () => {
       const targetUsername = username || user?.username;
       const response = await profileService.getProfile(targetUsername);
 
-      setProfileData(response.profile);
-      setEditedBio(response.profile.bio);
+      // Transform backend data to frontend format
+      const transformedProfile = transformUserData(response);
+      setProfileData(transformedProfile);
+      setEditedBio(transformedProfile.bio);
 
       // Fetch user's content
       const [artworksData, exhibitionsData, followersData, followingData] = await Promise.all([
-        profileService.getUserArtworks(targetUsername),
-        profileService.getUserExhibitions(targetUsername),
-        profileService.getFollowers(targetUsername),
-        profileService.getFollowing(targetUsername),
+        profileService.getUserArtworks(targetUsername).catch(() => ({ artworks: [] })),
+        profileService.getUserExhibitions(targetUsername).catch(() => ({ exhibitions: [] })),
+        profileService.getFollowers(targetUsername).catch(() => ({ followers: [] })),
+        profileService.getFollowing(targetUsername).catch(() => ({ following: [] })),
       ]);
 
-      setArtworks(artworksData.artworks || []);
-      setExhibitions(exhibitionsData.exhibitions || []);
-      setFollowers(followersData.followers || []);
-      setFollowing(followingData.following || []);
+      setArtworks(artworksData?.artworks || []);
+      setExhibitions(exhibitionsData?.exhibitions || []);
+      setFollowers(followersData?.followers || []);
+      setFollowing(followingData?.following || []);
 
       // Fetch saved items for own profile
       if (isOwnProfile) {
         const [savedData, postsData] = await Promise.all([
-          profileService.getSavedItems(),
-          profileService.getSharedPosts(targetUsername),
+          profileService.getSavedItems().catch(() => ({ items: [] })),
+          profileService.getSharedPosts(targetUsername).catch(() => ({ posts: [] })),
         ]);
-        setSavedForLater(savedData.items || []);
-        setSharedPosts(postsData.posts || []);
+        setSavedForLater(savedData?.items || []);
+        setSharedPosts(postsData?.posts || []);
 
-        if (response.profile.isArtist) {
+        if (response.role === 'artist') {
           setActiveTab('portfolio');
         } else {
           setActiveTab('shared_artworks');
         }
       } else {
-        setActiveTab(response.profile.isArtist ? 'portfolio' : 'shared_artworks');
+        setActiveTab(response.role === 'artist' ? 'portfolio' : 'shared_artworks');
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
-      setError(err.message || 'Failed to load profile. Please try again.');
+      if (err.status === 404) {
+        setNotFound(true);
+      } else {
+        setError(err.message || 'Failed to load profile. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -217,7 +258,8 @@ const ProfilePage = () => {
 
         // REAL API MODE: Call backend
         const response = await profileService.updateProfile({ bio: editedBio });
-        setProfileData(response.profile);
+        const transformedProfile = transformUserData(response);
+        setProfileData(transformedProfile);
         toast.success('Profile updated!');
         setIsEditMode(false);
       } catch (error) {
@@ -962,6 +1004,18 @@ const ProfilePage = () => {
     );
   }
 
+  if (notFound) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 md:px-6 text-center py-20">
+        <h1 className="text-2xl font-bold text-white mb-4">Profile Not Found</h1>
+        <p className="text-[#f2e9dd]/70">The user "{username}" does not exist.</p>
+        <Button onClick={() => navigate('/explore')} className="mt-4">
+          Explore Artists
+        </Button>
+      </div>
+    );
+  }
+
   if (error) {
     return (
       <div className="max-w-6xl mx-auto px-4 md:px-6">
@@ -993,15 +1047,31 @@ const ProfilePage = () => {
 
       <div className="aspect-[4/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-4 md:mb-6 flex items-center justify-center text-6xl md:text-9xl animate-fadeIn overflow-hidden relative group">
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-        <span className="transform group-hover:scale-110 transition-transform duration-500 relative z-10">
-          {profileData.coverImage}
-        </span>
+        {getImageUrl(profileData.coverImage) ? (
+          <img
+            src={getImageUrl(profileData.coverImage)}
+            alt="Cover"
+            className="w-full h-full object-cover"
+          />
+        ) : (
+          <span className="transform group-hover:scale-110 transition-transform duration-500 relative z-10">
+            {profileData.coverImage || '🎨'}
+          </span>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 md:gap-6 mb-6 md:mb-8">
         <div className="flex-shrink-0 mx-auto md:mx-0">
-          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-5xl md:text-6xl shadow-lg shadow-[#7C5FFF]/30 transform hover:scale-110 transition-all duration-300">
-            {profileData.avatar}
+          <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-5xl md:text-6xl shadow-lg shadow-[#7C5FFF]/30 transform hover:scale-110 transition-all duration-300 overflow-hidden">
+            {getImageUrl(profileData.avatar) ? (
+              <img
+                src={getImageUrl(profileData.avatar)}
+                alt="Avatar"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{profileData.avatar || '👤'}</span>
+            )}
           </div>
         </div>
 

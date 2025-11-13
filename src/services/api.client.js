@@ -51,6 +51,13 @@ apiClient.interceptors.response.use(
       });
     }
 
+    // Unwrap standardized API responses automatically
+    // Backend sends: { success: true, message: "...", data: {...} }
+    // We return just the data portion to keep frontend code simple
+    if (response.data && response.data.success !== undefined && response.data.data !== undefined) {
+      return { ...response, data: response.data.data };
+    }
+
     return response;
   },
   async (error) => {
@@ -66,7 +73,13 @@ apiClient.interceptors.response.use(
     }
 
     // Handle 401 Unauthorized - Try to refresh token
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // BUT: Don't try to refresh for login, register, or logout endpoints
+    const isAuthEndpoint = originalRequest.url?.includes('/auth/login') ||
+                          originalRequest.url?.includes('/auth/register') ||
+                          originalRequest.url?.includes('/auth/logout') ||
+                          originalRequest.url?.includes('/auth/refresh');
+
+    if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       originalRequest._retry = true;
 
       try {
@@ -95,15 +108,10 @@ apiClient.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${token}`;
         return apiClient(originalRequest);
       } catch (refreshError) {
-        // Refresh failed - clear tokens and redirect to login
-        localStorage.removeItem(API_CONFIG.tokenKey);
-        localStorage.removeItem(API_CONFIG.refreshTokenKey);
-        localStorage.removeItem('user');
-
-        // Redirect to login page
-        if (typeof window !== 'undefined') {
-          window.location.href = '/login';
-        }
+        // Refresh failed - dispatch a global event to trigger logout
+        // This is better than a hard redirect, as it allows the AuthContext
+        // to handle the logout gracefully and clean up state.
+        window.dispatchEvent(new Event('auth-error'));
 
         return Promise.reject(refreshError);
       }
@@ -150,7 +158,7 @@ export const api = {
 // Helper for file uploads
 export const uploadFile = async (url, file, onUploadProgress) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('image', file);
 
   return apiClient.post(url, formData, {
     headers: {

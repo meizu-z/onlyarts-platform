@@ -13,7 +13,26 @@ import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
 
 // Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = true;
+const USE_DEMO_MODE = false;
+
+// Helper function to format time ago
+const formatTimeAgo = (dateString) => {
+  const date = new Date(dateString);
+  const now = new Date();
+  const seconds = Math.floor((now - date) / 1000);
+
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 4) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  return `${months}mo ago`;
+};
 
 const Dashboard = () => {
   const { user } = useAuth();
@@ -74,17 +93,27 @@ const Dashboard = () => {
         limit: pagination.pageSize,
       };
 
-      let response;
-      if (activeTab === 'following') {
-        response = await dashboardService.getFollowingFeed(params);
-      } else if (activeTab === 'trending') {
-        response = await dashboardService.getTrending(params);
-      } else {
-        response = await dashboardService.getFeed(params);
-      }
+      // For now, use artworkService.getArtworks for all tabs
+      // TODO: Implement dashboard-specific endpoints for following/trending
+      const response = await artworkService.getArtworks(params);
 
-      setArtworks(response.artworks || response.data || response);
-      setTotalItems(response.total || response.artworks?.length || 0);
+      // Transform backend data to match frontend format
+      const transformedArtworks = (response.artworks || []).map(artwork => ({
+        id: artwork.id,
+        title: artwork.title,
+        artist: `@${artwork.artist_username}`,
+        artistName: artwork.artist_name,
+        likes: artwork.like_count || 0,
+        comments: artwork.comment_count || 0,
+        image: artwork.primary_image || '🎨',
+        isFollowing: false,
+        timeAgo: formatTimeAgo(artwork.created_at),
+        price: artwork.price,
+        category: artwork.category
+      }));
+
+      setArtworks(transformedArtworks);
+      setTotalItems(response.data?.pagination?.total || response.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching feed:', err);
       setError(err.message || 'Failed to load feed. Please try again.');

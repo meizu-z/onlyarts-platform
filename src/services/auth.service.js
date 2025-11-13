@@ -33,10 +33,13 @@ export const authService = {
 
   /**
    * Logout user
+   * @param {string} refreshToken - Optional refresh token to revoke
    * @returns {Promise<void>}
    */
-  logout: async () => {
-    const response = await api.post(API_ENDPOINTS.auth.logout);
+  logout: async (refreshToken = null) => {
+    const response = await api.post(API_ENDPOINTS.auth.logout, {
+      refreshToken,
+    });
     return response.data;
   },
 

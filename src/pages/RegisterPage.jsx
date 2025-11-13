@@ -50,8 +50,10 @@ const RegisterPage = () => {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
+    } else if (formData.password.length < 8) {
+      newErrors.password = 'Password must be at least 8 characters';
+    } else if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase, lowercase, and number';
     }
 
     if (!formData.confirmPassword) {
@@ -83,7 +85,7 @@ const RegisterPage = () => {
         email: formData.email,
         username: formData.username,
         password: formData.password,
-        displayName: formData.username,
+        fullName: formData.username,
       });
 
       if (result.success) {

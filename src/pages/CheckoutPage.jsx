@@ -9,8 +9,9 @@ import { APIError } from '../components/ui/ErrorStates';
 import { cartService, mockCart } from '../services/cart.service';
 import { checkoutService, mockPaymentMethods, mockOrder } from '../services/checkout.service';
 import { useToast } from '../components/ui/Toast';
+import { api } from '../services/api.client';
 
-const USE_DEMO_MODE = true; // Set to false when backend is ready
+const USE_DEMO_MODE = false; // Connected to backend API
 
 const CheckoutPage = () => {
   const toast = useToast();
@@ -23,7 +24,8 @@ const CheckoutPage = () => {
 
   const [cart, setCart] = useState(null);
   const [paymentMethods, setPaymentMethods] = useState([]);
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card'); // Default to card
+  const [createdOrder, setCreatedOrder] = useState(null);
 
   const [step, setStep] = useState(1); // 1: Review, 2: Payment, 3: Confirmation
 
@@ -58,20 +60,35 @@ const CheckoutPage = () => {
         return;
       }
 
-      // REAL API MODE - Parallel fetching
-      const [cartData, paymentMethodsData] = await Promise.all([
-        cartService.getCart(),
-        checkoutService.getPaymentMethods(),
-      ]);
+      // REAL API MODE - Get cart data
+      const cartResponse = await cartService.getCart();
+      const cartData = cartResponse.data || cartResponse;
 
-      setCart(cartData.cart || cartData);
-      setPaymentMethods(paymentMethodsData.paymentMethods || paymentMethodsData);
+      // Transform cart data
+      const transformedCart = {
+        items: (cartData.items || []).map(item => ({
+          id: item.id,
+          artwork: {
+            id: item.artwork_id,
+            title: item.title,
+            image: '🎨',
+            artist: `@${item.artist_username}`,
+          },
+          quantity: item.quantity,
+          price: parseFloat(item.current_price),
+          title: item.title,
+        })),
+        subtotal: parseFloat(cartData.summary?.subtotal || 0),
+        shipping: 50, // Fixed shipping for now
+        tax: parseFloat(cartData.summary?.subtotal || 0) * 0.1,
+        discount: 0,
+        total: (parseFloat(cartData.summary?.subtotal || 0) * 1.1) + 50,
+      };
 
-      // Select default payment method
-      const defaultMethod = (paymentMethodsData.paymentMethods || paymentMethodsData).find(pm => pm.isDefault);
-      if (defaultMethod) {
-        setSelectedPaymentMethod(defaultMethod.id);
-      }
+      setCart(transformedCart);
+      // For now, use mock payment methods (payment method management not implemented yet)
+      setPaymentMethods(mockPaymentMethods);
+      setSelectedPaymentMethod(mockPaymentMethods[0].id);
     } catch (err) {
       setError(err.message || 'Failed to load checkout. Please try again.');
     } finally {
@@ -119,19 +136,28 @@ const CheckoutPage = () => {
         return;
       }
 
-      // REAL API MODE
-      const orderResponse = await checkoutService.createOrder(orderData);
-      const order = orderResponse.order || orderResponse;
+      // REAL API MODE - Create order from backend
+      // Backend expects: paymentMethod, shippingAddress, notes
+      const backendOrderData = {
+        paymentMethod: 'card', // Backend accepts: 'card', 'wallet', 'bank_transfer'
+        shippingAddress: {
+          street: shippingInfo.street,
+          city: shippingInfo.city,
+          state: shippingInfo.state,
+          zip: shippingInfo.zip,
+          country: shippingInfo.country,
+        },
+        notes: `Order from ${shippingInfo.name} (${shippingInfo.email})`,
+      };
 
-      // Process payment
-      await checkoutService.processPayment(order.id, {
-        paymentMethodId: selectedPaymentMethod,
-      });
+      const orderResponse = await api.post('/orders', backendOrderData);
+      const order = orderResponse.data?.data || orderResponse.data;
 
+      setCreatedOrder(order);
       toast.success('Order placed successfully! 🎉');
       setStep(3);
 
-      // Clear cart
+      // Clear cart after successful order
       await cartService.clearCart();
     } catch (err) {
       toast.error(err.message || 'Failed to place order. Please try again.');
@@ -353,14 +379,27 @@ const CheckoutPage = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="text-2xl">💳</div>
+                          <div className="text-2xl">
+                            {method.type === 'paypal' ? '🅿️' : '💳'}
+                          </div>
                           <div>
-                            <p className="text-[#f2e9dd] font-medium">
-                              {method.details.brand} •••• {method.details.last4}
-                            </p>
-                            <p className="text-[#f2e9dd]/60 text-sm">
-                              Expires {method.details.expiryMonth}/{method.details.expiryYear}
-                            </p>
+                            {method.type === 'card' ? (
+                              <>
+                                <p className="text-[#f2e9dd] font-medium">
+                                  {method.details.brand} •••• {method.details.last4}
+                                </p>
+                                <p className="text-[#f2e9dd]/60 text-sm">
+                                  Expires {method.details.expiryMonth}/{method.details.expiryYear}
+                                </p>
+                              </>
+                            ) : method.type === 'paypal' ? (
+                              <>
+                                <p className="text-[#f2e9dd] font-medium">PayPal</p>
+                                <p className="text-[#f2e9dd]/60 text-sm">
+                                  {method.details.email}
+                                </p>
+                              </>
+                            ) : null}
                           </div>
                         </div>
                         {method.isDefault && (
@@ -447,7 +486,7 @@ const CheckoutPage = () => {
               </p>
               <div className="bg-[#1a1a1a] rounded-lg p-4 mb-6">
                 <p className="text-[#f2e9dd]/60 text-sm">Order Number</p>
-                <p className="text-[#f2e9dd] font-bold text-lg">{mockOrder.orderNumber}</p>
+                <p className="text-[#f2e9dd] font-bold text-lg">{createdOrder?.order_number || 'Processing...'}</p>
               </div>
               <p className="text-[#f2e9dd]/60 text-sm mb-6">
                 A confirmation email has been sent to {shippingInfo.email}

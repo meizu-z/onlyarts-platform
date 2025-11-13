@@ -38,6 +38,15 @@ import MyOrdersPage from './pages/MyOrdersPage';
 import SalesDashboardPage from './pages/SalesDashboardPage';
 import CommissionRequestPage from './pages/CommissionRequestPage';
 
+// Admin Pages
+import AdminRoute from './components/AdminRoute';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminUsers from './pages/admin/AdminUsers';
+import AdminArtworks from './pages/admin/AdminArtworks';
+import AdminOrders from './pages/admin/AdminOrders';
+import AdminAnalytics from './pages/admin/AdminAnalytics';
+import AdminHistory from './pages/admin/AdminHistory';
+
 // This component handles the initial redirection logic based on auth state.
 const RootRedirect = () => {
   const { isAuthenticated, isLoading } = useAuth();
@@ -139,6 +148,23 @@ const App = () => {
                 <Route path="/orders" element={<MyOrdersPage />} />
                 <Route path="/sales" element={<SalesDashboardPage />} />
                 <Route path="/request-commission" element={<CommissionRequestPage />} />
+              </Route>
+
+              {/* Admin routes - protected by AdminRoute guard */}
+              <Route
+                element={
+                  <AdminRoute>
+                    <MainLayout />
+                  </AdminRoute>
+                }
+              >
+                <Route path="/admin" element={<AdminDashboard />} />
+                <Route path="/admin/dashboard" element={<AdminDashboard />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+                <Route path="/admin/artworks" element={<AdminArtworks />} />
+                <Route path="/admin/orders" element={<AdminOrders />} />
+                <Route path="/admin/analytics" element={<AdminAnalytics />} />
+                <Route path="/admin/history" element={<AdminHistory />} />
               </Route>
 
               {/* A catch-all route for any undefined paths. */}

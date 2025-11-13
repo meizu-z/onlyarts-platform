@@ -10,7 +10,7 @@ import { checkoutService } from '../services/checkout.service';
 import { useToast } from '../components/ui/Toast';
 import { Trash2, ShoppingBag } from 'lucide-react';
 
-const USE_DEMO_MODE = true; // Set to false when backend is ready
+const USE_DEMO_MODE = false; // Connected to backend API
 
 const CartPage = () => {
   const navigate = useNavigate();
@@ -49,7 +49,33 @@ const CartPage = () => {
 
       // REAL API MODE
       const response = await cartService.getCart();
-      setCart(response.cart || response);
+      const cartData = response.data || response;
+
+      // Transform backend data to match frontend format
+      const transformedCart = {
+        items: (cartData.items || []).map(item => ({
+          id: item.id,
+          artwork: {
+            id: item.artwork_id,
+            title: item.title,
+            image: '🎨', // Placeholder
+            artist: `@${item.artist_username}`,
+            artistName: item.artist_name,
+          },
+          quantity: item.quantity,
+          price: parseFloat(item.current_price),
+          priceAtAdd: parseFloat(item.price_at_add),
+          priceChanged: item.price_changed,
+          stock: item.stock_quantity,
+        })),
+        subtotal: parseFloat(cartData.summary?.subtotal || 0),
+        shipping: 0, // Calculate if needed
+        tax: parseFloat(cartData.summary?.subtotal || 0) * 0.1, // 10% tax
+        discount: 0,
+        total: parseFloat(cartData.summary?.subtotal || 0) * 1.1, // subtotal + tax
+      };
+
+      setCart(transformedCart);
     } catch (err) {
       setError(err.message || 'Failed to load cart. Please try again.');
     } finally {
@@ -114,10 +140,11 @@ const CartPage = () => {
       }
 
       // REAL API MODE
-      const response = await cartService.removeItem(itemId);
-      setCart(response.cart || response);
+      await cartService.removeItem(itemId);
       removeFromCart(itemId);
       toast.success('Item removed from cart');
+      // Refresh cart from backend
+      await fetchCart();
     } catch (err) {
       // Revert on error
       setCart(oldCart);
@@ -155,9 +182,10 @@ const CartPage = () => {
       }
 
       // REAL API MODE
-      const response = await cartService.updateQuantity(itemId, newQuantity);
-      setCart(response.cart || response);
+      await cartService.updateQuantity(itemId, newQuantity);
       toast.success('Quantity updated');
+      // Refresh cart from backend
+      await fetchCart();
     } catch (err) {
       // Revert on error
       setCart(oldCart);

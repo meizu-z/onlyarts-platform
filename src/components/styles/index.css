@@ -447,9 +447,253 @@ body {
 /* Keep gradient text visible in light mode */
 .light .gradient-text,
 .light .bg-gradient-to-r.from-purple-400,
-.light .bg-gradient-to-r.from-\[\#7C5FFF\],
-.light [class*="text-purple"],
-.light [class*="text-pink"] {
+.light .bg-gradient-to-r.from-\[\#7C5FFF\] {
   /* Keep gradient colors vibrant */
   filter: saturate(1.2) brightness(0.8);
+}
+
+/* ============================================
+   ADMIN PAGES - Light Mode Support
+   ============================================ */
+
+/* Admin page backgrounds */
+.light .bg-white {
+  background-color: #ffffff !important;
+}
+
+.light .bg-gray-50 {
+  background-color: #f9f4ed !important;
+}
+
+.light .bg-gray-100 {
+  background-color: #f0e9dd !important;
+}
+
+.light .bg-gray-900 {
+  background-color: #ffffff !important;
+}
+
+/* Admin text colors */
+.light .text-gray-700 {
+  color: #1a1a1a !important;
+}
+
+.light .text-gray-800 {
+  color: #000000 !important;
+}
+
+.light .text-gray-900 {
+  color: #000000 !important;
+}
+
+/* Admin borders */
+.light .border-gray-200 {
+  border-color: rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Admin card warm beige backgrounds */
+.light .bg-\[\#fdf8f3\] {
+  background-color: #fdf8f3 !important;
+}
+
+.light .bg-\[\#f9f4ed\] {
+  background-color: #f9f4ed !important;
+}
+
+.light .bg-\[\#f5ede3\] {
+  background-color: #f5ede3 !important;
+}
+
+/* Admin hover backgrounds */
+.light .hover\:bg-\[\#f5ede3\]:hover {
+  background-color: #f5ede3 !important;
+}
+
+/* Light mode - override dark mode gradients */
+.light .dark\:bg-gradient-to-br {
+  background-image: none !important;
+}
+
+.light .bg-gradient-to-br {
+  background-image: none !important;
+}
+
+/* Admin text gray-300 in light mode */
+.light .text-gray-300 {
+  color: #1a1a1a !important;
+}
+
+.light .text-gray-500 {
+  color: #333333 !important;
+}
+
+/* Quick Actions buttons - darker text in light mode */
+.light .text-blue-600 {
+  color: #1e40af !important;
+}
+
+.light .text-purple-600 {
+  color: #7c3aed !important;
+}
+
+.light .text-green-600 {
+  color: #059669 !important;
+}
+
+.light .text-orange-600 {
+  color: #c2410c !important;
+}
+
+.light .text-indigo-600 {
+  color: #4f46e5 !important;
+}
+
+/* Quick Actions button backgrounds in light mode */
+.light .bg-blue-50 {
+  background-color: #dbeafe !important;
+}
+
+.light .bg-purple-50 {
+  background-color: #f5f3ff !important;
+}
+
+.light .bg-green-50 {
+  background-color: #d1fae5 !important;
+}
+
+.light .bg-orange-50 {
+  background-color: #ffedd5 !important;
+}
+
+.light .bg-indigo-50 {
+  background-color: #e0e7ff !important;
+}
+
+/* Action buttons - Feature/Unfeature buttons */
+.light .text-yellow-700 {
+  color: #a16207 !important;
+}
+
+.light .text-purple-700 {
+  color: #6d28d9 !important;
+}
+
+.light .bg-yellow-50 {
+  background-color: #fef3c7 !important;
+}
+
+.light .hover\:bg-yellow-100:hover {
+  background-color: #fde68a !important;
+}
+
+.light .hover\:bg-purple-100:hover {
+  background-color: #ede9fe !important;
+}
+
+/* Delete and danger buttons */
+.light .text-red-600 {
+  color: #dc2626 !important;
+}
+
+.light .text-red-400 {
+  color: #dc2626 !important;
+}
+
+.light .bg-red-50 {
+  background-color: #fee2e2 !important;
+}
+
+.light .hover\:bg-red-100:hover {
+  background-color: #fecaca !important;
+}
+
+/* Back button and links */
+.light .text-purple-400 {
+  color: #7c3aed !important;
+}
+
+.light .hover\:text-purple-300:hover {
+  color: #6d28d9 !important;
+}
+
+/* Pagination and navigation buttons */
+.light .bg-gray-700 {
+  background-color: #ffffff !important;
+}
+
+.light .hover\:bg-gray-600:hover {
+  background-color: #f3f4f6 !important;
+}
+
+.light .border-gray-600 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+.light .border-gray-300 {
+  border-color: rgba(0, 0, 0, 0.2) !important;
+}
+
+/* Status badges */
+.light .bg-green-100 {
+  background-color: #d1fae5 !important;
+}
+
+.light .text-green-800 {
+  color: #065f46 !important;
+}
+
+.light .text-green-400 {
+  color: #059669 !important;
+}
+
+.light .bg-yellow-100 {
+  background-color: #fef3c7 !important;
+}
+
+.light .text-yellow-800 {
+  color: #92400e !important;
+}
+
+.light .text-yellow-400 {
+  color: #d97706 !important;
+}
+
+/* Filter section colors */
+.light .bg-gray-600 {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Ensure stat card icon colors remain visible in light mode */
+.light .text-blue-600 {
+  color: #2563eb !important;
+}
+
+.light .text-emerald-600 {
+  color: #059669 !important;
+}
+
+.light .text-cyan-600 {
+  color: #0891b2 !important;
+}
+
+.light .text-pink-600 {
+  color: #db2777 !important;
+}
+
+/* Override the filter on stat card icons specifically */
+.light .bg-white\/50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  filter: none !important;
+}
+
+/* Ensure icon containers keep their solid colors in light mode */
+.light [class*="text-purple"],
+.light [class*="text-pink"],
+.light [class*="text-blue"],
+.light [class*="text-green"],
+.light [class*="text-orange"],
+.light [class*="text-yellow"],
+.light [class*="text-cyan"],
+.light [class*="text-emerald"] {
+  filter: none !important;
 }
