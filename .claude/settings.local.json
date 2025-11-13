@@ -42,7 +42,8 @@
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"\nUSE onlyarts;\n\n-- Update admin account\nUPDATE users \nSET password_hash = ''$2b$10$fMJ1m.zQA/t9PZRSB0ysbekn2NtE92Mrt2bYiwEeaRj6xd24Frtaa'',\n    role = ''admin''\nWHERE email = ''admin@test.com'';\n\n-- Update free account\nUPDATE users \nSET password_hash = ''$2b$10$yTCdxliN.h2/ksYf50.gjeRmGKQaEqzYIfQJ6N1OVCcZKDKNOhmJ.'',\n    subscription_tier = ''free''\nWHERE email = ''free@test.com'';\n\n-- Update basic (was plus) account\nUPDATE users \nSET password_hash = ''$2b$10$yUinfvgZqu3PvHTSaaBZxOL0R2BEIcYIlZu6Sv0CU.9wPmpucrrEi'',\n    subscription_tier = ''basic'',\n    username = ''userbasic''\nWHERE email = ''plus@test.com'';\n\n-- Update premium account\nUPDATE users \nSET password_hash = ''$2b$10$C2xseCUeazDENlLcA.U4g.1eiWZ5cqV3CDy74QujZ6pBCDAzA6/2a'',\n    subscription_tier = ''premium''\nWHERE email = ''premium@test.com'';\n\n-- Show updated accounts\nSELECT id, username, email, role, subscription_tier, ''password listed below'' as note FROM users WHERE email IN (''admin@test.com'', ''free@test.com'', ''plus@test.com'', ''premium@test.com'');\n\")",
       "Bash(git add:*)",
       "Bash(git commit:*)",
-      "Bash(.gitignore)"
+      "Bash(.gitignore)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; DELETE FROM cart_items; SELECT ''Cart cleared successfully'' as status;\")"
     ],
     "deny": [],
     "ask": []
