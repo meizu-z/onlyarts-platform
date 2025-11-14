@@ -101,7 +101,8 @@ exports.getArtworkById = asyncHandler(async (req, res, next) => {
   const artworkResult = await query(
     `SELECT a.*,
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
-            u.profile_image as artist_image, u.bio as artist_bio
+            u.profile_image as artist_image, u.bio as artist_bio,
+            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE a.id = ? AND (a.status = 'published' OR a.artist_id = ?)`,
@@ -205,11 +206,29 @@ exports.createArtwork = asyncHandler(async (req, res, next) => {
   // Handle image upload if file was provided
   if (req.file) {
     try {
-      const { uploadImage } = require('../config/cloudinary');
       const fs = require('fs').promises;
+      let imageUrl = null;
+      let cloudinaryPublicId = null;
 
-      // Upload to Cloudinary
-      const uploadResult = await uploadImage(req.file.path, `onlyarts/artworks/${artworkId}`);
+      // Try Cloudinary upload if credentials are configured
+      if (process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET) {
+        try {
+          const { uploadImage } = require('../config/cloudinary');
+          const uploadResult = await uploadImage(req.file.path, `onlyarts/artworks/${artworkId}`);
+          imageUrl = uploadResult.url;
+          cloudinaryPublicId = uploadResult.publicId;
+
+          // Delete local file after successful Cloudinary upload
+          await fs.unlink(req.file.path);
+        } catch (cloudinaryError) {
+          console.error('Cloudinary upload failed, using local storage:', cloudinaryError.message);
+          // Fall back to local storage
+          imageUrl = `/uploads/${req.file.filename}`;
+        }
+      } else {
+        // Use local file storage if Cloudinary is not configured
+        imageUrl = `/uploads/${req.file.filename}`;
+      }
 
       // Save media record to database
       await query(
@@ -218,16 +237,13 @@ exports.createArtwork = asyncHandler(async (req, res, next) => {
          VALUES (?, ?, ?, ?, ?, ?)`,
         [
           artworkId,
-          uploadResult.url,
+          imageUrl,
           'image',
           1,
           true,
-          uploadResult.publicId
+          cloudinaryPublicId
         ]
       );
-
-      // Delete local file after upload
-      await fs.unlink(req.file.path);
     } catch (error) {
       console.error('Error uploading artwork image:', error);
       // Don't fail the whole request if image upload fails

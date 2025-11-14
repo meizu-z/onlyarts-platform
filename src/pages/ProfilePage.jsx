@@ -317,11 +317,19 @@ const ProfilePage = () => {
                     >
                       <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
                         <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                          {artwork.image}
-                        </span>
+                        {getImageUrl(artwork.image) ? (
+                          <img
+                            src={getImageUrl(artwork.image)}
+                            alt={artwork.title}
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                            {artwork.image}
+                          </span>
+                        )}
                         {artwork.forSale && (
-                          <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
+                          <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold z-10">
                             For Sale
                           </div>
                         )}
@@ -400,9 +408,17 @@ const ProfilePage = () => {
               >
                 <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                    {artwork.image}
-                  </span>
+                  {getImageUrl(artwork.image) ? (
+                    <img
+                      src={getImageUrl(artwork.image)}
+                      alt={artwork.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {artwork.image}
+                    </span>
+                  )}
                 </div>
                 <div className="p-3 md:p-4">
                   <h3 className="font-bold text-sm md:text-base text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">

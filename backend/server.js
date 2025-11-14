@@ -27,8 +27,10 @@ const PORT = process.env.PORT || 5000;
 // MIDDLEWARE
 // ==========================================
 
-// Security headers
-app.use(helmet());
+// Security headers with CORS-friendly configuration for images
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 
 // CORS configuration
 app.use(

@@ -10,6 +10,7 @@ import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { artworkService, mockArtworkDetail, mockArtworkComments } from '../services/artwork.service';
 import { userService } from '../services/user.service';
+import { API_CONFIG } from '../config/api.config';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -31,6 +32,19 @@ const formatTimeAgo = (dateString) => {
   if (weeks < 4) return `${weeks}w ago`;
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
+};
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  if (imagePath.startsWith('/')) {
+    const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${serverBaseUrl}${imagePath}`;
+  }
+  return null;
 };
 
 const ArtworkPage = () => {
@@ -171,9 +185,21 @@ const ArtworkPage = () => {
       // REAL API MODE: Call backend
       const response = await artworkService.addComment(id, commentText);
 
+      // Transform the backend response to frontend format
+      const backendComment = response.data || response.comment || response;
+      const transformedComment = {
+        id: backendComment.id,
+        user: `@${backendComment.username}`,
+        userName: backendComment.full_name,
+        userAvatar: backendComment.profile_image,
+        text: backendComment.content,
+        timestamp: formatTimeAgo(backendComment.created_at),
+        createdAt: backendComment.created_at,
+      };
+
       // Replace temp comment with real comment from API
       setComments(prev => prev.map(c =>
-        c.id === tempComment.id ? response.comment : c
+        c.id === tempComment.id ? transformedComment : c
       ));
 
       toast.success('Comment posted!');
@@ -346,14 +372,14 @@ const ArtworkPage = () => {
 
   return (
     <div className="flex-1 px-4 py-4 md:p-6">
-      <div className="mb-6 md:mb-8 grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8">
+      <div className="mb-6 md:mb-8 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 md:gap-8">
         <div>
-          <Card noPadding>
-            <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-9xl">
-              {artwork.imageUrl ? (
-                <img src={artwork.imageUrl} alt={artwork.title} className="w-full h-full object-cover" />
+          <Card noPadding className="max-w-2xl mx-auto lg:mx-0">
+            <div className="aspect-[4/5] md:aspect-[3/4] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-8xl overflow-hidden">
+              {getImageUrl(artwork.imageUrl) ? (
+                <img src={getImageUrl(artwork.imageUrl)} alt={artwork.title} className="w-full h-full object-cover" />
               ) : (
-                artwork.image
+                <span className="text-6xl md:text-8xl">{artwork.image}</span>
               )}
             </div>
           </Card>

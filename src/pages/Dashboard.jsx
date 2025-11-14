@@ -7,6 +7,7 @@ import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { dashboardService, mockDashboardData, artworkService } from '../services';
 import { usePagination } from '../hooks/usePagination';
+import { API_CONFIG } from '../config/api.config';
 import Pagination from '../components/common/Pagination';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
@@ -32,6 +33,19 @@ const formatTimeAgo = (dateString) => {
   if (weeks < 4) return `${weeks}w ago`;
   const months = Math.floor(days / 30);
   return `${months}mo ago`;
+};
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  if (imagePath.startsWith('/')) {
+    const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${serverBaseUrl}${imagePath}`;
+  }
+  return null;
 };
 
 const Dashboard = () => {
@@ -331,11 +345,19 @@ const Dashboard = () => {
                     <div className="absolute top-2 left-2 md:top-3 md:left-3 z-10 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-2 md:px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1"><Sparkles size={12} /> Recommended</div>
                 )}
                 <div className="relative aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-8xl overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3 md:pb-4 gap-2 md:gap-4">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end justify-center pb-3 md:pb-4 gap-2 md:gap-4 z-10">
                     <button className="px-3 md:px-4 py-1.5 md:py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs md:text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" onClick={(e) => { e.stopPropagation(); handleArtworkClick(artwork); }}>View</button>
                     <button className="px-3 md:px-4 py-1.5 md:py-2 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs md:text-sm font-medium hover:bg-white/30 transition-all transform translate-y-4 group-hover:translate-y-0" style={{ transitionDelay: '50ms' }} onClick={(e) => handleShare(e, artwork)}>Share</button>
                   </div>
-                  <span className="transform group-hover:scale-110 transition-transform duration-300">{artwork.image}</span>
+                  {getImageUrl(artwork.image) ? (
+                    <img
+                      src={getImageUrl(artwork.image)}
+                      alt={artwork.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <span className="transform group-hover:scale-110 transition-transform duration-300">{artwork.image}</span>
+                  )}
                 </div>
                 <div className="p-3 md:p-4">
                   <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">{artwork.title}</h3>

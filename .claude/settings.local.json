@@ -43,7 +43,11 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(.gitignore)",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; DELETE FROM cart_items; SELECT ''Cart cleared successfully'' as status;\")"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; DELETE FROM cart_items; SELECT ''Cart cleared successfully'' as status;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT id, title, artist_id, (SELECT media_url FROM artwork_media WHERE artwork_id = artworks.id AND is_primary = TRUE LIMIT 1) as image_url FROM artworks ORDER BY id DESC LIMIT 3;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT a.id, a.title, a.artist_id, am.media_url, am.media_type FROM artworks a LEFT JOIN artwork_media am ON a.id = am.artwork_id WHERE am.is_primary = TRUE OR am.is_primary IS NULL ORDER BY a.id DESC LIMIT 5;\")",
+      "Bash(dir:*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT a.id, a.title, am.media_url FROM artworks a LEFT JOIN artwork_media am ON a.id = am.artwork_id WHERE a.title LIKE ''%testing%'' ORDER BY a.id DESC;\")"
     ],
     "deny": [],
     "ask": []

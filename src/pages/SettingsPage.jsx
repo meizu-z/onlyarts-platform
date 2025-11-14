@@ -6,16 +6,18 @@ import { InlineError } from '../components/ui/ErrorStates';
 import { LoadingPaint } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { settingsService, mockSettings } from '../services/settings.service';
+import { API_CONFIG } from '../config/api.config';
+import { api } from '../services/api.client';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
-import { Moon, Sun, Monitor } from 'lucide-react';
+import { Moon, Sun, Monitor, Upload, Camera } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
 
 const SettingsPage = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUser } = useAuth();
   const toast = useToast();
   const [activeSection, setActiveSection] = useState('account');
   const [theme, setTheme] = useState('dark');
@@ -26,6 +28,12 @@ const SettingsPage = () => {
   const [settings, setSettings] = useState(null);
   const [privacySettings, setPrivacySettings] = useState({});
   const [notificationSettings, setNotificationSettings] = useState({});
+
+  // Image upload state
+  const [profileImagePreview, setProfileImagePreview] = useState(null);
+  const [coverImagePreview, setCoverImagePreview] = useState(null);
+  const [uploadingProfile, setUploadingProfile] = useState(false);
+  const [uploadingCover, setUploadingCover] = useState(false);
 
   // Form validation for account settings
   const { values, errors, touched, handleChange, handleBlur, validateAll, setValues } = useFormValidation(
@@ -213,6 +221,122 @@ const SettingsPage = () => {
     }
   };
 
+  // Helper function to get full image URL
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+    if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+      return imagePath;
+    }
+    const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${serverBaseUrl}${imagePath}`;
+  };
+
+  // Handle profile image upload
+  const handleProfileImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setProfileImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setUploadingProfile(true);
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post('/users/upload/avatar', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const imageUrl = response.data?.url || response.url;
+      toast.success('Profile picture updated successfully!');
+
+      // Update user context with new image
+      if (updateUser) {
+        updateUser({ ...user, profile_image: imageUrl });
+      }
+
+      // Reset preview after successful upload
+      setTimeout(() => setProfileImagePreview(null), 1000);
+    } catch (error) {
+      console.error('Error uploading profile image:', error);
+      toast.error('Failed to upload profile picture. Please try again.');
+      setProfileImagePreview(null);
+    } finally {
+      setUploadingProfile(false);
+    }
+  };
+
+  // Handle cover image upload
+  const handleCoverImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be less than 10MB');
+      return;
+    }
+
+    // Create preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setCoverImagePreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+
+    try {
+      setUploadingCover(true);
+
+      const formData = new FormData();
+      formData.append('image', file);
+
+      const response = await api.post('/users/upload/cover', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+
+      const imageUrl = response.data?.url || response.url;
+      toast.success('Cover image updated successfully!');
+
+      // Update user context with new image
+      if (updateUser) {
+        updateUser({ ...user, cover_image: imageUrl });
+      }
+
+      // Reset preview after successful upload
+      setTimeout(() => setCoverImagePreview(null), 1000);
+    } catch (error) {
+      console.error('Error uploading cover image:', error);
+      toast.error('Failed to upload cover image. Please try again.');
+      setCoverImagePreview(null);
+    } finally {
+      setUploadingCover(false);
+    }
+  };
+
   const themeOptions = [
     {
       value: 'light',
@@ -285,7 +409,88 @@ const SettingsPage = () => {
             {activeSection === 'account' && (
               <div className="space-y-4 md:space-y-6">
                 <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Account Settings</h2>
-                
+
+                {/* Profile & Cover Images */}
+                <div className="space-y-6 pb-6 border-b border-white/10">
+                  {/* Profile Picture */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#f2e9dd] mb-3">Profile Picture</label>
+                    <div className="flex items-center gap-4">
+                      <div className="relative">
+                        <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-4xl overflow-hidden shadow-lg">
+                          {profileImagePreview ? (
+                            <img src={profileImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                          ) : getImageUrl(user?.profile_image) ? (
+                            <img src={getImageUrl(user?.profile_image)} alt="Profile" className="w-full h-full object-cover" />
+                          ) : (
+                            <span>{user?.avatar || '👤'}</span>
+                          )}
+                        </div>
+                        {uploadingProfile && (
+                          <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
+                            <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white rounded-lg hover:shadow-lg hover:shadow-[#7C5FFF]/30 transition-all duration-300 transform hover:scale-105">
+                          <Camera size={18} />
+                          <span className="text-sm font-semibold">
+                            {uploadingProfile ? 'Uploading...' : 'Change Picture'}
+                          </span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={handleProfileImageUpload}
+                            disabled={uploadingProfile}
+                            className="hidden"
+                          />
+                        </label>
+                        <p className="text-xs text-[#f2e9dd]/50 mt-2">PNG, JPG up to 10MB</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cover Image */}
+                  <div>
+                    <label className="block text-sm font-semibold text-[#f2e9dd] mb-3">Cover Image</label>
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <div className="aspect-[4/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-xl overflow-hidden relative">
+                          {coverImagePreview ? (
+                            <img src={coverImagePreview} alt="Preview" className="w-full h-full object-cover" />
+                          ) : getImageUrl(user?.cover_image) ? (
+                            <img src={getImageUrl(user?.cover_image)} alt="Cover" className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-6xl">
+                              {user?.coverImage || '🎨'}
+                            </div>
+                          )}
+                        </div>
+                        {uploadingCover && (
+                          <div className="absolute inset-0 bg-black/50 rounded-xl flex items-center justify-center">
+                            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                          </div>
+                        )}
+                      </div>
+                      <label className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/20 text-[#f2e9dd] rounded-lg transition-all duration-300 transform hover:scale-105">
+                        <Upload size={18} />
+                        <span className="text-sm font-semibold">
+                          {uploadingCover ? 'Uploading...' : 'Change Cover'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleCoverImageUpload}
+                          disabled={uploadingCover}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-[#f2e9dd]/50">Recommended size: 1920x480px. PNG, JPG up to 10MB</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <div>
                     <label className="block text-sm text-[#f2e9dd]/70 mb-2">Email</label>
