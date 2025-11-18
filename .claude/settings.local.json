@@ -47,7 +47,14 @@
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT id, title, artist_id, (SELECT media_url FROM artwork_media WHERE artwork_id = artworks.id AND is_primary = TRUE LIMIT 1) as image_url FROM artworks ORDER BY id DESC LIMIT 3;\")",
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT a.id, a.title, a.artist_id, am.media_url, am.media_type FROM artworks a LEFT JOIN artwork_media am ON a.id = am.artwork_id WHERE am.is_primary = TRUE OR am.is_primary IS NULL ORDER BY a.id DESC LIMIT 5;\")",
       "Bash(dir:*)",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT a.id, a.title, am.media_url FROM artworks a LEFT JOIN artwork_media am ON a.id = am.artwork_id WHERE a.title LIKE ''%testing%'' ORDER BY a.id DESC;\")"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT a.id, a.title, am.media_url FROM artworks a LEFT JOIN artwork_media am ON a.id = am.artwork_id WHERE a.title LIKE ''%testing%'' ORDER BY a.id DESC;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; UPDATE users SET role = ''admin'' WHERE username = ''testadmin''; SELECT id, username, email, role FROM users WHERE username = ''testadmin'';\")",
+      "Bash(timeout:*)",
+      "Bash(echo:*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\":*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT f.id, follower.username as follower, following.username as following_user, f.created_at FROM follows f JOIN users follower ON f.follower_id = follower.id JOIN users following ON f.following_id = following.id ORDER BY f.created_at DESC LIMIT 10;\")",
+      "Bash(curl:*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; UPDATE users SET subscription_tier = ''premium'' WHERE username = ''testadmin''; SELECT id, username, email, role, subscription_tier FROM users WHERE username = ''testadmin'';\")"
     ],
     "deny": [],
     "ask": []

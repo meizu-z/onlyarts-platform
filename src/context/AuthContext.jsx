@@ -72,16 +72,22 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.login(username, password);
       const { user: userData, accessToken, refreshToken } = response;
 
+      // Normalize user data - backend sends subscription_tier, frontend expects subscription
+      const normalizedUser = {
+        ...userData,
+        subscription: userData.subscription_tier || userData.subscription || 'free',
+      };
+
       // Store user data and tokens
-      setUser(userData);
+      setUser(normalizedUser);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(userData));
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
       localStorage.setItem(API_CONFIG.tokenKey, accessToken);
       if (refreshToken) {
         localStorage.setItem(API_CONFIG.refreshTokenKey, refreshToken);
       }
 
-      return { success: true, user: userData };
+      return { success: true, user: normalizedUser };
     } catch (error) {
       console.error('Login error:', error);
       return {
@@ -116,16 +122,22 @@ export const AuthProvider = ({ children }) => {
       const response = await authService.register(userData);
       const { user: newUser, accessToken, refreshToken } = response;
 
+      // Normalize user data - backend sends subscription_tier, frontend expects subscription
+      const normalizedUser = {
+        ...newUser,
+        subscription: newUser.subscription_tier || newUser.subscription || 'free',
+      };
+
       // Store user data and tokens
-      setUser(newUser);
+      setUser(normalizedUser);
       setIsAuthenticated(true);
-      localStorage.setItem('user', JSON.stringify(newUser));
+      localStorage.setItem('user', JSON.stringify(normalizedUser));
       localStorage.setItem(API_CONFIG.tokenKey, accessToken);
       if (refreshToken) {
         localStorage.setItem(API_CONFIG.refreshTokenKey, refreshToken);
       }
 
-      return { success: true, user: newUser };
+      return { success: true, user: normalizedUser };
     } catch (error) {
       console.error('Registration error:', error);
       return {

@@ -6,6 +6,93 @@
 import axios from 'axios';
 import { API_CONFIG } from '../config/api.config';
 
+// Field mapping configuration: backend (snake_case) -> frontend (camelCase)
+const FIELD_MAPPINGS = {
+  // User fields
+  subscription_tier: 'subscription',
+  profile_image: 'profileImage',
+  cover_image: 'coverImage',
+  full_name: 'fullName',
+  follower_count: 'followers',
+  following_count: 'following',
+  artwork_count: 'artworks',
+  wallet_balance: 'walletBalance',
+  total_earnings: 'totalEarnings',
+  is_active: 'isActive',
+  last_login_at: 'lastLoginAt',
+
+  // Artwork fields
+  artist_id: 'artistId',
+  artist_username: 'artistUsername',
+  artist_name: 'artistName',
+  artist_image: 'artistImage',
+  primary_image: 'primaryImage',
+  like_count: 'likes',
+  view_count: 'views',
+  comment_count: 'comments',
+  is_for_sale: 'isForSale',
+  is_following: 'isFollowing',
+  is_liked: 'isLiked',
+  year_created: 'year',
+  stock_quantity: 'stock',
+  is_original: 'isOriginal',
+
+  // Exhibition fields
+  start_date: 'startDate',
+  end_date: 'endDate',
+  curator_id: 'curatorId',
+  curator_username: 'curatorUsername',
+  curator_name: 'curatorName',
+  curator_image: 'curatorImage',
+  curator_tier: 'curatorTier',
+  is_private: 'isPrivate',
+  artwork_count: 'artworkCount',
+
+  // Common fields
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
+
+  // Share/favorite fields
+  artwork_id: 'artworkId',
+  user_id: 'userId',
+  already_shared: 'alreadyShared',
+
+  // Comment fields
+  commenter_id: 'commenterId',
+  commenter_username: 'commenterUsername',
+  commenter_name: 'commenterName',
+  commenter_image: 'commenterImage',
+};
+
+/**
+ * Recursively normalize object keys from snake_case to camelCase
+ * Keeps both versions for backward compatibility
+ */
+function normalizeKeys(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map(normalizeKeys);
+  }
+
+  if (obj !== null && typeof obj === 'object' && !(obj instanceof Date)) {
+    return Object.keys(obj).reduce((acc, key) => {
+      const normalizedKey = FIELD_MAPPINGS[key] || key;
+      const value = normalizeKeys(obj[key]);
+
+      // Add normalized key
+      acc[normalizedKey] = value;
+
+      // Keep original key for backward compatibility
+      if (FIELD_MAPPINGS[key] && normalizedKey !== key) {
+        acc[key] = value;
+      }
+
+      return acc;
+    }, {});
+  }
+
+  return obj;
+}
+
 // Create axios instance
 const apiClient = axios.create({
   baseURL: API_CONFIG.baseURL,
@@ -55,7 +142,9 @@ apiClient.interceptors.response.use(
     // Backend sends: { success: true, message: "...", data: {...} }
     // We return just the data portion to keep frontend code simple
     if (response.data && response.data.success !== undefined && response.data.data !== undefined) {
-      return { ...response, data: response.data.data };
+      // Normalize field names from snake_case to camelCase
+      const normalizedData = normalizeKeys(response.data.data);
+      return { ...response, data: normalizedData };
     }
 
     return response;

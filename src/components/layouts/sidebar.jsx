@@ -92,7 +92,7 @@ const Sidebar = () => {
               <NavItem to="/dashboard" icon={<Home size={20} />} isHovered={isHovered}>Feed</NavItem>
               <NavItem to="/explore" icon={<Compass size={20} />} isHovered={isHovered}>Explore</NavItem>
               <NavItem to="/livestreams" icon={<Tv size={20} />} isHovered={isHovered}>Livestreams</NavItem>
-              {user?.role !== 'artist' && (
+              {user?.role !== 'artist' && user?.role !== 'admin' && (
                 <NavItem to="/create-artist" icon={<Sparkles size={20} />} isHovered={isHovered}>Be an Artist</NavItem>
               )}
               <NavItem to="/favorites" icon={<Star size={20} />} isHovered={isHovered}>Favorites</NavItem>

@@ -511,15 +511,39 @@ exports.getUserSharedPosts = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
 
-  // For now, return empty array since we don't have a shares table yet
-  // TODO: Implement shares/repost functionality when ready
+  // Get shared posts with artwork details
+  const postsResult = await query(
+    `SELECT s.id as share_id, s.created_at as shared_at,
+            a.id, a.title, a.description, a.price, a.category, a.like_count, a.comment_count,
+            a.view_count, a.is_for_sale, a.created_at,
+            u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
+            u.profile_image as artist_image,
+            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image
+     FROM shares s
+     JOIN artworks a ON s.artwork_id = a.id
+     JOIN users u ON a.artist_id = u.id
+     WHERE s.user_id = ? AND a.status = 'published'
+     ORDER BY s.created_at DESC
+     LIMIT ${limit} OFFSET ${offset}`,
+    [userId]
+  );
+
+  // Get total count
+  const countResult = await query(
+    `SELECT COUNT(*) as total
+     FROM shares s
+     JOIN artworks a ON s.artwork_id = a.id
+     WHERE s.user_id = ? AND a.status = 'published'`,
+    [userId]
+  );
+
   successResponse(res, {
-    posts: [],
+    posts: postsResult.rows,
     pagination: {
       page,
       limit,
-      total: 0,
-      totalPages: 0,
+      total: countResult.rows[0].total,
+      totalPages: Math.ceil(countResult.rows[0].total / limit),
     },
   }, 'Shared posts retrieved');
 });

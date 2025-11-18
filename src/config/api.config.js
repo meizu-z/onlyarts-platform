@@ -47,7 +47,7 @@ export const API_ENDPOINTS = {
     update: (id) => `/artworks/${id}`,
     delete: (id) => `/artworks/${id}`,
     like: (id) => `/artworks/${id}/like`,
-    unlike: (id) => `/artworks/${id}/unlike`,
+    unlike: (id) => `/artworks/${id}/like`, // DELETE request to same endpoint as like
     comments: (id) => `/artworks/${id}/comments`,
     addComment: (id) => `/artworks/${id}/comments`,
   },

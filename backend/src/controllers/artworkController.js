@@ -102,7 +102,9 @@ exports.getArtworkById = asyncHandler(async (req, res, next) => {
     `SELECT a.*,
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
             u.profile_image as artist_image, u.bio as artist_bio,
-            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image
+            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
+            ${req.user?.id ? `(SELECT COUNT(*) FROM follows WHERE follower_id = ${req.user.id} AND following_id = a.artist_id) as is_following,` : '0 as is_following,'}
+            ${req.user?.id ? `(SELECT COUNT(*) FROM likes WHERE user_id = ${req.user.id} AND artwork_id = a.id) as is_liked` : '0 as is_liked'}
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE a.id = ? AND (a.status = 'published' OR a.artist_id = ?)`,
@@ -495,6 +497,44 @@ exports.unlikeArtwork = asyncHandler(async (req, res, next) => {
   );
 
   successResponse(res, null, 'Artwork unliked successfully');
+});
+
+/**
+ * @route   POST /api/artworks/:id/share
+ * @desc    Share artwork to user's profile
+ * @access  Private
+ */
+exports.shareArtwork = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Check if artwork exists and is published
+  const artworkResult = await query(
+    'SELECT id, title FROM artworks WHERE id = ? AND status = ?',
+    [id, 'published']
+  );
+
+  if (artworkResult.rows.length === 0) {
+    return next(new AppError('Artwork not found', 404));
+  }
+
+  // Check if already shared
+  const existingShare = await query(
+    'SELECT id FROM shares WHERE user_id = ? AND artwork_id = ?',
+    [req.user.id, id]
+  );
+
+  if (existingShare.rows.length > 0) {
+    // Already shared - return success instead of error for better UX
+    return successResponse(res, { artwork_id: id, already_shared: true }, 'This artwork is already in your shared posts');
+  }
+
+  // Create share
+  await query(
+    'INSERT INTO shares (user_id, artwork_id) VALUES (?, ?)',
+    [req.user.id, id]
+  );
+
+  successResponse(res, { artwork_id: id, already_shared: false }, 'Artwork shared to your profile successfully');
 });
 
 /**

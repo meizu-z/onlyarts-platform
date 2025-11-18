@@ -28,25 +28,18 @@ const getImageUrl = (imagePath) => {
   return `${serverBaseUrl}${imagePath}`;
 };
 
-// Transform backend user data (snake_case) to frontend format (camelCase + additional fields)
+// Add computed fields and defaults to user data
+// Note: Field normalization (snake_case -> camelCase) is now handled by API client
 const transformUserData = (backendData) => {
   if (!backendData) return null;
 
   return {
     ...backendData,
-    // Map backend fields to frontend expected fields
-    avatar: backendData.profile_image || backendData.avatar || '👤',
-    coverImage: backendData.cover_image || backendData.coverImage || '🎨',
-    displayName: backendData.full_name || backendData.displayName || backendData.username,
-    isArtist: backendData.role === 'artist' || backendData.isArtist,
-    subscription: backendData.subscription_tier || backendData.subscription || 'free',
-    followers: backendData.follower_count || backendData.followers || 0,
-    following: backendData.following_count || backendData.following || 0,
-    artworkCount: backendData.artwork_count || backendData.artworkCount || 0,
-    // Keep original fields for backend compatibility
-    profile_image: backendData.profile_image,
-    cover_image: backendData.cover_image,
-    full_name: backendData.full_name,
+    // Add display-friendly fields with defaults
+    avatar: backendData.profileImage || backendData.profile_image || '👤',
+    coverImage: backendData.coverImage || backendData.cover_image || '🎨',
+    displayName: backendData.fullName || backendData.full_name || backendData.username,
+    isArtist: backendData.role === 'artist' || backendData.role === 'admin' || backendData.isArtist,
   };
 };
 
@@ -164,33 +157,74 @@ const ProfilePage = () => {
 
       // Fetch user's content
       const [artworksData, exhibitionsData, followersData, followingData] = await Promise.all([
-        profileService.getUserArtworks(targetUsername).catch(() => ({ artworks: [] })),
-        profileService.getUserExhibitions(targetUsername).catch(() => ({ exhibitions: [] })),
-        profileService.getFollowers(targetUsername).catch(() => ({ followers: [] })),
-        profileService.getFollowing(targetUsername).catch(() => ({ following: [] })),
+        profileService.getUserArtworks(targetUsername).catch(() => ({ data: { artworks: [] } })),
+        profileService.getUserExhibitions(targetUsername).catch(() => ({ data: { exhibitions: [] } })),
+        profileService.getFollowers(targetUsername).catch(() => ({ data: { followers: [] } })),
+        profileService.getFollowing(targetUsername).catch(() => ({ data: { following: [] } })),
       ]);
 
-      setArtworks(artworksData?.artworks || []);
+      // Add display fields to artworks (normalization handled by API client)
+      const transformedArtworks = (artworksData?.artworks || []).map(artwork => ({
+        ...artwork,
+        image: artwork.primaryImage || artwork.primary_image || '🎨',
+        forSale: artwork.isForSale ?? artwork.is_for_sale,
+      }));
+
+      console.log('[ProfilePage] Raw artworks data:', artworksData);
+      console.log('[ProfilePage] Transformed artworks:', transformedArtworks);
+      console.log('[ProfilePage] Artworks count:', transformedArtworks.length);
+
+      setArtworks(transformedArtworks);
       setExhibitions(exhibitionsData?.exhibitions || []);
-      setFollowers(followersData?.followers || []);
-      setFollowing(followingData?.following || []);
+
+      // Add display fields to followers
+      const transformedFollowers = (followersData?.followers || []).map(follower => ({
+        ...follower,
+        name: follower.fullName || follower.full_name || follower.username,
+        avatar: follower.profileImage || follower.profile_image || '👤',
+        isArtist: follower.role === 'artist' || follower.role === 'admin',
+      }));
+      console.log('[ProfilePage] Followers data:', followersData);
+      console.log('[ProfilePage] Transformed followers:', transformedFollowers);
+      setFollowers(transformedFollowers);
+
+      // Add display fields to following
+      const transformedFollowing = (followingData?.following || []).map(follow => ({
+        ...follow,
+        name: follow.fullName || follow.full_name || follow.username,
+        avatar: follow.profileImage || follow.profile_image || '👤',
+        isArtist: follow.role === 'artist' || follow.role === 'admin',
+      }));
+      console.log('[ProfilePage] Following data:', followingData);
+      console.log('[ProfilePage] Transformed following:', transformedFollowing);
+      setFollowing(transformedFollowing);
 
       // Fetch saved items for own profile
       if (isOwnProfile) {
         const [savedData, postsData] = await Promise.all([
-          profileService.getSavedItems().catch(() => ({ items: [] })),
-          profileService.getSharedPosts(targetUsername).catch(() => ({ posts: [] })),
+          profileService.getSavedItems().catch(() => ({ data: { items: [] } })),
+          profileService.getSharedPosts(targetUsername).catch(() => ({ data: { posts: [] } })),
         ]);
         setSavedForLater(savedData?.items || []);
-        setSharedPosts(postsData?.posts || []);
 
-        if (response.role === 'artist') {
+        // Add display fields to shared posts
+        const transformedPosts = (postsData?.posts || []).map(post => ({
+          ...post,
+          image: post.primaryImage || post.primary_image || '🎨',
+          forSale: post.isForSale ?? post.is_for_sale,
+          type: 'artwork',
+          artistName: post.artistName || post.artist_name || post.artistUsername || post.artist_username || 'Unknown Artist',
+        }));
+        console.log('[ProfilePage] Shared posts:', transformedPosts);
+        setSharedPosts(transformedPosts);
+
+        if (response.role === 'artist' || response.role === 'admin') {
           setActiveTab('portfolio');
         } else {
           setActiveTab('shared_artworks');
         }
       } else {
-        setActiveTab(response.role === 'artist' ? 'portfolio' : 'shared_artworks');
+        setActiveTab(response.role === 'artist' || response.role === 'admin' ? 'portfolio' : 'shared_artworks');
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -312,6 +346,7 @@ const ProfilePage = () => {
                     <Card
                       key={artwork.id}
                       hover
+                      onClick={() => navigate(`/artworks/${artwork.id}`)}
                       className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                       style={{ animationDelay: `${idx * 0.1}s` }}
                     >
@@ -400,9 +435,10 @@ const ProfilePage = () => {
         return profileData.isArtist && artworks.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
             {artworks.map((artwork, idx) => (
-              <Card 
+              <Card
                 key={artwork.id}
                 hover
+                onClick={() => navigate(`/artworks/${artwork.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -438,17 +474,26 @@ const ProfilePage = () => {
         return sharedPosts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
             {sharedPosts.map((post, idx) => (
-              <Card 
+              <Card
                 key={post.id}
                 hover
+                onClick={() => navigate(`/artworks/${post.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                    {post.image}
-                  </span>
+                  {getImageUrl(post.image) ? (
+                    <img
+                      src={getImageUrl(post.image)}
+                      alt={post.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {post.image}
+                    </span>
+                  )}
                 </div>
                 <div className="p-3 md:p-4">
                   <h3 className="font-bold text-sm md:text-base text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
@@ -475,14 +520,23 @@ const ProfilePage = () => {
               <Card
                 key={item.id}
                 hover
+                onClick={() => navigate(item.type === 'exhibition' ? `/exhibitions/${item.id}` : `/artworks/${item.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
                 <div className={`${item.type === 'exhibition' ? 'aspect-video' : 'aspect-square'} bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative`}>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                    {item.image}
-                  </span>
+                  {getImageUrl(item.image) ? (
+                    <img
+                      src={getImageUrl(item.image)}
+                      alt={item.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {item.image}
+                    </span>
+                  )}
                   {item.type === 'exhibition' && (
                     <div className="absolute top-3 right-3 bg-[#7C5FFF]/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold">
                       Exhibition
@@ -520,20 +574,37 @@ const ProfilePage = () => {
             {followers.map((follower, idx) => (
               <Card
                 key={idx}
-                className="p-3 md:p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
+                className="p-3 md:p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn cursor-pointer"
                 style={{ animationDelay: `${idx * 0.1}s` }}
+                onClick={() => navigate(`/profile/${follower.username || follower.id}`)}
               >
                 <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-3 md:gap-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-xl md:text-2xl shadow-lg">
-                      {follower.avatar}
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-xl md:text-2xl shadow-lg overflow-hidden">
+                      {getImageUrl(follower.avatar) ? (
+                        <img
+                          src={getImageUrl(follower.avatar)}
+                          alt={follower.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{follower.avatar}</span>
+                      )}
                     </div>
                     <div className="text-center md:text-left">
                       <p className="font-bold text-sm md:text-base text-[#f2e9dd]">{follower.name}</p>
                       <p className="text-xs md:text-sm text-[#f2e9dd]/70">{follower.username}</p>
                     </div>
                   </div>
-                  <Button variant="secondary" size="sm" className="w-full md:w-auto transform hover:scale-105 transition-all duration-200">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigate(`/profile/${follower.username || follower.id}`);
+                    }}
+                    className="w-full md:w-auto transform hover:scale-105 transition-all duration-200"
+                  >
                     View Profile
                   </Button>
                 </div>
@@ -548,13 +619,22 @@ const ProfilePage = () => {
             {following.map((follow, idx) => (
               <Card
                 key={idx}
-                className="p-3 md:p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn"
+                className="p-3 md:p-4 hover:border-[#7C5FFF]/50 transition-all duration-300 animate-fadeIn cursor-pointer"
                 style={{ animationDelay: `${idx * 0.1}s` }}
+                onClick={() => navigate(`/profile/${follow.username || follow.id}`)}
               >
                 <div className="flex flex-col md:flex-row items-center md:items-center justify-between gap-3 md:gap-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-xl md:text-2xl shadow-lg">
-                      {follow.avatar}
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-xl md:text-2xl shadow-lg overflow-hidden">
+                      {getImageUrl(follow.avatar) ? (
+                        <img
+                          src={getImageUrl(follow.avatar)}
+                          alt={follow.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <span>{follow.avatar}</span>
+                      )}
                     </div>
                     <div className="text-center md:text-left">
                       <div className="flex items-center gap-2">
@@ -572,12 +652,23 @@ const ProfilePage = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={() => toast.info('Unfollowed')}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast.info('Unfollowed');
+                      }}
                       className="w-full md:w-auto transform hover:scale-105 transition-all duration-200"
                     >
                       Unfollow
                     </Button>
-                    <Button variant="secondary" size="sm" className="w-full md:w-auto transform hover:scale-105 transition-all duration-200">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/profile/${follow.username || follow.id}`);
+                      }}
+                      className="w-full md:w-auto transform hover:scale-105 transition-all duration-200"
+                    >
                       View Profile
                     </Button>
                   </div>

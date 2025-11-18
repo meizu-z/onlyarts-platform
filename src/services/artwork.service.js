@@ -129,6 +129,16 @@ export const artworkService = {
     });
     return response.data;
   },
+
+  /**
+   * Share artwork to user's profile
+   * @param {string} id
+   * @returns {Promise<{share}>}
+   */
+  shareArtwork: async (id) => {
+    const response = await api.post(`/artworks/${id}/share`);
+    return response.data;
+  },
 };
 
 // Mock data for demo mode

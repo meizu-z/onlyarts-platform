@@ -56,8 +56,8 @@ const FavoritesPage = () => {
         const response = await favoritesService.getFavorites();
         setFavorites(response.favorites || []);
       } else if (activeTab === 'following') {
-        const response = await favoritesService.getFollowing();
-        setFollowing(response.following || []);
+        // TODO: Following is available in Profile page - redirect there or implement proper endpoint
+        setFollowing([]);
       } else if (activeTab === 'collections') {
         const response = await favoritesService.getCollections();
         setCollections(response.collections || []);

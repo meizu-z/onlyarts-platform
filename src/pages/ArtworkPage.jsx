@@ -272,9 +272,17 @@ const ArtworkPage = () => {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
     if (!artwork) return;
-    toast.success(`Sharing "${artwork.title}"...`);
+
+    try {
+      // Share artwork to user's profile (add to shared posts)
+      await artworkService.shareArtwork(artwork.id);
+      toast.success(`"${artwork.title}" shared to your profile!`);
+    } catch (error) {
+      console.error('Share error:', error);
+      toast.error('Failed to share artwork. Please try again.');
+    }
   };
 
   const handleAddToCart = () => {
@@ -401,16 +409,19 @@ const ArtworkPage = () => {
             </div>
 
             <div className="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3">
-              <Button
-                onClick={handleFollowArtist}
-                className={`w-full md:w-auto shadow-lg transform hover:scale-105 transition-all duration-300 ${
-                  isFollowing
-                    ? 'bg-gray-600 hover:bg-gray-700 shadow-gray-600/30 hover:shadow-gray-600/50'
-                    : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50'
-                }`}
-              >
-                <Star size={16} className="mr-2" /> {isFollowing ? 'Following' : 'Follow Artist'}
-              </Button>
+              {/* Only show Follow button if viewing someone else's artwork */}
+              {user && artwork.artistId !== user.id && (
+                <Button
+                  onClick={handleFollowArtist}
+                  className={`w-full md:w-auto shadow-lg transform hover:scale-105 transition-all duration-300 ${
+                    isFollowing
+                      ? 'bg-gray-600 hover:bg-gray-700 shadow-gray-600/30 hover:shadow-gray-600/50'
+                      : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50'
+                  }`}
+                >
+                  <Star size={16} className="mr-2" /> {isFollowing ? 'Following' : 'Follow Artist'}
+                </Button>
+              )}
               <Button variant="secondary" onClick={handleShare} className="w-full md:w-auto transform hover:scale-105 transition-all duration-300">
                 <Share size={16} className="mr-2" /> Share
               </Button>

@@ -130,6 +130,13 @@ router.post('/:id/like', authenticate, artworkController.likeArtwork);
 router.delete('/:id/like', authenticate, artworkController.unlikeArtwork);
 
 /**
+ * @route   POST /api/artworks/:id/share
+ * @desc    Share artwork to user's profile
+ * @access  Private
+ */
+router.post('/:id/share', authenticate, artworkController.shareArtwork);
+
+/**
  * @route   GET /api/artworks/:id/comments
  * @desc    Get artwork comments
  * @access  Public
