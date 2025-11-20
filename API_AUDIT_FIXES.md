@@ -25,6 +25,11 @@ Conducted a comprehensive audit of the entire OnlyArts platform to fix API confi
 - **Root Cause**: Optimistic update + display calculation both added +1
 - **Impact**: Incorrect like counts displayed
 
+### 4. Horizontal Scrollbar / Page Overflow
+- **Error**: Horizontal scrollbar appeared at the bottom of pages
+- **Root Cause**: No overflow-x constraints on html/body elements and layout containers
+- **Impact**: Poor user experience, content extended beyond viewport
+
 ---
 
 ## Fixes Applied
@@ -210,6 +215,40 @@ socket.to(`conversation:${conversationId}`).emit('new_message', message);
 
 ---
 
+### ✅ Fix 9: Horizontal Scrollbar / Page Overflow
+
+**Files**:
+- `src/components/styles/index.css`
+- `src/components/layouts/MainLayout.jsx`
+
+**Changes**: Added overflow prevention to eliminate horizontal scrollbar
+1. CSS: Added `overflow-x: hidden` and `max-width: 100vw` to html and body elements
+2. MainLayout: Added `overflow-x-hidden` and `max-w-full` classes to layout container
+
+```css
+/* index.css */
+html {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+body {
+  @apply bg-[#1a1a1a] text-[#f2e9dd];
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+```
+
+```jsx
+/* MainLayout.jsx */
+<div className="min-h-screen bg-[#1a1a1a] flex flex-col overflow-x-hidden max-w-full">
+  <main className="flex-1 w-full max-w-full ...">
+```
+
+**Impact**: ✅ No more horizontal scrollbar, content stays within viewport
+
+---
+
 ## Backend Audit Results
 
 ### Controllers Audited (18 files)
@@ -311,12 +350,14 @@ Consider migrating to TypeScript to:
 
 ## Files Modified
 
-### Frontend (5 files)
+### Frontend (7 files)
 1. `src/services/api.client.js` - Comprehensive field normalizer
 2. `src/pages/Dashboard.jsx` - Fixed double like count
 3. `src/pages/FavoritesPage.jsx` - Fixed image display
 4. `src/pages/ChatPage.jsx` - Fixed message transformation
 5. `src/components/layouts/BottomNav.jsx` - Mobile-only visibility
+6. `src/components/styles/index.css` - Prevent horizontal overflow
+7. `src/components/layouts/MainLayout.jsx` - Added overflow constraints
 
 ### Backend (6 files)
 1. `backend/src/controllers/artworkController.js` - Like toggle functionality
@@ -338,9 +379,10 @@ Consider migrating to TypeScript to:
 ✅ **Fixed**: Message duplication in chat
 ✅ **Fixed**: Consultation page 404 errors
 ✅ **Fixed**: Double like count display
+✅ **Fixed**: Horizontal scrollbar / page overflow
 ✅ **Improved**: Bottom navigation mobile-only
 
-**Result**: Platform now has robust API configuration with centralized field normalization. All frontend-backend API calls match correctly, preventing future field mismatch errors.
+**Result**: Platform now has robust API configuration with centralized field normalization. All frontend-backend API calls match correctly, preventing future field mismatch errors. UI is now properly constrained within viewport with no horizontal scrolling.
 
 ---
 
