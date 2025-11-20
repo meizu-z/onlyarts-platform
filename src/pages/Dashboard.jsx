@@ -178,13 +178,13 @@ const Dashboard = () => {
         return;
       }
 
-      // REAL API MODE: Call backend
-      if (isLiked) {
-        await artworkService.unlikeArtwork(id);
-        toast.info('Removed from favorites');
-      } else {
-        await artworkService.likeArtwork(id);
+      // REAL API MODE: Call backend (POST endpoint now supports toggle)
+      const response = await artworkService.likeArtwork(id);
+
+      if (response.liked) {
         toast.success('Added to favorites! ❤️');
+      } else {
+        toast.info('Removed from favorites');
       }
     } catch (error) {
       // Revert on error
@@ -379,7 +379,7 @@ const Dashboard = () => {
                 <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-[#f2e9dd]/70">
                   <button onClick={() => toggleLike(artwork.id)} className={`flex items-center gap-1 transition-all duration-200 group/like ${likedArtworks.has(artwork.id) ? 'text-[#FF5F9E]' : 'hover:text-[#FF5F9E]'}`}>
                     <Heart size={16} className={`group-hover/like:scale-125 transition-transform ${likedArtworks.has(artwork.id) ? 'fill-current' : ''}`} />
-                    {artwork.likes + (likedArtworks.has(artwork.id) ? 1 : 0)}
+                    {artwork.likes}
                   </button>
                   <button onClick={() => handleArtworkClick(artwork)} className="flex items-center gap-1 hover:text-[#7C5FFF] transition-colors group/comment">
                     <MessageCircle size={16} className="group-hover/comment:scale-110 transition-transform" />

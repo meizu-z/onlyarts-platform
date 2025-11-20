@@ -54,7 +54,12 @@
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\":*)",
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT f.id, follower.username as follower, following.username as following_user, f.created_at FROM follows f JOIN users follower ON f.follower_id = follower.id JOIN users following ON f.following_id = following.id ORDER BY f.created_at DESC LIMIT 10;\")",
       "Bash(curl:*)",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; UPDATE users SET subscription_tier = ''premium'' WHERE username = ''testadmin''; SELECT id, username, email, role, subscription_tier FROM users WHERE username = ''testadmin'';\")"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; UPDATE users SET subscription_tier = ''premium'' WHERE username = ''testadmin''; SELECT id, username, email, role, subscription_tier FROM users WHERE username = ''testadmin'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; DESCRIBE conversations;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT m.id, m.conversation_id, m.content, m.sender_id, u.username, m.created_at FROM messages m JOIN users u ON m.sender_id = u.id ORDER BY m.id DESC LIMIT 10;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT id, conversation_id, sender_id, content, created_at FROM messages ORDER BY conversation_id, created_at;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SHOW TABLES LIKE ''%consult%'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql.exe\" -u root -pPassword123! -e \"USE onlyarts; SELECT id, username, profile_image FROM users WHERE id IN (1, 2);\")"
     ],
     "deny": [],
     "ask": []

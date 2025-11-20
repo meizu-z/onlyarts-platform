@@ -15,10 +15,11 @@ module.exports = (io) => {
 
     if (token) {
       try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
         socket.userId = decoded.userId;
         socket.isAuthenticated = true;
       } catch (error) {
+        console.error('Livestream socket authentication error:', error.message);
         socket.isAuthenticated = false;
       }
     } else {

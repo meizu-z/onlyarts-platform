@@ -7,6 +7,7 @@ import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from '../services/profile.service';
 import { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from '../services/analytics.service';
+import { chatService } from '../services/chat.service';
 import { API_CONFIG } from '../config/api.config';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -277,6 +278,31 @@ const ProfilePage = () => {
 
   const handleShare = () => {
     toast.info('Profile link copied to clipboard!');
+  };
+
+  const handleStartChat = async () => {
+    try {
+      // Start a new conversation with this user
+      const conversation = await chatService.startConversation({
+        participantId: profileData.id,
+      });
+
+      // Navigate to chat page with the conversation
+      navigate('/chat', {
+        state: {
+          conversationId: conversation.id,
+          recipient: {
+            id: profileData.id,
+            username: profileData.username,
+            name: profileData.displayName || profileData.fullName || profileData.username,
+            avatar: profileData.profileImage || profileData.profile_image,
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Failed to start conversation:', error);
+      toast.error('Failed to start conversation. Please try again.');
+    }
   };
 
   const handleEditProfile = async () => {
@@ -1065,7 +1091,7 @@ const ProfilePage = () => {
                               size="sm"
                               variant="ghost"
                               className="text-xs mt-2"
-                              onClick={() => navigate('/messages')}
+                              onClick={() => navigate('/chat')}
                             >
                               <MessageCircle size={14} className="mr-1" />
                               Chat
@@ -1249,7 +1275,12 @@ const ProfilePage = () => {
                   </Button>
                 )}
                 <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" className="flex-1 md:flex-none transform hover:scale-105 transition-all duration-200">
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={handleStartChat}
+                    className="flex-1 md:flex-none transform hover:scale-105 transition-all duration-200"
+                  >
                     <MessageCircle size={16} />
                   </Button>
                   <Button

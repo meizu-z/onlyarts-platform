@@ -18,10 +18,11 @@ module.exports = (io) => {
     }
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
       socket.userId = decoded.userId;
       next();
     } catch (error) {
+      console.error('Socket authentication error:', error.message);
       next(new Error('Authentication error'));
     }
   });
@@ -88,7 +89,7 @@ module.exports = (io) => {
           [conversationId, socket.userId, content]
         );
 
-        const messageId = messageResult.result.insertId;
+        const messageId = messageResult.rows.insertId;
 
         // Update conversation's last_message_at
         await query(
@@ -98,7 +99,7 @@ module.exports = (io) => {
 
         // Get the full message data
         const messageData = await query(
-          `SELECT m.*, u.username, u.avatar_url
+          `SELECT m.*, u.username, u.profile_image
            FROM messages m
            JOIN users u ON m.sender_id = u.id
            WHERE m.id = ?`,
@@ -107,8 +108,8 @@ module.exports = (io) => {
 
         const message = messageData.rows[0];
 
-        // Emit to all users in the conversation room
-        chatNamespace.to(`conversation:${conversationId}`).emit('new_message', message);
+        // Emit to OTHER users in the conversation room (not the sender)
+        socket.to(`conversation:${conversationId}`).emit('new_message', message);
 
         // Send notification to the other participant
         const recipientId = conversation.participant_one_id === socket.userId

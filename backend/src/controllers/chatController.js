@@ -26,7 +26,16 @@ exports.getConversations = asyncHandler(async (req, res, next) => {
     [userId, userId, userId, userId, userId]
   );
 
-  successResponse(res, result.rows, 'Conversations retrieved');
+  // Transform image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const conversations = result.rows.map(conv => ({
+    ...conv,
+    other_user_image: conv.other_user_image
+      ? `${baseUrl}${conv.other_user_image}`
+      : null
+  }));
+
+  successResponse(res, conversations, 'Conversations retrieved');
 });
 
 /**
@@ -36,14 +45,15 @@ exports.getConversations = asyncHandler(async (req, res, next) => {
  */
 exports.createConversation = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
-  const { recipientId } = req.body;
+  const { participantId, recipientId } = req.body;
+  const otherUserId = participantId || recipientId;
 
-  if (userId === parseInt(recipientId)) {
+  if (userId === parseInt(otherUserId)) {
     return next(new AppError('Cannot message yourself', 400));
   }
 
   // Check if recipient exists
-  const userResult = await query('SELECT id FROM users WHERE id = ? AND is_active = TRUE', [recipientId]);
+  const userResult = await query('SELECT id FROM users WHERE id = ? AND is_active = TRUE', [otherUserId]);
   if (userResult.rows.length === 0) {
     return next(new AppError('User not found', 404));
   }
@@ -51,8 +61,8 @@ exports.createConversation = asyncHandler(async (req, res, next) => {
   // Check if conversation already exists
   const existingConv = await query(
     `SELECT id FROM conversations
-     WHERE (user1_id = ? AND user2_id = ?) OR (user1_id = ? AND user2_id = ?)`,
-    [userId, recipientId, recipientId, userId]
+     WHERE (participant_one_id = ? AND participant_two_id = ?) OR (participant_one_id = ? AND participant_two_id = ?)`,
+    [userId, otherUserId, otherUserId, userId]
   );
 
   if (existingConv.rows.length > 0) {
@@ -61,8 +71,8 @@ exports.createConversation = asyncHandler(async (req, res, next) => {
 
   // Create new conversation
   const result = await query(
-    'INSERT INTO conversations (user1_id, user2_id) VALUES (?, ?)',
-    [userId, recipientId]
+    'INSERT INTO conversations (participant_one_id, participant_two_id) VALUES (?, ?)',
+    [userId, otherUserId]
   );
 
   successResponse(res, {
@@ -84,7 +94,7 @@ exports.getMessages = asyncHandler(async (req, res, next) => {
 
   // Verify user is part of conversation
   const convResult = await query(
-    'SELECT id FROM conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+    'SELECT id FROM conversations WHERE id = ? AND (participant_one_id = ? OR participant_two_id = ?)',
     [id, userId, userId]
   );
 
@@ -95,7 +105,7 @@ exports.getMessages = asyncHandler(async (req, res, next) => {
   // Get messages
   const result = await query(
     `SELECT
-      m.id, m.message, m.is_read, m.created_at,
+      m.id, m.content, m.is_read, m.created_at,
       u.id as sender_id, u.username as sender_username,
       u.full_name as sender_name, u.profile_image as sender_image
      FROM messages m
@@ -176,6 +186,34 @@ exports.sendMessage = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * @route   POST /api/chat/conversations/:id/read
+ * @desc    Mark all messages in conversation as read
+ * @access  Private
+ */
+exports.markConversationAsRead = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Verify user is part of conversation
+  const convResult = await query(
+    'SELECT id FROM conversations WHERE id = ? AND (participant_one_id = ? OR participant_two_id = ?)',
+    [id, userId, userId]
+  );
+
+  if (convResult.rows.length === 0) {
+    return next(new AppError('Conversation not found or access denied', 404));
+  }
+
+  // Mark all messages from other user as read
+  await query(
+    'UPDATE messages SET is_read = TRUE WHERE conversation_id = ? AND sender_id != ? AND is_read = FALSE',
+    [id, userId]
+  );
+
+  successResponse(res, null, 'Conversation marked as read');
+});
+
+/**
  * @route   PUT /api/chat/messages/:id/read
  * @desc    Mark message as read
  * @access  Private
@@ -189,7 +227,7 @@ exports.markAsRead = asyncHandler(async (req, res, next) => {
     `SELECT m.id, m.conversation_id
      FROM messages m
      JOIN conversations c ON m.conversation_id = c.id
-     WHERE m.id = ? AND m.sender_id != ? AND (c.user1_id = ? OR c.user2_id = ?)`,
+     WHERE m.id = ? AND m.sender_id != ? AND (c.participant_one_id = ? OR c.participant_two_id = ?)`,
     [id, userId, userId, userId]
   );
 
@@ -236,7 +274,7 @@ exports.deleteConversation = asyncHandler(async (req, res, next) => {
 
   // Verify user is part of conversation
   const convResult = await query(
-    'SELECT id FROM conversations WHERE id = ? AND (user1_id = ? OR user2_id = ?)',
+    'SELECT id FROM conversations WHERE id = ? AND (participant_one_id = ? OR participant_two_id = ?)',
     [id, userId, userId]
   );
 

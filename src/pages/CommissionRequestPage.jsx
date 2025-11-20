@@ -6,6 +6,17 @@ import Button from '../components/common/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { commissionService } from '../services';
+import { API_CONFIG } from '../config/api.config';
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+  return `${serverBaseUrl}${imagePath}`;
+};
 
 const CommissionRequestPage = () => {
   const navigate = useNavigate();
@@ -149,8 +160,16 @@ const CommissionRequestPage = () => {
           </button>
 
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl">
-              {artist.profileImage || '👤'}
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl overflow-hidden">
+              {getImageUrl(artist.profileImage || artist.profile_image) ? (
+                <img
+                  src={getImageUrl(artist.profileImage || artist.profile_image)}
+                  alt={artist.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>👤</span>
+              )}
             </div>
             <div>
               <h1 className="text-3xl font-bold text-[#f2e9dd] flex items-center gap-2">

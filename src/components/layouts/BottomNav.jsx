@@ -47,7 +47,7 @@ const BottomNav = () => {
 
   return (
     <>
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1a1a1a]/95 backdrop-blur-xl border-t border-white/10 safe-area-pb">
+      <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1a1a1a]/95 backdrop-blur-xl border-t border-white/10 safe-area-pb">
         <div className="flex items-center justify-around h-16 max-w-lg mx-auto px-2">
           <BottomNavItem to="/dashboard" icon={Home} label="Feed" />
           <BottomNavItem to="/explore" icon={Compass} label="Explore" />

@@ -7,37 +7,90 @@ import axios from 'axios';
 import { API_CONFIG } from '../config/api.config';
 
 // Field mapping configuration: backend (snake_case) -> frontend (camelCase)
+// Comprehensive mappings based on backend audit - Updated 2025
 const FIELD_MAPPINGS = {
-  // User fields
-  subscription_tier: 'subscription',
+  // ==========================================
+  // USER FIELDS
+  // ==========================================
+  full_name: 'fullName',
   profile_image: 'profileImage',
   cover_image: 'coverImage',
-  full_name: 'fullName',
+  subscription_tier: 'subscription',
   follower_count: 'followers',
   following_count: 'following',
   artwork_count: 'artworks',
   wallet_balance: 'walletBalance',
   total_earnings: 'totalEarnings',
   is_active: 'isActive',
+  is_following: 'isFollowing',
   last_login_at: 'lastLoginAt',
 
-  // Artwork fields
+  // Other user fields (chat, commissions, etc.)
+  other_user_id: 'otherUserId',
+  other_user_name: 'name',
+  other_user_username: 'username',
+  other_user_image: 'avatarUrl',
+
+  // ==========================================
+  // ARTWORK FIELDS
+  // ==========================================
   artist_id: 'artistId',
   artist_username: 'artistUsername',
   artist_name: 'artistName',
   artist_image: 'artistImage',
+  artist_bio: 'artistBio',
   primary_image: 'primaryImage',
   like_count: 'likes',
   view_count: 'views',
   comment_count: 'comments',
   is_for_sale: 'isForSale',
-  is_following: 'isFollowing',
   is_liked: 'isLiked',
+  is_original: 'isOriginal',
+  is_edited: 'isEdited',
   year_created: 'year',
   stock_quantity: 'stock',
-  is_original: 'isOriginal',
+  parent_id: 'parentId',
 
-  // Exhibition fields
+  // Media fields
+  media_url: 'mediaUrl',
+  media_type: 'mediaType',
+  display_order: 'displayOrder',
+  is_primary: 'isPrimary',
+  cloudinary_public_id: 'cloudinaryPublicId',
+
+  // ==========================================
+  // ORDER FIELDS
+  // ==========================================
+  order_number: 'orderNumber',
+  total_amount: 'totalAmount',
+  payment_method: 'paymentMethod',
+  payment_status: 'paymentStatus',
+  payment_intent_id: 'paymentIntentId',
+  shipping_address: 'shippingAddress',
+  seller_id: 'sellerId',
+  seller_username: 'sellerUsername',
+  seller_name: 'sellerName',
+  seller_earnings: 'sellerEarnings',
+  buyer_username: 'buyerUsername',
+  buyer_name: 'buyerName',
+  commission_rate: 'commissionRate',
+  commission_amount: 'commissionAmount',
+  total_orders: 'totalOrders',
+  artwork_title: 'artworkTitle',
+
+  // ==========================================
+  // COMMISSION FIELDS
+  // ==========================================
+  client_id: 'clientId',
+  client_username: 'clientUsername',
+  client_name: 'clientName',
+  client_image: 'clientImage',
+  client_email: 'clientEmail',
+  reference_images: 'referenceImages',
+
+  // ==========================================
+  // EXHIBITION FIELDS
+  // ==========================================
   start_date: 'startDate',
   end_date: 'endDate',
   curator_id: 'curatorId',
@@ -46,22 +99,68 @@ const FIELD_MAPPINGS = {
   curator_image: 'curatorImage',
   curator_tier: 'curatorTier',
   is_private: 'isPrivate',
-  artwork_count: 'artworkCount',
 
-  // Common fields
-  created_at: 'createdAt',
-  updated_at: 'updatedAt',
+  // ==========================================
+  // LIVESTREAM FIELDS
+  // ==========================================
+  host_id: 'hostId',
+  host_username: 'hostUsername',
+  host_name: 'hostName',
+  host_image: 'hostImage',
+  scheduled_start_at: 'scheduledStartAt',
+  started_at: 'startedAt',
+  ended_at: 'endedAt',
+  thumbnail_url: 'thumbnailUrl',
+  viewer_count: 'viewerCount',
 
-  // Share/favorite fields
+  // ==========================================
+  // CHAT/MESSAGE FIELDS
+  // ==========================================
+  participant_one_id: 'participantOneId',
+  participant_two_id: 'participantTwoId',
+  last_message: 'lastMessage',
+  last_message_at: 'lastMessageTime',
+  unread_count: 'unread',
+  sender_id: 'senderId',
+  sender_username: 'senderUsername',
+  sender_name: 'senderName',
+  sender_image: 'senderImage',
+  is_read: 'isRead',
+  read_at: 'readAt',
+  conversation_id: 'conversationId',
+  user1_id: 'user1Id',
+  user2_id: 'user2Id',
+
+  // ==========================================
+  // SUBSCRIPTION FIELDS
+  // ==========================================
+  from_tier: 'fromTier',
+  to_tier: 'toTier',
+  payment_method_id: 'paymentMethodId',
+
+  // ==========================================
+  // SHARE/FAVORITE FIELDS
+  // ==========================================
   artwork_id: 'artworkId',
   user_id: 'userId',
   already_shared: 'alreadyShared',
+  share_id: 'shareId',
+  shared_at: 'sharedAt',
+  liked_at: 'likedAt',
 
-  // Comment fields
+  // ==========================================
+  // COMMENT FIELDS
+  // ==========================================
   commenter_id: 'commenterId',
   commenter_username: 'commenterUsername',
   commenter_name: 'commenterName',
   commenter_image: 'commenterImage',
+
+  // ==========================================
+  // COMMON TIMESTAMP FIELDS
+  // ==========================================
+  created_at: 'createdAt',
+  updated_at: 'updatedAt',
 };
 
 /**

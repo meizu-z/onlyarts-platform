@@ -10,6 +10,7 @@ import socketService from '../services/socket.service';
 import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import { API_CONFIG } from '../config/api.config';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -39,7 +40,7 @@ const ChatPage = () => {
 
     // Connect to chat socket if not in demo mode
     if (!USE_DEMO_MODE && user) {
-      const token = localStorage.getItem('accessToken');
+      const token = localStorage.getItem(API_CONFIG.tokenKey);
       if (token) {
         socketService.connectChat(token);
 
@@ -150,7 +151,22 @@ const ChatPage = () => {
 
       // REAL API MODE: Call backend
       const response = await chatService.getMessages(conversationId);
-      setMessages(response.messages || response);
+      const rawMessages = response.messages || response;
+
+      // Transform messages to match UI format
+      const transformedMessages = rawMessages.map(msg => ({
+        id: msg.id,
+        senderId: msg.senderId || msg.sender_id,
+        user: msg.senderUsername || msg.sender_username || 'Unknown',
+        text: msg.content,  // Backend uses 'content', UI expects 'text'
+        timestamp: new Date(msg.createdAt || msg.created_at).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        }),
+        isYou: (msg.senderId || msg.sender_id) === user.id
+      }));
+
+      setMessages(transformedMessages);
 
       // Mark as read
       await chatService.markAsRead(conversationId);

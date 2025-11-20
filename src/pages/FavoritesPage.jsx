@@ -194,15 +194,23 @@ const FavoritesPage = () => {
                   >
                     <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
                       <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                      <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                        {artwork.image}
-                      </span>
+                      {artwork.primaryImage ? (
+                        <img
+                          src={artwork.primaryImage}
+                          alt={artwork.title}
+                          className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                        />
+                      ) : (
+                        <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                          🎨
+                        </span>
+                      )}
                     </div>
                     <div className="p-3 md:p-4">
                       <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
                         {artwork.title}
                       </h3>
-                      <p className="text-sm text-[#f2e9dd]/50 mb-3">{artwork.artist}</p>
+                      <p className="text-sm text-[#f2e9dd]/50 mb-3">{artwork.artistName || artwork.artistUsername || 'Unknown Artist'}</p>
                       <Button
                         variant="ghost"
                         size="sm"

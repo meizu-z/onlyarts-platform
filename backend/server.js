@@ -129,6 +129,9 @@ app.use('/api/livestreams', require('./src/routes/livestreamRoutes'));
 // Chat routes
 app.use('/api/chat', require('./src/routes/chatRoutes'));
 
+// Consultation routes
+app.use('/api/consultations', require('./src/routes/consultationRoutes'));
+
 // Settings routes
 app.use('/api/settings', require('./src/routes/settingsRoutes'));
 

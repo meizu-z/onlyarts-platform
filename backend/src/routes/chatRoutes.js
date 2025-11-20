@@ -65,6 +65,13 @@ router.post(
 );
 
 /**
+ * @route   POST /api/chat/conversations/:id/read
+ * @desc    Mark all messages in conversation as read
+ * @access  Private
+ */
+router.post('/conversations/:id/read', chatController.markConversationAsRead);
+
+/**
  * @route   PUT /api/chat/messages/:id/read
  * @desc    Mark message as read
  * @access  Private

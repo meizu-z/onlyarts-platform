@@ -34,8 +34,17 @@ exports.getFavorites = asyncHandler(async (req, res, next) => {
     [req.user.id]
   );
 
+  // Transform image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const favorites = result.rows.map(artwork => ({
+    ...artwork,
+    primary_image: artwork.primary_image
+      ? `${baseUrl}${artwork.primary_image}`
+      : null
+  }));
+
   successResponse(res, {
-    favorites: result.rows,
+    favorites,
     pagination: {
       total: countResult.rows[0].total,
       page,

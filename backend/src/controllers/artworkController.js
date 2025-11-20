@@ -447,8 +447,19 @@ exports.likeArtwork = asyncHandler(async (req, res, next) => {
     [req.user.id, id]
   );
 
+  // Toggle: If already liked, unlike it
   if (existingLike.rows.length > 0) {
-    return next(new AppError('You already liked this artwork', 400));
+    await query(
+      'DELETE FROM likes WHERE user_id = ? AND artwork_id = ?',
+      [req.user.id, id]
+    );
+
+    await query(
+      'UPDATE artworks SET like_count = GREATEST(like_count - 1, 0) WHERE id = ?',
+      [id]
+    );
+
+    return successResponse(res, { liked: false }, 'Artwork unliked successfully');
   }
 
   // Create like
@@ -463,7 +474,7 @@ exports.likeArtwork = asyncHandler(async (req, res, next) => {
     [id]
   );
 
-  successResponse(res, null, 'Artwork liked successfully');
+  successResponse(res, { liked: true }, 'Artwork liked successfully');
 });
 
 /**
