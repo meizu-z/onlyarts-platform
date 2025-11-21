@@ -18,12 +18,18 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
   const sortBy = req.query.sortBy || 'created_at';
   const order = req.query.order || 'DESC';
   const search = req.query.search || '';
+  const following = req.query.following === 'true';
 
   const offset = (page - 1) * limit;
 
   // Build WHERE clause
   const conditions = ['a.status = ?'];
   const values = ['published'];
+
+  // Filter by following users only
+  if (following && req.user) {
+    conditions.push(`a.artist_id IN (SELECT following_id FROM follows WHERE follower_id = ${req.user.id})`);
+  }
 
   if (category) {
     conditions.push('a.category = ?');

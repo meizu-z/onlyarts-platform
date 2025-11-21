@@ -6,6 +6,17 @@ import { useCart } from '../../context/CartContext';
 import { useToast } from '../ui/Toast';
 import Button from '../common/Button';
 import onlyArtsLogo from '../../assets/onlyartslogo.png';
+import { API_CONFIG } from '../../config/api.config';
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+  return `${serverBaseUrl}${imagePath}`;
+};
 
 const OnlyArtsLogo = ({ size = 'md', withText = true }) => {
     const sizes = {
@@ -134,10 +145,10 @@ const Navbar = () => {
     };
 
     return (
-        <nav className={`sticky top-0 z-40 backdrop-blur-lg transition-all duration-300 ${scrolled ? 'bg-[#1a1a1a]/95 shadow-lg dark:shadow-black/20' : 'bg-[#1a1a1a]/80 dark:shadow-black/10'} dark:bg-[#1a1a1a]/95 light:bg-white/95 light:shadow-gray-200/50`}>
+        <nav className={`sticky top-0 z-50 backdrop-blur-lg transition-all duration-300 ${scrolled ? 'bg-[#1a1a1a]/95 shadow-lg dark:shadow-black/20' : 'bg-[#1a1a1a]/80 dark:shadow-black/10'} dark:bg-[#1a1a1a]/95 light:bg-white/95 light:shadow-gray-200/50`}>
             {/* Gradient border bottom - stylish fade effect */}
             <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent dark:via-white/10 light:via-[#7C5FFF]/30" />
-            <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8">
+            <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8 md:ml-20">
                 <div className="flex items-center justify-between h-14 md:h-16">
                     <div className="flex items-center gap-4 md:gap-8">
                         <Link to={isAuthenticated ? "/dashboard" : "/"} className="cursor-pointer">
@@ -236,8 +247,16 @@ const Navbar = () => {
                                                 {cartItems.length > 0 ? (
                                                     cartItems.map(item => (
                                                         <div key={item.id} className="flex items-center gap-3 p-3 border-b border-white/5 last:border-b-0 hover:bg-white/5 transition-colors">
-                                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-md flex items-center justify-center text-2xl flex-shrink-0">
-                                                                {item.artwork?.image || item.image || '🎨'}
+                                                            <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-md flex items-center justify-center text-2xl flex-shrink-0 overflow-hidden">
+                                                                {(item.artwork?.imageUrl || item.imageUrl) ? (
+                                                                    <img
+                                                                        src={`http://localhost:5000${item.artwork?.imageUrl || item.imageUrl}`}
+                                                                        alt={item.artwork?.title || item.title}
+                                                                        className="w-full h-full object-cover"
+                                                                    />
+                                                                ) : (
+                                                                    <span className="text-2xl">{item.artwork?.image || item.image || '🎨'}</span>
+                                                                )}
                                                             </div>
                                                             <div className="flex-grow min-w-0">
                                                                 <p className="text-sm text-gray-200 font-semibold truncate">
@@ -310,9 +329,9 @@ const Navbar = () => {
                                         setShowCartDropdown(false);
                                     }
                                 }} className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-full hover:bg-white/5 transition-colors group">
-                                    {user?.profileImage ? (
+                                    {getImageUrl(user?.profileImage || user?.profile_image) ? (
                                         <img
-                                            src={user.profileImage}
+                                            src={getImageUrl(user?.profileImage || user?.profile_image)}
                                             alt={user.username}
                                             className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover ring-2 ring-transparent group-hover:ring-[#7C5FFF]/50 transition-all"
                                         />

@@ -107,8 +107,16 @@ const Dashboard = () => {
         limit: pagination.pageSize,
       };
 
-      // For now, use artworkService.getArtworks for all tabs
-      // TODO: Implement dashboard-specific endpoints for following/trending
+      // Add tab-specific filters
+      if (activeTab === 'following') {
+        // Only show artworks from users the current user is following
+        params.following = true;
+      } else if (activeTab === 'trending') {
+        // Sort by likes/popularity for trending tab
+        params.sortBy = 'like_count';
+        params.order = 'DESC';
+      }
+
       const response = await artworkService.getArtworks(params);
 
       // Transform backend data to match frontend format
@@ -147,6 +155,18 @@ const Dashboard = () => {
   // Load feed on mount and when tab or page changes
   useEffect(() => {
     fetchFeedData();
+  }, [activeTab, pagination.currentPage]);
+
+  // Refresh data when page becomes visible again (e.g., navigating back from artwork page)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchFeedData();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [activeTab, pagination.currentPage]);
 
   // Reset to page 1 when changing tabs

@@ -346,7 +346,9 @@ const SettingsPage = () => {
   if (loading) {
     return (
       <div className="flex-1">
-        <LoadingPaint message="Loading settings..." />
+        <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
+          <LoadingPaint message="Loading settings..." />
+        </div>
       </div>
     );
   }
@@ -354,14 +356,17 @@ const SettingsPage = () => {
   if (error) {
     return (
       <div className="flex-1">
-        <APIError error={error} retry={fetchSettings} />
+        <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
+          <APIError error={error} retry={fetchSettings} />
+        </div>
       </div>
     );
   }
 
   return (
     <div className="flex-1">
-      <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#f2e9dd] mb-4 md:mb-8">Settings</h1>
+      <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
+        <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold text-[#f2e9dd] mb-4 md:mb-8">Settings</h1>
 
       <div className="grid md:grid-cols-4 gap-4 md:gap-8">
         {/* Settings Nav */}
@@ -751,6 +756,7 @@ const SettingsPage = () => {
             )}
           </Card>
         </div>
+      </div>
       </div>
     </div>
   );

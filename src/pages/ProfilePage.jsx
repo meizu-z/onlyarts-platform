@@ -13,7 +13,7 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import PremiumBadge from '../components/common/PremiumBadge';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3 } from 'lucide-react';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3, ShoppingBag, Check } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -372,7 +372,7 @@ const ProfilePage = () => {
                     <Card
                       key={artwork.id}
                       hover
-                      onClick={() => navigate(`/artworks/${artwork.id}`)}
+                      onClick={() => navigate(`/artwork/${artwork.id}`)}
                       className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                       style={{ animationDelay: `${idx * 0.1}s` }}
                     >
@@ -464,7 +464,7 @@ const ProfilePage = () => {
               <Card
                 key={artwork.id}
                 hover
-                onClick={() => navigate(`/artworks/${artwork.id}`)}
+                onClick={() => navigate(`/artwork/${artwork.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -496,6 +496,63 @@ const ProfilePage = () => {
           </div>
         ) : <EmptyArtworks isOwnProfile={isOwnProfile} />;
 
+      case 'for_sale':
+        // Show only artworks that have a price (considered for sale) and not in exhibitions
+        const forSaleArtworks = artworks.filter(artwork =>
+          (artwork.price && artwork.price > 0) &&
+          !artwork.inExhibition
+        );
+        return forSaleArtworks.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+            {forSaleArtworks.map((artwork, idx) => (
+              <Card
+                key={artwork.id}
+                hover
+                onClick={() => navigate(`/artwork/${artwork.id}`)}
+                className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                style={{ animationDelay: `${idx * 0.1}s` }}
+              >
+                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  {getImageUrl(artwork.image) ? (
+                    <img
+                      src={getImageUrl(artwork.image)}
+                      alt={artwork.title}
+                      className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                    />
+                  ) : (
+                    <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                      {artwork.image}
+                    </span>
+                  )}
+                  <div className="absolute top-3 right-3 bg-green-500/90 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-bold z-10">
+                    For Sale
+                  </div>
+                </div>
+                <div className="p-3 md:p-4">
+                  <h3 className="font-bold text-sm md:text-base text-[#f2e9dd] mb-2 group-hover:text-[#7C5FFF] transition-colors">
+                    {artwork.title}
+                  </h3>
+                  {artwork.price && (
+                    <p className="text-green-400 font-semibold mb-2 text-sm md:text-base">₱{artwork.price.toLocaleString()}</p>
+                  )}
+                  <div className="flex items-center gap-2 text-[#f2e9dd]/70 text-xs md:text-sm">
+                    <Heart size={14} />
+                    <span>{artwork.likes}</span>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <p className="text-lg text-[#f2e9dd]/70">No artworks available for sale at the moment.</p>
+            {isOwnProfile && (
+              <p className="text-sm text-[#f2e9dd]/50 mt-2">Mark your artworks as "For Sale" to display them here.</p>
+            )}
+          </div>
+        );
+
       case 'shared_artworks':
         return sharedPosts.length > 0 ? (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
@@ -503,7 +560,7 @@ const ProfilePage = () => {
               <Card
                 key={post.id}
                 hover
-                onClick={() => navigate(`/artworks/${post.id}`)}
+                onClick={() => navigate(`/artwork/${post.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -546,7 +603,7 @@ const ProfilePage = () => {
               <Card
                 key={item.id}
                 hover
-                onClick={() => navigate(item.type === 'exhibition' ? `/exhibitions/${item.id}` : `/artworks/${item.id}`)}
+                onClick={() => navigate(item.type === 'exhibition' ? `/exhibitions/${item.id}` : `/artwork/${item.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -678,9 +735,27 @@ const ProfilePage = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      onClick={(e) => {
+                      onClick={async (e) => {
                         e.stopPropagation();
-                        toast.info('Unfollowed');
+                        const oldFollowing = [...following];
+
+                        // Optimistic update
+                        setFollowing(following.filter(f => f.id !== follow.id));
+                        toast.info(`Unfollowed ${follow.name}`);
+
+                        try {
+                          // DEMO MODE: Just show toast
+                          if (USE_DEMO_MODE) {
+                            return;
+                          }
+
+                          // REAL API MODE: Call backend
+                          await profileService.unfollowUser(follow.username.replace('@', ''));
+                        } catch (error) {
+                          // Revert on error
+                          setFollowing(oldFollowing);
+                          toast.error('Failed to unfollow. Please try again.');
+                        }
                       }}
                       className="w-full md:w-auto transform hover:scale-105 transition-all duration-200"
                     >
@@ -1184,7 +1259,7 @@ const ProfilePage = () => {
           <img
             src={getImageUrl(profileData.coverImage)}
             alt="Cover"
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
           />
         ) : (
           <span className="transform group-hover:scale-110 transition-transform duration-500 relative z-10">
@@ -1259,11 +1334,18 @@ const ProfilePage = () => {
                 <Button
                   onClick={handleFollowToggle}
                   className={`w-full md:w-auto ${isFollowing
-                    ? 'bg-white/5 hover:bg-white/10 transform hover:scale-105 transition-all duration-200'
+                    ? 'bg-green-500/20 hover:bg-green-500/30 border-2 border-green-500/50 text-green-400 transform hover:scale-105 transition-all duration-200'
                     : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300'
                   }`}
                 >
-                  {isFollowing ? 'Following' : 'Follow'}
+                  {isFollowing ? (
+                    <>
+                      <Check size={16} className="mr-2" />
+                      Following
+                    </>
+                  ) : (
+                    'Follow'
+                  )}
                 </Button>
                 {profileData.isArtist && (
                   <Button
@@ -1347,6 +1429,21 @@ const ProfilePage = () => {
             >
               Portfolio
               {activeTab === 'portfolio' && (
+                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
+              )}
+            </button>
+          )}
+          {profileData.isArtist && (
+            <button
+              onClick={() => setActiveTab('for_sale')}
+              className={`relative pb-3 md:pb-4 text-sm md:text-lg whitespace-nowrap transition-all duration-300 ${
+                activeTab === 'for_sale'
+                  ? 'text-[#f2e9dd]'
+                  : 'text-[#f2e9dd]/50 hover:text-[#f2e9dd]'
+              }`}
+            >
+              For Sale
+              {activeTab === 'for_sale' && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] animate-slideIn"></div>
               )}
             </button>

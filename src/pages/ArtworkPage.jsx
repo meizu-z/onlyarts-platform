@@ -294,6 +294,8 @@ const ArtworkPage = () => {
       price: artwork.price,
       quantity: 1,
       image: artwork.image,
+      imageUrl: artwork.imageUrl,
+      artistName: artwork.artistName,
     });
     toast.success(`"${artwork.title}" added to cart!`);
   };

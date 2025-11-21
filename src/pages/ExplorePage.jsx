@@ -230,7 +230,7 @@ const ExplorePage = () => {
                     className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] transform hover:scale-105 transition-all duration-200 shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 text-xs md:text-sm"
                     onClick={() => {
                       toast.success('Entering exhibition...');
-                      setTimeout(() => navigate('/exhibition'), 500);
+                      setTimeout(() => navigate(`/exhibition/${exhibition.id}`), 500);
                     }}
                   >
                     Enter Exhibition

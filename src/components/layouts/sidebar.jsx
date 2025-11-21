@@ -1,7 +1,18 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ShoppingBag, Shield } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import { API_CONFIG } from '../../config/api.config';
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+  return `${serverBaseUrl}${imagePath}`;
+};
 
 const NavItem = ({ to, icon, children, isHovered }) => {
   const location = useLocation();
@@ -61,6 +72,17 @@ const NavItem = ({ to, icon, children, isHovered }) => {
 const Sidebar = () => {
   const { user } = useAuth();
   const [isHovered, setIsHovered] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
+
+  // Detect page scroll to add floating effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 50);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   return (
     <aside
@@ -72,19 +94,24 @@ const Sidebar = () => {
         dark:from-[#1a1a1a] dark:to-[#121212]
         light:from-white light:to-gray-50
         backdrop-blur-xl
-        transition-all duration-200 ease-out
+        transition-all duration-300 ease-out
         overflow-x-hidden
         ${isHovered ? 'w-64' : 'w-20'}
-        fixed top-16 left-0 bottom-0 z-40
+        ${isScrolled ? 'shadow-2xl shadow-black/30 dark:shadow-black/50 light:shadow-gray-400/30' : 'shadow-lg shadow-black/10'}
+        fixed top-0 left-0 h-screen z-40
       `}
     >
-      {/* Gradient border right - stylish fade effect */}
-      <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent dark:via-white/10 light:via-[#7C5FFF]/30" />
+      {/* Enhanced gradient border right - subtle multi-layer fade */}
+      <div className="absolute top-0 right-0 bottom-0 w-[2px]">
+        {/* Outer glow layer */}
+        <div className={`absolute inset-0 bg-gradient-to-b from-transparent to-transparent dark:via-white/5 light:via-[#7C5FFF]/10 blur-sm transition-all duration-300 ${isScrolled ? 'via-white/8 light:via-[#7C5FFF]/15' : 'via-white/5 light:via-[#7C5FFF]/10'}`} />
+        {/* Main gradient line */}
+        <div className="absolute inset-0 w-[1px] right-0 bg-gradient-to-b from-transparent via-white/15 to-transparent dark:via-white/15 light:via-[#7C5FFF]/25" />
+      </div>
       {/* Navigation - no logo section */}
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4 pt-6"
-           style={{ scrollbarWidth: 'thin', scrollbarColor: '#7C5FFF #1a1a1a' }}>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4 pt-20 sidebar-scrollbar">
         <nav className="space-y-1 overflow-x-hidden">
           {/* Main Menu Section */}
           <div className="mb-8">
@@ -153,9 +180,9 @@ const Sidebar = () => {
                       ${isHovered ? '' : 'justify-center'}`}>
           {/* Profile Picture with ring */}
           <div className="relative flex-shrink-0">
-            {user?.profileImage ? (
+            {getImageUrl(user?.profileImage || user?.profile_image) ? (
               <img
-                src={user.profileImage}
+                src={getImageUrl(user?.profileImage || user?.profile_image)}
                 alt={user.username}
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-[#7C5FFF]/30 transition-all duration-300 hover:ring-[#7C5FFF] hover:scale-105"
               />
@@ -179,6 +206,46 @@ const Sidebar = () => {
           </div>
         </div>
       </div>
+
+      {/* Scrollbar styles that adapt to light/dark mode */}
+      <style>{`
+        .sidebar-scrollbar::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .sidebar-scrollbar::-webkit-scrollbar-track {
+          background: transparent;
+        }
+
+        .sidebar-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(124, 95, 255, 0.3);
+          border-radius: 10px;
+          transition: background 0.2s ease;
+        }
+
+        .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(124, 95, 255, 0.5);
+        }
+
+        /* Light mode scrollbar */
+        .light .sidebar-scrollbar::-webkit-scrollbar-thumb {
+          background: rgba(124, 95, 255, 0.2);
+        }
+
+        .light .sidebar-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: rgba(124, 95, 255, 0.4);
+        }
+
+        /* Firefox scrollbar */
+        .sidebar-scrollbar {
+          scrollbar-width: thin;
+          scrollbar-color: rgba(124, 95, 255, 0.3) transparent;
+        }
+
+        .light .sidebar-scrollbar {
+          scrollbar-color: rgba(124, 95, 255, 0.2) transparent;
+        }
+      `}</style>
     </aside>
   );
 };

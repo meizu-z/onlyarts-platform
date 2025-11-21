@@ -5,51 +5,76 @@ const AppError = require('../utils/AppError');
 
 /**
  * @route   GET /api/favorites
- * @desc    Get user's favorite artworks
+ * @desc    Get user's favorite artworks and exhibitions
  * @access  Private
  */
 exports.getFavorites = asyncHandler(async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 12;
+  const limit = parseInt(req.query.limit) || 24;
   const offset = (page - 1) * limit;
 
   // Get favorited artworks
-  const result = await query(
+  const artworksResult = await query(
     `SELECT a.id, a.title, a.description, a.price, a.category, a.created_at,
-            a.like_count, a.view_count,
+            a.like_count, a.view_count, 'artwork' as type,
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
-            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image
+            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
+            l.created_at as favorited_at
      FROM likes l
      JOIN artworks a ON l.artwork_id = a.id
      JOIN users u ON a.artist_id = u.id
-     WHERE l.user_id = ?
-     ORDER BY l.created_at DESC
-     LIMIT ${limit} OFFSET ${offset}`,
+     WHERE l.user_id = ?`,
     [req.user.id]
   );
 
-  // Get total count
-  const countResult = await query(
-    'SELECT COUNT(*) as total FROM likes WHERE user_id = ?',
+  // Get favorited exhibitions
+  const exhibitionsResult = await query(
+    `SELECT e.id, e.title, e.description, e.status, e.start_date, e.end_date,
+            e.created_at, 'exhibition' as type, e.status as exhibition_type,
+            u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
+            e.cover_image as primary_image,
+            el.created_at as favorited_at,
+            (SELECT COUNT(*) FROM exhibition_artworks WHERE exhibition_id = e.id) as artworks_count
+     FROM exhibition_likes el
+     JOIN exhibitions e ON el.exhibition_id = e.id
+     JOIN users u ON e.curator_id = u.id
+     WHERE el.user_id = ?`,
     [req.user.id]
   );
+
+  // Combine and sort by favorited_at
+  const allFavorites = [...artworksResult.rows, ...exhibitionsResult.rows]
+    .sort((a, b) => new Date(b.favorited_at) - new Date(a.favorited_at))
+    .slice(offset, offset + limit);
 
   // Transform image paths to full URLs
   const baseUrl = `${req.protocol}://${req.get('host')}`;
-  const favorites = result.rows.map(artwork => ({
-    ...artwork,
-    primary_image: artwork.primary_image
-      ? `${baseUrl}${artwork.primary_image}`
-      : null
+  const favorites = allFavorites.map(item => ({
+    ...item,
+    primary_image: item.primary_image && !item.primary_image.startsWith('http')
+      ? `${baseUrl}${item.primary_image}`
+      : item.primary_image
   }));
+
+  // Get total count
+  const artworkCountResult = await query(
+    'SELECT COUNT(*) as total FROM likes WHERE user_id = ?',
+    [req.user.id]
+  );
+  const exhibitionCountResult = await query(
+    'SELECT COUNT(*) as total FROM exhibition_likes WHERE user_id = ?',
+    [req.user.id]
+  );
+
+  const total = artworkCountResult.rows[0].total + exhibitionCountResult.rows[0].total;
 
   successResponse(res, {
     favorites,
     pagination: {
-      total: countResult.rows[0].total,
+      total,
       page,
       limit,
-      totalPages: Math.ceil(countResult.rows[0].total / limit),
+      totalPages: Math.ceil(total / limit),
     },
   }, 'Favorites retrieved');
 });

@@ -297,14 +297,15 @@ exports.followUser = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const followerId = req.user.id;
 
-  // Can't follow yourself
-  if (parseInt(id) === followerId) {
-    return next(new AppError('You cannot follow yourself', 400));
-  }
+  // Determine if id is a numeric ID or a username
+  const isNumeric = !isNaN(id);
+  let targetUserId;
 
-  // Check if target user exists
+  // Check if target user exists (by ID or username)
   const userResult = await query(
-    'SELECT id FROM users WHERE id = ? AND is_active = TRUE',
+    isNumeric
+      ? 'SELECT id FROM users WHERE id = ? AND is_active = TRUE'
+      : 'SELECT id FROM users WHERE username = ? AND is_active = TRUE',
     [id]
   );
 
@@ -312,10 +313,17 @@ exports.followUser = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
 
+  targetUserId = userResult.rows[0].id;
+
+  // Can't follow yourself
+  if (targetUserId === followerId) {
+    return next(new AppError('You cannot follow yourself', 400));
+  }
+
   // Check if already following
   const existingFollow = await query(
     'SELECT id FROM follows WHERE follower_id = ? AND following_id = ?',
-    [followerId, id]
+    [followerId, targetUserId]
   );
 
   if (existingFollow.rows.length > 0) {
@@ -325,7 +333,7 @@ exports.followUser = asyncHandler(async (req, res, next) => {
   // Create follow relationship
   await query(
     'INSERT INTO follows (follower_id, following_id) VALUES (?, ?)',
-    [followerId, id]
+    [followerId, targetUserId]
   );
 
   // Update follower/following counts
@@ -335,7 +343,7 @@ exports.followUser = asyncHandler(async (req, res, next) => {
   );
   await query(
     'UPDATE users SET follower_count = follower_count + 1 WHERE id = ?',
-    [id]
+    [targetUserId]
   );
 
   successResponse(res, null, 'User followed successfully');
@@ -350,10 +358,28 @@ exports.unfollowUser = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
   const followerId = req.user.id;
 
+  // Determine if id is a numeric ID or a username
+  const isNumeric = !isNaN(id);
+  let targetUserId;
+
+  // Check if target user exists (by ID or username)
+  const userResult = await query(
+    isNumeric
+      ? 'SELECT id FROM users WHERE id = ? AND is_active = TRUE'
+      : 'SELECT id FROM users WHERE username = ? AND is_active = TRUE',
+    [id]
+  );
+
+  if (userResult.rows.length === 0) {
+    return next(new AppError('User not found', 404));
+  }
+
+  targetUserId = userResult.rows[0].id;
+
   // Check if following
   const followResult = await query(
     'SELECT id FROM follows WHERE follower_id = ? AND following_id = ?',
-    [followerId, id]
+    [followerId, targetUserId]
   );
 
   if (followResult.rows.length === 0) {
@@ -363,7 +389,7 @@ exports.unfollowUser = asyncHandler(async (req, res, next) => {
   // Delete follow relationship
   await query(
     'DELETE FROM follows WHERE follower_id = ? AND following_id = ?',
-    [followerId, id]
+    [followerId, targetUserId]
   );
 
   // Update follower/following counts
@@ -373,7 +399,7 @@ exports.unfollowUser = asyncHandler(async (req, res, next) => {
   );
   await query(
     'UPDATE users SET follower_count = follower_count - 1 WHERE id = ?',
-    [id]
+    [targetUserId]
   );
 
   successResponse(res, null, 'User unfollowed successfully');

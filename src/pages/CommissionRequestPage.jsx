@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Sparkles, Upload, X, DollarSign, Calendar, MessageSquare, ArrowLeft } from 'lucide-react';
+import { Sparkles, Upload, X, DollarSign, Calendar, MessageSquare, ArrowLeft, Users } from 'lucide-react';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
 import { commissionService } from '../services';
+import { consultationService } from '../services/consultation.service';
+import { LoadingPaint } from '../components/ui/LoadingStates';
 import { API_CONFIG } from '../config/api.config';
 
 // Helper function to get full image URL
@@ -25,7 +27,10 @@ const CommissionRequestPage = () => {
   const { user } = useAuth();
 
   // Get artist info from navigation state
-  const artist = location.state?.artist;
+  const [selectedArtist, setSelectedArtist] = useState(location.state?.artist || null);
+  const [artists, setArtists] = useState([]);
+  const [loadingArtists, setLoadingArtists] = useState(false);
+  const [showArtistSelection, setShowArtistSelection] = useState(!location.state?.artist);
 
   const [formData, setFormData] = useState({
     artworkType: '',
@@ -39,6 +44,31 @@ const CommissionRequestPage = () => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Fetch artists if no artist was provided
+  useEffect(() => {
+    if (showArtistSelection) {
+      fetchArtists();
+    }
+  }, [showArtistSelection]);
+
+  const fetchArtists = async () => {
+    try {
+      setLoadingArtists(true);
+      const response = await consultationService.getAvailableArtists();
+      setArtists(response.artists || []);
+    } catch (error) {
+      console.error('Error fetching artists:', error);
+      toast.error('Failed to load artists');
+    } finally {
+      setLoadingArtists(false);
+    }
+  };
+
+  const handleArtistSelect = (artist) => {
+    setSelectedArtist(artist);
+    setShowArtistSelection(false);
+  };
 
   const artworkTypes = [
     'Portrait',
@@ -100,7 +130,7 @@ const CommissionRequestPage = () => {
       return;
     }
 
-    if (!artist?.id) {
+    if (!selectedArtist?.id) {
       toast.error('Artist information is missing');
       return;
     }
@@ -113,7 +143,7 @@ const CommissionRequestPage = () => {
 
       // Submit commission request to backend
       const commissionData = {
-        artistId: artist.id,
+        artistId: selectedArtist.id,
         artworkType: formData.artworkType,
         deliveryFormat: formData.deliveryFormat,
         size: formData.size,
@@ -128,7 +158,7 @@ const CommissionRequestPage = () => {
       toast.success('Commission request submitted! 🎨');
 
       // Navigate back to artist profile
-      navigate(`/profile/${artist?.username || artist?.id}`);
+      navigate(`/profile/${selectedArtist?.username || selectedArtist?.id}`);
     } catch (error) {
       console.error('Error submitting commission:', error);
       toast.error(error.message || 'Failed to submit commission request');
@@ -137,12 +167,79 @@ const CommissionRequestPage = () => {
     }
   };
 
-  if (!artist) {
+  // Show artist selection screen if no artist is selected
+  if (showArtistSelection) {
+    if (loadingArtists) {
+      return <LoadingPaint message="Loading artists..." />;
+    }
+
     return (
-      <div className="max-w-2xl mx-auto text-center py-12">
-        <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4">Artist Not Found</h2>
-        <p className="text-[#f2e9dd]/70 mb-6">Please select an artist to request a commission.</p>
-        <Button onClick={() => navigate('/explore')}>Browse Artists</Button>
+      <div className="max-w-6xl mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <button
+            onClick={() => navigate(-1)}
+            className="text-purple-400 hover:text-purple-300 mb-4 flex items-center gap-2"
+          >
+            <ArrowLeft size={18} />
+            Back
+          </button>
+
+          <div className="flex items-center gap-3 mb-2">
+            <Users className="text-purple-400" size={32} />
+            <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd]">Select an Artist</h1>
+          </div>
+          <p className="text-sm md:text-base text-[#f2e9dd]/70">
+            Choose an artist to request a commission from
+          </p>
+        </div>
+
+        {/* Artists Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          {artists.length === 0 ? (
+            <div className="col-span-full text-center py-12">
+              <p className="text-[#f2e9dd]/70 mb-4">No artists available at the moment</p>
+              <Button onClick={() => navigate('/explore')}>Browse Explore Page</Button>
+            </div>
+          ) : (
+            artists.map((artist) => (
+              <Card key={artist.id} hover className="p-4 md:p-6">
+                <div className="flex items-start gap-4 mb-4">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl overflow-hidden flex-shrink-0">
+                    {getImageUrl(artist.profile_image || artist.profileImage) ? (
+                      <img
+                        src={getImageUrl(artist.profile_image || artist.profileImage)}
+                        alt={artist.name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{artist.avatar || '👤'}</span>
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-lg text-[#f2e9dd] mb-1 truncate">{artist.name || artist.username}</h3>
+                    <p className="text-sm text-[#f2e9dd]/60 mb-2">@{artist.username}</p>
+                    {artist.specialty && (
+                      <p className="text-xs font-semibold text-purple-400 mb-2">{artist.specialty}</p>
+                    )}
+                  </div>
+                </div>
+
+                {artist.description && (
+                  <p className="text-sm text-[#f2e9dd]/70 mb-4 line-clamp-2">{artist.description}</p>
+                )}
+
+                <Button
+                  onClick={() => handleArtistSelect(artist)}
+                  className="w-full bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-sm md:text-base"
+                >
+                  <Sparkles size={16} className="mr-2" />
+                  Request Commission
+                </Button>
+              </Card>
+            ))
+          )}
+        </div>
       </div>
     );
   }
@@ -161,10 +258,10 @@ const CommissionRequestPage = () => {
 
           <div className="flex items-center gap-4 mb-4">
             <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-3xl overflow-hidden">
-              {getImageUrl(artist.profileImage || artist.profile_image) ? (
+              {getImageUrl(selectedArtist.profileImage || selectedArtist.profile_image) ? (
                 <img
-                  src={getImageUrl(artist.profileImage || artist.profile_image)}
-                  alt={artist.name}
+                  src={getImageUrl(selectedArtist.profileImage || selectedArtist.profile_image)}
+                  alt={selectedArtist.name}
                   className="w-full h-full object-cover"
                 />
               ) : (
@@ -172,13 +269,19 @@ const CommissionRequestPage = () => {
               )}
             </div>
             <div>
-              <h1 className="text-3xl font-bold text-[#f2e9dd] flex items-center gap-2">
-                <Sparkles className="text-purple-400" size={28} />
+              <h1 className="text-2xl md:text-3xl font-bold text-[#f2e9dd] flex items-center gap-2">
+                <Sparkles className="text-purple-400" size={24} />
                 Request Commission
               </h1>
-              <p className="text-[#f2e9dd]/70 mt-1">
-                from <span className="text-purple-400 font-semibold">{artist.name}</span>
+              <p className="text-sm md:text-base text-[#f2e9dd]/70 mt-1">
+                from <span className="text-purple-400 font-semibold">{selectedArtist.name || selectedArtist.username}</span>
               </p>
+              <button
+                onClick={() => setShowArtistSelection(true)}
+                className="text-xs md:text-sm text-purple-400 hover:text-purple-300 mt-1 flex items-center gap-1"
+              >
+                Change Artist
+              </button>
             </div>
           </div>
         </div>
@@ -360,18 +463,19 @@ const CommissionRequestPage = () => {
             </div>
 
             {/* Submit Button */}
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-2 md:gap-4 pt-4">
               <Button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 font-bold text-lg py-4"
+                className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 font-bold text-sm md:text-lg py-2.5 md:py-4"
               >
                 {isSubmitting ? (
                   'Submitting...'
                 ) : (
                   <>
-                    <Sparkles size={20} className="inline mr-2" />
-                    Submit Commission Request
+                    <Sparkles size={18} className="inline mr-2" />
+                    <span className="hidden sm:inline">Submit Commission Request</span>
+                    <span className="sm:hidden">Submit Request</span>
                   </>
                 )}
               </Button>
@@ -379,7 +483,7 @@ const CommissionRequestPage = () => {
                 type="button"
                 onClick={() => navigate(-1)}
                 variant="secondary"
-                className="px-8"
+                className="px-4 md:px-8"
               >
                 Cancel
               </Button>
