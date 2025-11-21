@@ -16,7 +16,7 @@ const MainLayout = ({ showSidebar = true, showFooter = false }) => {
       {showSidebar && isAuthenticated && <Sidebar />}
 
       {/* Main content with left margin for fixed sidebar */}
-      <main className={`flex-1 w-full max-w-full p-6 md:p-8 pb-20 md:pb-8 transition-all duration-200 ${
+      <main className={`flex-1 w-full max-w-full p-6 md:p-8 pb-24 md:pb-8 transition-all duration-200 ${
         showSidebar && isAuthenticated ? 'md:ml-20' : ''
       }`}>
         <Outlet />

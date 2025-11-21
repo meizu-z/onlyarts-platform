@@ -60,7 +60,8 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
             a.is_for_sale, a.stock_quantity, a.created_at,
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
             u.profile_image as artist_image,
-            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image
+            (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
+            ${req.user?.id ? `(SELECT COUNT(*) FROM likes WHERE user_id = ${req.user.id} AND artwork_id = a.id) as is_liked` : '0 as is_liked'}
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE ${whereClause}

@@ -134,7 +134,9 @@ const Navbar = () => {
     };
 
     return (
-        <nav className={`sticky top-0 z-40 backdrop-blur-lg border-b transition-all duration-300 ${scrolled ? 'bg-[#1a1a1a]/95 border-white/10 shadow-lg' : 'bg-[#1a1a1a]/80 border-white/5'}`}>
+        <nav className={`sticky top-0 z-40 backdrop-blur-lg transition-all duration-300 ${scrolled ? 'bg-[#1a1a1a]/95 shadow-lg dark:shadow-black/20' : 'bg-[#1a1a1a]/80 dark:shadow-black/10'} dark:bg-[#1a1a1a]/95 light:bg-white/95 light:shadow-gray-200/50`}>
+            {/* Gradient border bottom - stylish fade effect */}
+            <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-white/10 to-transparent dark:via-white/10 light:via-[#7C5FFF]/30" />
             <div className="max-w-[1920px] mx-auto px-3 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-14 md:h-16">
                     <div className="flex items-center gap-4 md:gap-8">
@@ -308,9 +310,17 @@ const Navbar = () => {
                                         setShowCartDropdown(false);
                                     }
                                 }} className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-full hover:bg-white/5 transition-colors group">
-                                    <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-white font-bold text-xs md:text-sm ring-2 ring-transparent group-hover:ring-[#7C5FFF]/50 transition-all">
-                                        {user?.displayName?.[0]?.toUpperCase() || 'U'}
-                                    </div>
+                                    {user?.profileImage ? (
+                                        <img
+                                            src={user.profileImage}
+                                            alt={user.username}
+                                            className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover ring-2 ring-transparent group-hover:ring-[#7C5FFF]/50 transition-all"
+                                        />
+                                    ) : (
+                                        <div className="w-7 h-7 md:w-8 md:h-8 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-white font-bold text-xs md:text-sm ring-2 ring-transparent group-hover:ring-[#7C5FFF]/50 transition-all">
+                                            {user?.username?.[0]?.toUpperCase() || user?.displayName?.[0]?.toUpperCase() || 'U'}
+                                        </div>
+                                    )}
                                     <span className="hidden sm:inline text-sm md:text-base text-[#f2e9dd]">@{user?.username}</span>
                                     <ChevronDown size={14} className={`hidden sm:block md:w-4 md:h-4 text-[#f2e9dd] transition-transform duration-200 ${showUserMenu ? 'rotate-180' : ''}`} />
                                 </button>

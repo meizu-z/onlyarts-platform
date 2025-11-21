@@ -56,9 +56,9 @@ const SubscriptionsPage = () => {
           }
         },
         {
-          name: 'plus',
+          name: 'basic',
           price: 149,
-          title: 'PLUS',
+          title: 'BASIC',
           popular: true,
           features: {
             fan: ['Everything in Free', 'Comment on artworks', 'Save favorites', 'Early access to exhibitions'],
@@ -70,7 +70,7 @@ const SubscriptionsPage = () => {
           price: 249,
           title: 'PREMIUM',
           features: {
-            fan: ['Everything in Plus', 'Exclusive content access', 'VIP badge', 'Premium exhibitions'],
+            fan: ['Everything in Basic', 'Exclusive content access', 'VIP badge', 'Premium exhibitions'],
             artist: ['Unlimited artworks', 'Premium analytics', 'Livestream capabilities', 'Priority placement']
           }
         }
@@ -155,62 +155,116 @@ const SubscriptionsPage = () => {
 
       {/* Plans Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
-        {plans.map((plan, idx) => (
-          <Card
-            key={plan.name}
-            className={`p-4 md:p-6 transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn ${
-              plan.popular ? 'border-2 border-[#7C5FFF] shadow-lg shadow-[#7C5FFF]/30' : ''
-            }`}
-            style={{ animationDelay: `${idx * 0.1}s` }}
-          >
-            {plan.popular && (
-              <div className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white text-xs md:text-sm font-bold px-2 md:px-3 py-1 rounded-full inline-flex items-center gap-1 mb-3 md:mb-4 shadow-lg shadow-[#7C5FFF]/30">
-                <Sparkles size={12} className="animate-pulse" /> POPULAR
-              </div>
-            )}
-            <h3 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-2">{plan.title}</h3>
-            <div className="mb-4 md:mb-6">
-              <span className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
-                ₱{plan.price}
-              </span>
-              <span className="text-[#f2e9dd]/50">/month</span>
-            </div>
+        {plans.map((plan, idx) => {
+          // Define gradient styles for each plan
+          const gradientStyles = {
+            free: 'bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a]',
+            basic: 'bg-gradient-to-br from-[#7C5FFF]/20 via-[#1a1a1a] to-[#FF5F9E]/20',
+            premium: 'bg-gradient-to-br from-[#7C5FFF]/30 via-[#B15FFF]/20 to-[#FF5F9E]/30'
+          };
 
-            <div className="space-y-3 md:space-y-4 mb-4 md:mb-6">
-              <div>
-                <p className="text-xs md:text-sm font-bold text-[#B15FFF] mb-1 md:mb-2">Fan Access:</p>
-                {plan.features.fan.map((feature, idx) => (
-                  <p key={idx} className="text-xs md:text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
-                ))}
-              </div>
-              <div>
-                <p className="text-xs md:text-sm font-bold text-[#FF5F9E] mb-1 md:mb-2">Artist:</p>
-                {plan.features.artist.map((feature, idx) => (
-                  <p key={idx} className="text-xs md:text-sm text-[#f2e9dd]/70 mb-1">{feature}</p>
-                ))}
-              </div>
-            </div>
+          const borderStyles = {
+            free: 'border-white/10',
+            basic: 'border-[#7C5FFF]/50 shadow-xl shadow-[#7C5FFF]/20',
+            premium: 'border-[#FF5F9E]/50 shadow-xl shadow-[#FF5F9E]/20'
+          };
 
-            <Button
-              className={`w-full transform hover:scale-105 transition-all duration-200 ${
-                user?.subscription === plan.name 
-                  ? '' 
-                  : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50'
-              }`}
-              variant={user?.subscription === plan.name ? 'ghost' : 'primary'}
-              onClick={() => handleSelectPlan(plan)}
-              disabled={user?.subscription === plan.name}
+          return (
+            <Card
+              key={plan.name}
+              className={`
+                ${gradientStyles[plan.name]}
+                border-2 ${borderStyles[plan.name]}
+                p-6 md:p-8
+                transform hover:scale-105 hover:-translate-y-2
+                transition-all duration-300 animate-fadeIn
+                relative overflow-hidden
+                flex flex-col h-full
+              `}
+              style={{ animationDelay: `${idx * 0.1}s` }}
             >
-              {user?.subscription === plan.name ? (
-                <>
-                  <Check size={16} className="mr-2" /> Current Plan
-                </>
-              ) : (
-                'Select Plan'
-              )}
-            </Button>
-          </Card>
-        ))}
+              {/* Gradient overlay */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent pointer-events-none" />
+
+              {/* Content */}
+              <div className="relative z-10 flex flex-col h-full">
+                {plan.popular && (
+                  <div className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white text-xs md:text-sm font-bold px-3 py-1.5 rounded-full inline-flex items-center gap-1.5 mb-4 self-start shadow-lg shadow-[#7C5FFF]/50 animate-pulse">
+                    <Sparkles size={14} /> MOST POPULAR
+                  </div>
+                )}
+
+                <h3 className="text-2xl md:text-3xl font-bold text-[#f2e9dd] mb-2">{plan.title}</h3>
+
+                <div className="mb-6">
+                  {plan.price === 0 ? (
+                    <span className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+                      Free
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+                        ₱{plan.price}
+                      </span>
+                      <span className="text-[#f2e9dd]/50 text-lg">/month</span>
+                    </>
+                  )}
+                </div>
+
+                {/* Features section with flex-grow to push button to bottom */}
+                <div className="space-y-4 mb-6 flex-grow">
+                  <div className="bg-black/30 rounded-lg p-4 backdrop-blur-sm">
+                    <p className="text-sm font-bold text-[#B15FFF] mb-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#B15FFF] animate-pulse" />
+                      Fan Access
+                    </p>
+                    {plan.features.fan.map((feature, idx) => (
+                      <div key={idx} className="flex items-start gap-2 mb-2">
+                        <Check size={16} className="text-[#B15FFF] mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-[#f2e9dd]/80">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="bg-black/30 rounded-lg p-4 backdrop-blur-sm">
+                    <p className="text-sm font-bold text-[#FF5F9E] mb-3 flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-[#FF5F9E] animate-pulse" />
+                      Artist Benefits
+                    </p>
+                    {plan.features.artist.map((feature, idx) => (
+                      <div key={idx} className="flex items-start gap-2 mb-2">
+                        <Check size={16} className="text-[#FF5F9E] mt-0.5 flex-shrink-0" />
+                        <p className="text-sm text-[#f2e9dd]/80">{feature}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Button at the bottom */}
+                <Button
+                  className={`w-full transform hover:scale-105 transition-all duration-200 mt-auto ${
+                    user?.subscription === plan.name
+                      ? 'bg-white/10 text-[#f2e9dd] border border-white/20'
+                      : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 border-0'
+                  }`}
+                  variant={user?.subscription === plan.name ? 'ghost' : 'primary'}
+                  onClick={() => handleSelectPlan(plan)}
+                  disabled={user?.subscription === plan.name}
+                >
+                  {user?.subscription === plan.name ? (
+                    <>
+                      <Check size={16} className="mr-2" /> Current Plan
+                    </>
+                  ) : (
+                    <>
+                      Get Started <ArrowRight size={16} className="ml-2" />
+                    </>
+                  )}
+                </Button>
+              </div>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="text-center text-sm text-[#f2e9dd]/50">

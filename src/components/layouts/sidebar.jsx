@@ -69,18 +69,23 @@ const Sidebar = () => {
       className={`
         hidden md:flex flex-col
         bg-gradient-to-b from-[#1a1a1a] to-[#121212]
-        border-r border-white/10 backdrop-blur-xl
+        dark:from-[#1a1a1a] dark:to-[#121212]
+        light:from-white light:to-gray-50
+        backdrop-blur-xl
         transition-all duration-200 ease-out
+        overflow-x-hidden
         ${isHovered ? 'w-64' : 'w-20'}
         fixed top-16 left-0 bottom-0 z-40
       `}
     >
+      {/* Gradient border right - stylish fade effect */}
+      <div className="absolute top-0 right-0 bottom-0 w-[1px] bg-gradient-to-b from-transparent via-white/10 to-transparent dark:via-white/10 light:via-[#7C5FFF]/30" />
       {/* Navigation - no logo section */}
 
       {/* Navigation */}
-      <div className="flex-1 overflow-y-auto px-2 pb-4 pt-6"
+      <div className="flex-1 overflow-y-auto overflow-x-hidden px-2 pb-4 pt-6"
            style={{ scrollbarWidth: 'thin', scrollbarColor: '#7C5FFF #1a1a1a' }}>
-        <nav className="space-y-1">
+        <nav className="space-y-1 overflow-x-hidden">
           {/* Main Menu Section */}
           <div className="mb-8">
             <p className={`px-4 mb-4 text-xs font-bold text-gray-500 uppercase tracking-widest
@@ -148,11 +153,17 @@ const Sidebar = () => {
                       ${isHovered ? '' : 'justify-center'}`}>
           {/* Profile Picture with ring */}
           <div className="relative flex-shrink-0">
-            <img
-              src={user.profilePicture}
-              alt={user.username}
-              className="w-10 h-10 rounded-full ring-2 ring-[#7C5FFF]/30 transition-all duration-300 hover:ring-[#7C5FFF] hover:scale-105"
-            />
+            {user?.profileImage ? (
+              <img
+                src={user.profileImage}
+                alt={user.username}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-[#7C5FFF]/30 transition-all duration-300 hover:ring-[#7C5FFF] hover:scale-105"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-white font-bold text-sm ring-2 ring-[#7C5FFF]/30 transition-all duration-300 hover:ring-[#7C5FFF] hover:scale-105">
+                {user?.username?.[0]?.toUpperCase() || 'U'}
+              </div>
+            )}
             {/* Online indicator */}
             <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#121212] animate-pulse" />
           </div>

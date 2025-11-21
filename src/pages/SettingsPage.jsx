@@ -141,25 +141,10 @@ const SettingsPage = () => {
   }, [theme]);
 
   // Handle theme change with toast
-  const handleThemeChange = async (newTheme) => {
-    const oldTheme = theme;
+  const handleThemeChange = (newTheme) => {
     setTheme(newTheme);
-
-    try {
-      // DEMO MODE: Just show toast
-      if (USE_DEMO_MODE) {
-        toast.info(`Theme changed to ${newTheme} mode`);
-        return;
-      }
-
-      // REAL API MODE: Call backend
-      await settingsService.updateAppearance({ theme: newTheme });
-      toast.info(`Theme changed to ${newTheme} mode`);
-    } catch (error) {
-      // Revert on error
-      setTheme(oldTheme);
-      toast.error('Failed to update theme. Please try again.');
-    }
+    // Theme is stored in localStorage by the useEffect, no backend call needed
+    toast?.info?.(`Theme changed to ${newTheme} mode`);
   };
 
   // Handle save account settings

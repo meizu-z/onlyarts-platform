@@ -31,6 +31,15 @@ exports.getUserById = asyncHandler(async (req, res, next) => {
 
   const user = result.rows[0];
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  if (user.profile_image && !user.profile_image.startsWith('http')) {
+    user.profile_image = `${baseUrl}${user.profile_image}`;
+  }
+  if (user.cover_image && !user.cover_image.startsWith('http')) {
+    user.cover_image = `${baseUrl}${user.cover_image}`;
+  }
+
   // Check if current user follows this user (if authenticated)
   if (req.user) {
     const followResult = await query(
@@ -109,7 +118,18 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
     [id]
   );
 
-  successResponse(res, result.rows[0], 'Profile updated successfully');
+  const updatedUser = result.rows[0];
+
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  if (updatedUser.profile_image && !updatedUser.profile_image.startsWith('http')) {
+    updatedUser.profile_image = `${baseUrl}${updatedUser.profile_image}`;
+  }
+  if (updatedUser.cover_image && !updatedUser.cover_image.startsWith('http')) {
+    updatedUser.cover_image = `${baseUrl}${updatedUser.cover_image}`;
+  }
+
+  successResponse(res, updatedUser, 'Profile updated successfully');
 });
 
 /**
@@ -194,8 +214,17 @@ exports.getUserFollowers = asyncHandler(async (req, res, next) => {
     [userId]
   );
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const followers = result.rows.map(follower => ({
+    ...follower,
+    profile_image: follower.profile_image && !follower.profile_image.startsWith('http')
+      ? `${baseUrl}${follower.profile_image}`
+      : follower.profile_image
+  }));
+
   successResponse(res, {
-    followers: result.rows,
+    followers: followers,
     pagination: {
       total: countResult.rows[0].total,
       page: page,
@@ -239,8 +268,17 @@ exports.getUserFollowing = asyncHandler(async (req, res, next) => {
     [userId]
   );
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const following = result.rows.map(user => ({
+    ...user,
+    profile_image: user.profile_image && !user.profile_image.startsWith('http')
+      ? `${baseUrl}${user.profile_image}`
+      : user.profile_image
+  }));
+
   successResponse(res, {
-    following: result.rows,
+    following: following,
     pagination: {
       total: countResult.rows[0].total,
       page: page,
@@ -396,8 +434,17 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
     values
   );
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const users = usersResult.rows.map(user => ({
+    ...user,
+    profile_image: user.profile_image && !user.profile_image.startsWith('http')
+      ? `${baseUrl}${user.profile_image}`
+      : user.profile_image
+  }));
+
   successResponse(res, {
-    users: usersResult.rows,
+    users: users,
     pagination: {
       total: countResult.rows[0].total,
       page: page,
@@ -432,7 +479,16 @@ exports.searchUsers = asyncHandler(async (req, res, next) => {
     [searchTerm, searchTerm]
   );
 
-  successResponse(res, result.rows, 'Search results retrieved');
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const users = result.rows.map(user => ({
+    ...user,
+    profile_image: user.profile_image && !user.profile_image.startsWith('http')
+      ? `${baseUrl}${user.profile_image}`
+      : user.profile_image
+  }));
+
+  successResponse(res, users, 'Search results retrieved');
 });
 
 /**
@@ -483,8 +539,20 @@ exports.getUserLikedArtworks = asyncHandler(async (req, res, next) => {
   const total = countResult.rows[0].total;
   const totalPages = Math.ceil(total / limit);
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const artworks = artworksResult.rows.map(artwork => ({
+    ...artwork,
+    artist_image: artwork.artist_image && !artwork.artist_image.startsWith('http')
+      ? `${baseUrl}${artwork.artist_image}`
+      : artwork.artist_image,
+    primary_image: artwork.primary_image && !artwork.primary_image.startsWith('http')
+      ? `${baseUrl}${artwork.primary_image}`
+      : artwork.primary_image
+  }));
+
   successResponse(res, {
-    artworks: artworksResult.rows,
+    artworks: artworks,
     pagination: {
       page,
       limit,
@@ -537,8 +605,20 @@ exports.getUserSharedPosts = asyncHandler(async (req, res, next) => {
     [userId]
   );
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  const posts = postsResult.rows.map(post => ({
+    ...post,
+    artist_image: post.artist_image && !post.artist_image.startsWith('http')
+      ? `${baseUrl}${post.artist_image}`
+      : post.artist_image,
+    primary_image: post.primary_image && !post.primary_image.startsWith('http')
+      ? `${baseUrl}${post.primary_image}`
+      : post.primary_image
+  }));
+
   successResponse(res, {
-    posts: postsResult.rows,
+    posts: posts,
     pagination: {
       page,
       limit,

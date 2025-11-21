@@ -123,10 +123,18 @@ const Dashboard = () => {
         isFollowing: false,
         timeAgo: formatTimeAgo(artwork.created_at),
         price: artwork.price,
-        category: artwork.category
+        category: artwork.category,
+        isLiked: artwork.is_liked > 0
       }));
 
       setArtworks(transformedArtworks);
+
+      // Initialize likedArtworks Set with artworks that are already liked
+      const likedIds = new Set(
+        transformedArtworks.filter(a => a.isLiked).map(a => a.id)
+      );
+      setLikedArtworks(likedIds);
+
       setTotalItems(response.data?.pagination?.total || response.pagination?.total || 0);
     } catch (err) {
       console.error('Error fetching feed:', err);

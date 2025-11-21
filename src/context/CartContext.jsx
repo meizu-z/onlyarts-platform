@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useState } from 'react';
-import { mockCartItems } from '../services/cart.service';
 
 const CartContext = createContext();
 
@@ -8,8 +7,8 @@ export const useCart = () => {
 };
 
 export const CartProvider = ({ children }) => {
-  // Initialize with mock items for demo
-  const [cartItems, setCartItems] = useState(mockCartItems);
+  // Initialize with empty cart
+  const [cartItems, setCartItems] = useState([]);
 
   const addToCart = (item) => {
     setCartItems((prevItems) => {

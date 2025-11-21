@@ -149,6 +149,15 @@ exports.login = asyncHandler(async (req, res, next) => {
   // Remove password from response
   delete user.password_hash;
 
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  if (user.profile_image && !user.profile_image.startsWith('http')) {
+    user.profile_image = `${baseUrl}${user.profile_image}`;
+  }
+  if (user.cover_image && !user.cover_image.startsWith('http')) {
+    user.cover_image = `${baseUrl}${user.cover_image}`;
+  }
+
   successResponse(res, {
     user: {
       id: user.id,
@@ -156,6 +165,7 @@ exports.login = asyncHandler(async (req, res, next) => {
       email: user.email,
       full_name: user.full_name,
       profile_image: user.profile_image,
+      cover_image: user.cover_image,
       role: user.role,
       subscription_tier: user.subscription_tier,
       wallet_balance: user.wallet_balance,
@@ -278,5 +288,16 @@ exports.getCurrentUser = asyncHandler(async (req, res, next) => {
     return next(new AppError('User not found', 404));
   }
 
-  successResponse(res, result.rows[0], 'User profile retrieved');
+  const user = result.rows[0];
+
+  // Convert relative image paths to full URLs
+  const baseUrl = `${req.protocol}://${req.get('host')}`;
+  if (user.profile_image && !user.profile_image.startsWith('http')) {
+    user.profile_image = `${baseUrl}${user.profile_image}`;
+  }
+  if (user.cover_image && !user.cover_image.startsWith('http')) {
+    user.cover_image = `${baseUrl}${user.cover_image}`;
+  }
+
+  successResponse(res, user, 'User profile retrieved');
 });
