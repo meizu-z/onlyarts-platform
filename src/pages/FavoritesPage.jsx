@@ -217,7 +217,7 @@ const FavoritesPage = () => {
                       style={{ animationDelay: `${idx * 0.1}s` }}
                       onClick={() => {
                         if (isExhibition) {
-                          navigate(`/exhibitions/${item.id}`);
+                          navigate(`/exhibition/${item.id}`);
                         } else {
                           navigate(`/artwork/${item.id}`);
                         }

@@ -96,8 +96,8 @@ const WalletPage = () => {
         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
 
         <div className="relative z-10">
-          <p className="text-[#f2e9dd]/70 mb-2">Available Balance</p>
-          <p className="text-3xl md:text-5xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent mb-4 md:mb-6 transform group-hover:scale-105 transition-transform duration-300">
+          <p className="text-[#f2e9dd]/70 mb-2 light:text-gray-600">Available Balance</p>
+          <p className="text-3xl md:text-5xl font-bold text-[#7C5FFF] light:text-[#7952cc] mb-4 md:mb-6 transform group-hover:scale-105 transition-transform duration-300">
             ₱{balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -159,12 +159,12 @@ const WalletPage = () => {
               <div className="text-right ml-2">
                 <p className={`text-sm md:text-base font-bold transform group-hover:scale-110 transition-transform ${
                   tx.amount > 0
-                    ? 'text-green-400'
-                    : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent'
+                    ? 'text-green-400 light:text-green-600'
+                    : 'text-[#FF5F9E] light:text-[#d946ef]'
                 }`}>
                   {tx.amount > 0 ? '+' : ''}₱{Math.abs(tx.amount).toLocaleString()}
                 </p>
-                <p className="text-xs md:text-sm text-green-400">Completed</p>
+                <p className="text-xs md:text-sm text-green-400 light:text-green-600">Completed</p>
               </div>
             </div>
           ))}

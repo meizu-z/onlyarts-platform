@@ -56,7 +56,7 @@ export const livestreamService = {
    * @returns {Promise<{message}>}
    */
   endStream: async (streamId) => {
-    const response = await api.post(`/livestreams/${streamId}/end`);
+    const response = await api.put(`/livestreams/${streamId}/end`);
     return response.data;
   },
 

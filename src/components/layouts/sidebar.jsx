@@ -92,7 +92,7 @@ const Sidebar = () => {
         hidden md:flex flex-col
         bg-gradient-to-b from-[#1a1a1a] to-[#121212]
         dark:from-[#1a1a1a] dark:to-[#121212]
-        light:from-white light:to-gray-50
+        light:from-white light:to-white
         backdrop-blur-xl
         transition-all duration-300 ease-out
         overflow-x-hidden

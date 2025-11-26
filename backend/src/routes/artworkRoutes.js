@@ -9,10 +9,11 @@ const router = express.Router();
 /**
  * @route   GET /api/artworks
  * @desc    Get all artworks with filters
- * @access  Public
+ * @access  Public (but supports filtering by followed users if authenticated)
  */
 router.get(
   '/',
+  optionalAuth,
   [
     query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
     query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),

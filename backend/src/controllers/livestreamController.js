@@ -10,40 +10,31 @@ const { successResponse } = require('../utils/response');
  */
 exports.createLivestream = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
-  const { title, description, scheduledFor, thumbnailUrl } = req.body;
+  const { title, description, scheduledFor, thumbnailUrl, isAuction, startingBid } = req.body;
 
-  // Check if user can create livestreams (premium artist)
-  if (req.user.role !== 'artist' || req.user.subscription_tier !== 'premium') {
-    return next(new AppError('Upgrade to Premium Artist to create livestreams', 403));
+  // Check if user can create livestreams (any artist)
+  if (req.user.role !== 'artist' && req.user.role !== 'admin') {
+    return next(new AppError('Only artists can create livestreams', 403));
   }
 
   const result = await query(
-    `INSERT INTO livestreams (host_id, title, description, scheduled_for, thumbnail_url, status)
+    `INSERT INTO livestreams (artist_id, title, description, scheduled_start_at, thumbnail_url, status)
      VALUES (?, ?, ?, ?, ?, 'scheduled')`,
-    [userId, title, description, scheduledFor, thumbnailUrl || null]
+    [userId, title, description, scheduledFor || null, thumbnailUrl || null]
   );
 
   const livestreamId = result.rows.insertId;
 
-  // Notify followers
-  const followersResult = await query(
-    'SELECT follower_id FROM follows WHERE following_id = ?',
-    [userId]
-  );
-
-  if (followersResult.rows.length > 0) {
-    const notifications = followersResult.rows.map(row =>
-      `(${row.follower_id}, 'livestream', 'Upcoming Livestream', 'Your followed artist has scheduled a livestream: ${title}', '/livestreams/${livestreamId}')`
-    ).join(',');
-
-    await query(
-      `INSERT INTO notifications (user_id, type, title, message, link) VALUES ${notifications}`
-    );
-  }
+  // TODO: Notify followers when notifications table is implemented
 
   successResponse(res, {
-    id: livestreamId,
-    status: 'scheduled',
+    stream: {
+      id: livestreamId,
+      title,
+      description,
+      status: 'scheduled',
+      artist_id: userId
+    }
   }, 'Livestream created', 201);
 });
 
@@ -115,9 +106,9 @@ exports.getLivestreamById = asyncHandler(async (req, res, next) => {
     `SELECT
       l.*,
       u.id as host_id, u.username as host_username, u.full_name as host_name,
-      u.profile_image as host_image, u.subscription_tier
+      u.profile_image as host_image, u.subscription as subscription_tier
      FROM livestreams l
-     JOIN users u ON l.host_id = u.id
+     JOIN users u ON l.artist_id = u.id
      WHERE l.id = ?`,
     [id]
   );
@@ -146,13 +137,13 @@ exports.startLivestream = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
   // Check ownership
-  const livestreamResult = await query('SELECT host_id, status FROM livestreams WHERE id = ?', [id]);
+  const livestreamResult = await query('SELECT artist_id, status FROM livestreams WHERE id = ?', [id]);
   if (livestreamResult.rows.length === 0) {
     return next(new AppError('Livestream not found', 404));
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.host_id !== userId) {
+  if (livestream.artist_id !== userId) {
     return next(new AppError('Access denied', 403));
   }
 
@@ -165,21 +156,7 @@ exports.startLivestream = asyncHandler(async (req, res, next) => {
     ['live', id]
   );
 
-  // Notify followers
-  const followersResult = await query(
-    'SELECT follower_id FROM follows WHERE following_id = ?',
-    [userId]
-  );
-
-  if (followersResult.rows.length > 0) {
-    const notifications = followersResult.rows.map(row =>
-      `(${row.follower_id}, 'livestream', 'Livestream Now Live!', 'Your followed artist is now live!', '/livestreams/${id}')`
-    ).join(',');
-
-    await query(
-      `INSERT INTO notifications (user_id, type, title, message, link) VALUES ${notifications}`
-    );
-  }
+  // TODO: Notify followers when notifications table is implemented
 
   successResponse(res, { status: 'live' }, 'Livestream started');
 });
@@ -194,13 +171,13 @@ exports.endLivestream = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
   // Check ownership
-  const livestreamResult = await query('SELECT host_id, status FROM livestreams WHERE id = ?', [id]);
+  const livestreamResult = await query('SELECT artist_id, status FROM livestreams WHERE id = ?', [id]);
   if (livestreamResult.rows.length === 0) {
     return next(new AppError('Livestream not found', 404));
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.host_id !== userId) {
+  if (livestream.artist_id !== userId) {
     return next(new AppError('Access denied', 403));
   }
 
@@ -226,13 +203,13 @@ exports.deleteLivestream = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
 
   // Check ownership
-  const livestreamResult = await query('SELECT host_id, status FROM livestreams WHERE id = ?', [id]);
+  const livestreamResult = await query('SELECT artist_id, status FROM livestreams WHERE id = ?', [id]);
   if (livestreamResult.rows.length === 0) {
     return next(new AppError('Livestream not found', 404));
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.host_id !== userId && req.user.role !== 'admin') {
+  if (livestream.artist_id !== userId && req.user.role !== 'admin') {
     return next(new AppError('Access denied', 403));
   }
 

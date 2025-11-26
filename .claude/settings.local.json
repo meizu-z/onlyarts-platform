@@ -4,7 +4,9 @@
       "Bash(npm start)",
       "Bash(npm run dev:*)",
       "Bash(node -e:*)",
-      "Bash(taskkill:*)"
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ],
     "deny": [],
     "ask": []

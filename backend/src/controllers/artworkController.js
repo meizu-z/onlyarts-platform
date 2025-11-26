@@ -3,6 +3,7 @@ const { query } = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { successResponse } = require('../utils/response');
+const { notifyNewArtwork } = require('../utils/notifications');
 
 /**
  * @route   GET /api/artworks
@@ -28,7 +29,8 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
 
   // Filter by following users only
   if (following && req.user) {
-    conditions.push(`a.artist_id IN (SELECT following_id FROM follows WHERE follower_id = ${req.user.id})`);
+    conditions.push('a.artist_id IN (SELECT following_id FROM follows WHERE follower_id = ?)');
+    values.push(req.user.id);
   }
 
   if (category) {
@@ -273,6 +275,28 @@ exports.createArtwork = asyncHandler(async (req, res, next) => {
      FROM artworks a WHERE a.id = ?`,
     [artworkId]
   );
+
+  // Send notifications to followers if artwork is for sale
+  if (artworkForSale && artworkPrice > 0) {
+    try {
+      const userInfo = await query(
+        'SELECT username FROM users WHERE id = ?',
+        [req.user.id]
+      );
+      if (userInfo.rows.length > 0) {
+        await notifyNewArtwork(
+          req.user.id,
+          userInfo.rows[0].username,
+          artworkId,
+          title.trim(),
+          artworkPrice
+        );
+      }
+    } catch (error) {
+      console.error('Failed to send new artwork notifications:', error);
+      // Don't fail the request if notification fails
+    }
+  }
 
   successResponse(res, artworkResult.rows[0], 'Artwork created successfully', 201);
 });

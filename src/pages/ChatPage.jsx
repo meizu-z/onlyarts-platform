@@ -354,7 +354,7 @@ const ChatPage = () => {
 
           {/* Search bar */}
           <div className="p-3 md:p-4 border-b border-white/10">
-            <div className="relative">
+            <div className="relative z-10">
               <Search size={16} className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-500" />
               <input
                 type="text"
@@ -372,7 +372,7 @@ const ChatPage = () => {
               <div
                 key={contact.id}
                 onClick={() => handleContactClick(contact)}
-                className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 cursor-pointer border-b border-white/5 transition-colors ${activeChat?.id === contact.id ? 'bg-white/10' : 'hover:bg-white/5'}`}>
+                className={`flex items-center gap-3 md:gap-4 p-3 md:p-4 cursor-pointer border-b border-white/5 transition-colors ${activeChat?.id === contact.id ? 'bg-white/10' : 'hover:bg-white/5'} relative z-10`}>
                 <div className="relative w-10 h-10 md:w-12 md:h-12 rounded-full flex-shrink-0">
                   <img src={contact.avatarUrl} alt={contact.name} className="w-full h-full rounded-full object-cover" />
                   {contact.online && <span className="absolute bottom-0 right-0 w-3 h-3 md:w-3.5 md:h-3.5 bg-green-500 rounded-full border-2 border-[#1a1a1a]"></span>}

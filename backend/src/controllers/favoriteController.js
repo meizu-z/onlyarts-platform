@@ -2,6 +2,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const { query } = require('../config/database');
 const { successResponse } = require('../utils/response');
 const AppError = require('../utils/AppError');
+const { notifyArtworkLike } = require('../utils/notifications');
 
 /**
  * @route   GET /api/favorites
@@ -118,6 +119,26 @@ exports.addFavorite = asyncHandler(async (req, res, next) => {
     'UPDATE artworks SET like_count = like_count + 1 WHERE id = ?',
     [artworkId]
   );
+
+  // Send notification to artwork owner
+  try {
+    const artworkInfo = await query(
+      'SELECT a.user_id, a.title, u.username FROM artworks a JOIN users u ON a.user_id = u.id WHERE a.id = ?',
+      [artworkId]
+    );
+    if (artworkInfo.rows.length > 0 && artworkInfo.rows[0].user_id !== req.user.id) {
+      await notifyArtworkLike(
+        artworkInfo.rows[0].user_id,
+        req.user.id,
+        req.user.username,
+        artworkId,
+        artworkInfo.rows[0].title
+      );
+    }
+  } catch (error) {
+    console.error('Failed to send like notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, null, 'Added to favorites', 201);
 });

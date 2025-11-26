@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wifi, Users, Clock, ArrowLeft, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,8 @@ import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { livestreamService, mockLiveStreams, mockUpcomingStreams, mockComments } from '../services/livestream.service';
+import socketService from '../services/socket.service';
+import webrtcService from '../services/webrtc.service';
 import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
@@ -35,9 +37,46 @@ const LivestreamsPage = () => {
   const [upcomingStreams, setUpcomingStreams] = useState([]);
   const [comments, setComments] = useState([]);
 
+  // WebRTC refs
+  const videoRef = useRef(null);
+  const isConnectingRef = useRef(false);
+
   // Fetch streams based on active tab
   useEffect(() => {
     fetchStreams();
+  }, [activeTab]);
+
+  // Setup real-time updates for new streams
+  useEffect(() => {
+    if (USE_DEMO_MODE) return;
+
+    // Connect to livestream socket for real-time updates
+    const token = localStorage.getItem('token');
+    if (!socketService.getLivestreamSocket()) {
+      socketService.connectLivestream(token);
+    }
+
+    // Listen for new streams going live
+    const handleNewStreamLive = (data) => {
+      console.log('New stream went live:', data.stream);
+      // Refresh the stream list when a new stream goes live
+      fetchStreams();
+      toast.info(`${data.stream.host_name || data.stream.host_username} just went live!`);
+    };
+
+    socketService.onNewStreamLive(handleNewStreamLive);
+
+    // Polling fallback: Refresh stream list every 30 seconds
+    const pollInterval = setInterval(() => {
+      fetchStreams();
+    }, 30000);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (socketService.livestreamSocket) {
+        socketService.livestreamSocket.off('new_stream_live', handleNewStreamLive);
+      }
+    };
   }, [activeTab]);
 
   // Fetch comments when a stream is selected
@@ -45,6 +84,97 @@ const LivestreamsPage = () => {
     if (selectedStream) {
       fetchComments(selectedStream.id);
     }
+  }, [selectedStream]);
+
+  // Setup WebRTC viewer connection when stream is selected
+  useEffect(() => {
+    if (!selectedStream || USE_DEMO_MODE || isConnectingRef.current) return;
+
+    const setupViewerConnection = async () => {
+      try {
+        isConnectingRef.current = true;
+
+        // Connect to livestream socket
+        const token = localStorage.getItem('token');
+        if (!socketService.getLivestreamSocket()) {
+          socketService.connectLivestream(token);
+        }
+
+        // Wait for socket connection
+        await new Promise((resolve) => {
+          if (socketService.getLivestreamSocket()?.connected) {
+            resolve();
+          } else {
+            socketService.getLivestreamSocket()?.on('connect', resolve);
+          }
+        });
+
+        // Initialize WebRTC service
+        webrtcService.initialize(socketService.getLivestreamSocket());
+
+        // Join the livestream room
+        socketService.joinStream(selectedStream.id);
+
+        // Listen for WebRTC offer from broadcaster
+        socketService.onWebRTCOffer(async ({ livestreamId, offer }) => {
+          console.log('Received WebRTC offer from broadcaster');
+          try {
+            await webrtcService.handleOffer(livestreamId, offer, (remoteStream) => {
+              console.log('Received remote stream');
+              if (videoRef.current) {
+                videoRef.current.srcObject = remoteStream;
+              }
+            });
+          } catch (error) {
+            console.error('Error handling offer:', error);
+            toast.error('Failed to connect to stream');
+          }
+        });
+
+        // Listen for ICE candidates from broadcaster
+        socketService.onICECandidate(async ({ candidate }) => {
+          console.log('Received ICE candidate from broadcaster');
+          try {
+            await webrtcService.addIceCandidate('broadcaster', candidate);
+          } catch (error) {
+            console.error('Error adding ICE candidate:', error);
+          }
+        });
+
+        // Listen for stream ended
+        socketService.onStreamEnded(({ livestreamId }) => {
+          if (livestreamId === selectedStream.id) {
+            toast.info('This livestream has ended');
+            setSelectedStream(null);
+            webrtcService.cleanup();
+          }
+        });
+
+        // Request to receive the stream
+        socketService.requestStream(selectedStream.id);
+
+        console.log('Viewer connection setup complete');
+      } catch (error) {
+        console.error('Error setting up viewer connection:', error);
+        toast.error('Failed to connect to livestream');
+      } finally {
+        isConnectingRef.current = false;
+      }
+    };
+
+    setupViewerConnection();
+
+    return () => {
+      // Cleanup when leaving stream
+      if (selectedStream) {
+        socketService.leaveStream(selectedStream.id);
+        webrtcService.cleanup();
+        if (videoRef.current) {
+          videoRef.current.srcObject = null;
+        }
+      }
+      socketService.removeAllLivestreamListeners();
+    };
   }, [selectedStream]);
 
   const fetchStreams = async () => {
@@ -226,8 +356,25 @@ const LivestreamsPage = () => {
         </Button>
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
           <div className="lg:w-2/3">
-            <div className="aspect-video bg-black rounded-2xl flex items-center justify-center text-6xl md:text-8xl text-white mb-3 md:mb-4">
-              {selectedStream.thumbnail}
+            <div className="relative aspect-video bg-black rounded-2xl overflow-hidden mb-3 md:mb-4">
+              {/* Video Element */}
+              <video
+                ref={videoRef}
+                autoPlay
+                playsInline
+                className="w-full h-full object-cover"
+              />
+              {/* Fallback when no video */}
+              {!videoRef.current?.srcObject && (
+                <div className="absolute inset-0 flex items-center justify-center text-6xl md:text-8xl text-white">
+                  {selectedStream.thumbnail}
+                </div>
+              )}
+              {/* Live indicator */}
+              <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse z-10">
+                <span className="w-2 h-2 bg-white rounded-full"></span>
+                LIVE
+              </div>
             </div>
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 md:gap-4 mb-3 md:mb-4">
               <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd]">

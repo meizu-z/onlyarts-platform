@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const { query } = require('../config/database');
+const { notifyLivestreamStarted } = require('../utils/notifications');
 
 /**
  * Livestream Socket Handler
@@ -198,7 +199,38 @@ module.exports = (io) => {
           [livestreamId]
         );
 
+        // Get stream details to broadcast
+        const streamDetails = await query(
+          `SELECT
+            l.id, l.title, l.description, l.thumbnail_url,
+            u.id as host_id, u.username as host_username, u.full_name as host_name,
+            u.profile_image as host_image
+           FROM livestreams l
+           JOIN users u ON l.artist_id = u.id
+           WHERE l.id = ?`,
+          [livestreamId]
+        );
+
         socket.emit('stream_started', { livestreamId });
+
+        // Broadcast to ALL users that a new stream is live
+        livestreamNamespace.emit('new_stream_live', {
+          stream: streamDetails.rows[0]
+        });
+
+        // Send notifications to followers
+        try {
+          const stream = streamDetails.rows[0];
+          await notifyLivestreamStarted(
+            stream.host_id,
+            stream.host_username,
+            livestreamId,
+            stream.title
+          );
+        } catch (error) {
+          console.error('Failed to send livestream notifications:', error);
+        }
+
         console.log(`Livestream ${livestreamId} started by user ${socket.userId}`);
       } catch (error) {
         console.error('Error starting livestream:', error);
@@ -246,6 +278,59 @@ module.exports = (io) => {
       }
     });
 
+    // WebRTC Signaling: Broadcaster sends offer to viewer
+    socket.on('webrtc_offer', (data) => {
+      const { livestreamId, viewerId, offer } = data;
+      console.log(`📡 WebRTC offer from broadcaster to viewer ${viewerId} in stream ${livestreamId}`);
+
+      // Forward offer to specific viewer
+      livestreamNamespace.to(viewerId).emit('webrtc_offer', {
+        livestreamId,
+        offer
+      });
+    });
+
+    // WebRTC Signaling: Viewer sends answer to broadcaster
+    socket.on('webrtc_answer', (data) => {
+      const { livestreamId, answer } = data;
+      console.log(`📡 WebRTC answer from viewer ${socket.id} in stream ${livestreamId}`);
+
+      // Forward answer to broadcaster (all artists in the stream room)
+      socket.to(`stream:${livestreamId}`).emit('webrtc_answer', {
+        viewerId: socket.id,
+        answer
+      });
+    });
+
+    // WebRTC Signaling: Exchange ICE candidates
+    socket.on('webrtc_ice_candidate', (data) => {
+      const { livestreamId, viewerId, candidate } = data;
+      console.log(`📡 ICE candidate in stream ${livestreamId}`);
+
+      if (viewerId) {
+        // Broadcaster sending ICE candidate to specific viewer
+        livestreamNamespace.to(viewerId).emit('webrtc_ice_candidate', {
+          candidate
+        });
+      } else {
+        // Viewer sending ICE candidate to broadcaster
+        socket.to(`stream:${livestreamId}`).emit('webrtc_ice_candidate', {
+          viewerId: socket.id,
+          candidate
+        });
+      }
+    });
+
+    // Viewer requests to receive stream (triggers broadcaster to send offer)
+    socket.on('request_stream', (livestreamId) => {
+      console.log(`📺 Viewer ${socket.id} requesting stream ${livestreamId}`);
+
+      // Notify broadcaster that a new viewer wants to connect
+      socket.to(`stream:${livestreamId}`).emit('new_viewer', {
+        viewerId: socket.id
+      });
+    });
+
     // Handle disconnect
     socket.on('disconnect', async () => {
       try {
@@ -272,6 +357,11 @@ module.exports = (io) => {
               viewerCount
             });
           }
+
+          // Notify broadcaster that viewer disconnected
+          socket.to(`stream:${socket.currentStream}`).emit('viewer_disconnected', {
+            viewerId: socket.id
+          });
         }
 
         console.log(`📺 User ${socket.userId || 'anonymous'} disconnected from livestream`);

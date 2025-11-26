@@ -10,6 +10,8 @@ const NOTIFICATION_TYPES = {
   LIKE: 'like',
   COMMENT: 'comment',
   MESSAGE: 'message',
+  LIVESTREAM: 'livestream',
+  ARTWORK: 'artwork',
   SYSTEM: 'system',
 };
 
@@ -245,6 +247,62 @@ const notifySystemBroadcast = async (title, message, data = null) => {
   }
 };
 
+/**
+ * Notify followers about new livestream
+ */
+const notifyLivestreamStarted = async (artistId, artistUsername, livestreamId, livestreamTitle) => {
+  try {
+    // Get all followers of the artist
+    const followersResult = await query(
+      'SELECT follower_id FROM follows WHERE following_id = ?',
+      [artistId]
+    );
+
+    const followerIds = followersResult.rows.map(row => row.follower_id);
+
+    if (followerIds.length === 0) return 0;
+
+    return createBulkNotifications(
+      followerIds,
+      NOTIFICATION_TYPES.LIVESTREAM,
+      'Artist is Live!',
+      `${artistUsername} just started a livestream: ${livestreamTitle}`,
+      { artistId, artistUsername, livestreamId, livestreamTitle, link: `/livestreams/${livestreamId}` }
+    );
+  } catch (error) {
+    console.error('Failed to notify livestream started:', error);
+    throw error;
+  }
+};
+
+/**
+ * Notify followers about new artwork for sale
+ */
+const notifyNewArtwork = async (artistId, artistUsername, artworkId, artworkTitle, price) => {
+  try {
+    // Get all followers of the artist
+    const followersResult = await query(
+      'SELECT follower_id FROM follows WHERE following_id = ?',
+      [artistId]
+    );
+
+    const followerIds = followersResult.rows.map(row => row.follower_id);
+
+    if (followerIds.length === 0) return 0;
+
+    return createBulkNotifications(
+      followerIds,
+      NOTIFICATION_TYPES.ARTWORK,
+      'New Artwork Available',
+      `${artistUsername} posted a new artwork for sale: "${artworkTitle}" - ₱${price.toLocaleString()}`,
+      { artistId, artistUsername, artworkId, artworkTitle, price, link: `/artwork/${artworkId}` }
+    );
+  } catch (error) {
+    console.error('Failed to notify new artwork:', error);
+    throw error;
+  }
+};
+
 module.exports = {
   NOTIFICATION_TYPES,
   createNotification,
@@ -261,4 +319,6 @@ module.exports = {
   notifyNewMessage,
   notifySystem,
   notifySystemBroadcast,
+  notifyLivestreamStarted,
+  notifyNewArtwork,
 };

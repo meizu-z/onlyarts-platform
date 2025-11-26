@@ -4,6 +4,7 @@ const { query } = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { successResponse } = require('../utils/response');
+const { notifyNewFollower } = require('../utils/notifications');
 
 /**
  * @route   GET /api/users/:id
@@ -345,6 +346,20 @@ exports.followUser = asyncHandler(async (req, res, next) => {
     'UPDATE users SET follower_count = follower_count + 1 WHERE id = ?',
     [targetUserId]
   );
+
+  // Send notification to the followed user
+  try {
+    const followerInfo = await query(
+      'SELECT username FROM users WHERE id = ?',
+      [followerId]
+    );
+    if (followerInfo.rows.length > 0) {
+      await notifyNewFollower(targetUserId, followerId, followerInfo.rows[0].username);
+    }
+  } catch (error) {
+    console.error('Failed to send follow notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, null, 'User followed successfully');
 });

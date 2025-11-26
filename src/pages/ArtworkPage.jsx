@@ -396,7 +396,9 @@ const ArtworkPage = () => {
         </div>
         <div>
             <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-2">{artwork.title}</h1>
-            <p className="text-sm md:text-base text-[#f2e9dd]/70 mb-3 md:mb-4">by {artwork.artistName} ({artwork.artist})</p>
+            <p className="text-sm md:text-base text-[#f2e9dd]/70 mb-3 md:mb-4">
+              by <button onClick={() => navigate(`/profile/${artwork.artist.replace('@', '')}`)} className="hover:text-[#7C5FFF] transition-colors cursor-pointer font-medium">{artwork.artistName}</button> (<button onClick={() => navigate(`/profile/${artwork.artist.replace('@', '')}`)} className="hover:text-[#7C5FFF] transition-colors cursor-pointer">{artwork.artist}</button>)
+            </p>
             <p className="text-sm md:text-base text-[#f2e9dd]/90 mb-4 md:mb-6">{artwork.description}</p>
 
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-base text-[#f2e9dd]/70 mb-4 md:mb-6">

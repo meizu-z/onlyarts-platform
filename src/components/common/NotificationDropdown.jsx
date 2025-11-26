@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, X, Heart, MessageCircle, ShoppingCart, UserPlus, Award } from 'lucide-react';
+import { Bell, Check, X, Heart, MessageCircle, ShoppingCart, UserPlus, Award, Video, Image } from 'lucide-react';
 import { notificationService } from '../../services';
 import { useNavigate } from 'react-router-dom';
 
@@ -88,6 +88,10 @@ const NotificationDropdown = () => {
         return <ShoppingCart {...iconProps} />;
       case 'follow':
         return <UserPlus {...iconProps} />;
+      case 'livestream':
+        return <Video {...iconProps} />;
+      case 'artwork':
+        return <Image {...iconProps} />;
       case 'achievement':
         return <Award {...iconProps} />;
       default:

@@ -603,7 +603,7 @@ const ProfilePage = () => {
               <Card
                 key={item.id}
                 hover
-                onClick={() => navigate(item.type === 'exhibition' ? `/exhibitions/${item.id}` : `/artwork/${item.id}`)}
+                onClick={() => navigate(item.type === 'exhibition' ? `/exhibition/${item.id}` : `/artwork/${item.id}`)}
                 className="cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
                 style={{ animationDelay: `${idx * 0.1}s` }}
               >
@@ -1392,23 +1392,23 @@ const ProfilePage = () => {
           <div className="flex justify-center md:justify-start gap-4 md:gap-6">
             {profileData.isArtist && (
               <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('artworks')}>
-                <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+                <p className="text-xl md:text-2xl font-bold text-[#7C5FFF] light:text-[#7952cc]">
                   {profileData.artworks}
                 </p>
-                <p className="text-xs md:text-sm text-[#f2e9dd]/70">Artworks</p>
+                <p className="text-xs md:text-sm text-[#f2e9dd]/70 light:text-[#3d3d3d]/70">Artworks</p>
               </div>
             )}
             <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('followers')}>
-              <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+              <p className="text-xl md:text-2xl font-bold text-[#7C5FFF] light:text-[#7952cc]">
                 {profileData.followers}
               </p>
-              <p className="text-xs md:text-sm text-[#f2e9dd]/70">Followers</p>
+              <p className="text-xs md:text-sm text-[#f2e9dd]/70 light:text-[#3d3d3d]/70">Followers</p>
             </div>
             <div className="text-center cursor-pointer hover:opacity-80 transition-opacity" onClick={() => setActiveTab('following')}>
-              <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+              <p className="text-xl md:text-2xl font-bold text-[#7C5FFF] light:text-[#7952cc]">
                 {profileData.following}
               </p>
-              <p className="text-xs md:text-sm text-[#f2e9dd]/70">Following</p>
+              <p className="text-xs md:text-sm text-[#f2e9dd]/70 light:text-[#3d3d3d]/70">Following</p>
             </div>
           </div>
 

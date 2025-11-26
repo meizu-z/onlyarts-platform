@@ -247,9 +247,10 @@ class SocketService {
    */
   startStream(livestreamId) {
     if (!this.livestreamSocket?.connected) {
-      console.error('Livestream socket not connected');
+      console.error('❌ Livestream socket not connected, cannot start stream');
       return;
     }
+    console.log('✅ Emitting start_stream event for livestream ID:', livestreamId);
     this.livestreamSocket.emit('start_stream', livestreamId);
   }
 
@@ -302,6 +303,100 @@ class SocketService {
   removeAllLivestreamListeners() {
     if (!this.livestreamSocket) return;
     this.livestreamSocket.removeAllListeners();
+  }
+
+  // ============================================
+  // WEBRTC SIGNALING METHODS
+  // ============================================
+
+  /**
+   * Request stream from broadcaster (viewer initiates)
+   */
+  requestStream(livestreamId) {
+    if (!this.livestreamSocket?.connected) {
+      console.error('Livestream socket not connected');
+      return;
+    }
+    this.livestreamSocket.emit('request_stream', livestreamId);
+  }
+
+  /**
+   * Send WebRTC offer
+   */
+  sendWebRTCOffer(livestreamId, viewerId, offer) {
+    if (!this.livestreamSocket?.connected) return;
+    this.livestreamSocket.emit('webrtc_offer', { livestreamId, viewerId, offer });
+  }
+
+  /**
+   * Send WebRTC answer
+   */
+  sendWebRTCAnswer(livestreamId, answer) {
+    if (!this.livestreamSocket?.connected) return;
+    this.livestreamSocket.emit('webrtc_answer', { livestreamId, answer });
+  }
+
+  /**
+   * Send ICE candidate
+   */
+  sendICECandidate(livestreamId, viewerId, candidate) {
+    if (!this.livestreamSocket?.connected) return;
+    this.livestreamSocket.emit('webrtc_ice_candidate', { livestreamId, viewerId, candidate });
+  }
+
+  /**
+   * Listen for new viewers (broadcaster)
+   */
+  onNewViewer(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('new_viewer', callback);
+  }
+
+  /**
+   * Listen for WebRTC offer (viewer)
+   */
+  onWebRTCOffer(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('webrtc_offer', callback);
+  }
+
+  /**
+   * Listen for WebRTC answer (broadcaster)
+   */
+  onWebRTCAnswer(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('webrtc_answer', callback);
+  }
+
+  /**
+   * Listen for ICE candidates
+   */
+  onICECandidate(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('webrtc_ice_candidate', callback);
+  }
+
+  /**
+   * Listen for viewer disconnected (broadcaster)
+   */
+  onViewerDisconnected(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('viewer_disconnected', callback);
+  }
+
+  /**
+   * Listen for new streams going live
+   */
+  onNewStreamLive(callback) {
+    if (!this.livestreamSocket) return;
+    this.livestreamSocket.on('new_stream_live', callback);
+  }
+
+  /**
+   * Get livestream socket instance
+   */
+  getLivestreamSocket() {
+    return this.livestreamSocket;
   }
 }
 

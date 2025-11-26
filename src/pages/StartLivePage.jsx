@@ -1,21 +1,119 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Card from '../components/common/Card';
 import { useToast } from '../components/ui/Toast';
-import { Video, Gavel, ArrowLeft, Radio, DollarSign } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { Video, Gavel, ArrowLeft, Radio, DollarSign, VideoOff, Mic, MicOff } from 'lucide-react';
+import socketService from '../services/socket.service';
+import webrtcService from '../services/webrtc.service';
+import { livestreamService } from '../services/livestream.service';
 
 const StartLivePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [liveType, setLiveType] = useState('normal');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startingBid, setStartingBid] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
-  const toast = useToast();
+  const [isLive, setIsLive] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isCameraOn, setIsCameraOn] = useState(true);
+  const [isMicOn, setIsMicOn] = useState(true);
+  const [viewerCount, setViewerCount] = useState(0);
+  const [currentLivestreamId, setCurrentLivestreamId] = useState(null);
 
-  const handleStartLive = () => {
+  const toast = useToast();
+  const videoRef = useRef(null);
+  const viewersRef = useRef(new Set());
+
+  // Initialize WebRTC and socket
+  useEffect(() => {
+    return () => {
+      // Cleanup on unmount
+      if (isLive) {
+        handleEndStream();
+      }
+    };
+  }, [isLive]);
+
+  // Ensure video plays when live view is shown
+  useEffect(() => {
+    if (isLive && videoRef.current && webrtcService.localStream) {
+      videoRef.current.srcObject = webrtcService.localStream;
+      videoRef.current.play().catch(err => {
+        console.error('Error playing video in live view:', err);
+      });
+    }
+  }, [isLive]);
+
+  // Setup socket listeners
+  useEffect(() => {
+    if (!isLive || !currentLivestreamId) return;
+
+    const token = localStorage.getItem('token');
+    if (!socketService.getLivestreamSocket()) {
+      socketService.connectLivestream(token);
+    }
+
+    // Initialize WebRTC service
+    webrtcService.initialize(socketService.getLivestreamSocket());
+
+    // Listen for new viewers
+    socketService.onNewViewer(async ({ viewerId }) => {
+      console.log('New viewer connected:', viewerId);
+      viewersRef.current.add(viewerId);
+      setViewerCount(viewersRef.current.size);
+
+      try {
+        // Create WebRTC offer for new viewer
+        await webrtcService.createOffer(viewerId, currentLivestreamId);
+      } catch (error) {
+        console.error('Error creating offer for viewer:', error);
+      }
+    });
+
+    // Listen for WebRTC answers from viewers
+    socketService.onWebRTCAnswer(async ({ viewerId, answer }) => {
+      console.log('Received answer from viewer:', viewerId);
+      try {
+        await webrtcService.handleAnswer(viewerId, answer);
+      } catch (error) {
+        console.error('Error handling answer:', error);
+      }
+    });
+
+    // Listen for ICE candidates from viewers
+    socketService.onICECandidate(async ({ viewerId, candidate }) => {
+      console.log('Received ICE candidate from viewer:', viewerId);
+      try {
+        await webrtcService.addIceCandidate(viewerId, candidate);
+      } catch (error) {
+        console.error('Error adding ICE candidate:', error);
+      }
+    });
+
+    // Listen for viewer disconnects
+    socketService.onViewerDisconnected(({ viewerId }) => {
+      console.log('Viewer disconnected:', viewerId);
+      viewersRef.current.delete(viewerId);
+      setViewerCount(viewersRef.current.size);
+      webrtcService.closePeerConnection(viewerId);
+    });
+
+    // Listen for viewer count updates
+    socketService.onViewerCountUpdate(({ viewerCount }) => {
+      setViewerCount(viewerCount);
+    });
+
+    return () => {
+      socketService.removeAllLivestreamListeners();
+    };
+  }, [isLive, currentLivestreamId]);
+
+  const handleStartLive = async () => {
     if (!title.trim()) {
       toast.error('Please enter a live stream title');
       return;
@@ -26,12 +124,263 @@ const StartLivePage = () => {
       return;
     }
 
-    toast.success(`Your ${liveType === 'normal' ? 'live stream' : 'auction'} "${title}" is starting now! 📺`);
+    setIsLoading(true);
 
-    setTimeout(() => {
-      navigate('/livestreams');
-    }, 1500);
+    try {
+      // 1. Get user media (camera and microphone)
+      const stream = await webrtcService.startLocalStream({
+        video: isCameraOn,
+        audio: isMicOn
+      });
+
+      // Display local video preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        // Explicitly play the video
+        videoRef.current.play().catch(err => {
+          console.error('Error playing video:', err);
+        });
+      }
+
+      // 2. Create livestream via API
+      const streamData = {
+        title: title.trim(),
+        description: description.trim(),
+        isAuction: liveType === 'auction',
+        startingBid: liveType === 'auction' ? parseInt(startingBid) : null,
+        scheduledFor: scheduledTime || null
+      };
+
+      const response = await livestreamService.startStream(streamData);
+      const livestreamId = response.stream.id;
+      setCurrentLivestreamId(livestreamId);
+
+      // 3. Connect to socket and join stream room
+      const token = localStorage.getItem('token');
+      console.log('Token for socket:', token ? 'exists' : 'missing');
+
+      // Disconnect existing socket first
+      if (socketService.getLivestreamSocket()) {
+        console.log('Disconnecting existing socket...');
+        socketService.disconnectLivestream();
+        // Wait a bit for disconnect to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      // Connect with fresh token
+      console.log('Connecting socket with token...');
+      socketService.connectLivestream(token);
+
+      // Wait for socket connection with timeout
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => {
+          reject(new Error('Socket connection timeout'));
+        }, 5000);
+
+        const checkConnection = () => {
+          if (socketService.getLivestreamSocket()?.connected) {
+            clearTimeout(timeout);
+            console.log('✅ Socket connected successfully');
+            resolve();
+          }
+        };
+
+        // Check immediately if already connected
+        checkConnection();
+
+        // Otherwise wait for connect event
+        socketService.getLivestreamSocket()?.once('connect', () => {
+          clearTimeout(timeout);
+          console.log('✅ Socket connected via event');
+          resolve();
+        });
+      });
+
+      console.log('Socket connected, starting stream:', livestreamId);
+
+      // 4. Start the stream via socket
+      socketService.startStream(livestreamId);
+      socketService.joinStream(livestreamId);
+
+      setIsLive(true);
+      toast.success(`Your ${liveType === 'normal' ? 'live stream' : 'auction'} is now live! 🎉`);
+    } catch (error) {
+      console.error('Error starting livestream:', error);
+      toast.error(error.message || 'Failed to start livestream. Please check camera permissions.');
+      webrtcService.stopLocalStream();
+    } finally {
+      setIsLoading(false);
+    }
   };
+
+  const handleEndStream = async () => {
+    try {
+      if (currentLivestreamId) {
+        // End stream via API
+        await livestreamService.endStream(currentLivestreamId);
+
+        // End stream via socket
+        socketService.endStream(currentLivestreamId);
+        socketService.leaveStream(currentLivestreamId);
+      }
+
+      // Cleanup WebRTC
+      webrtcService.cleanup();
+
+      // Stop video preview
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+
+      viewersRef.current.clear();
+      setIsLive(false);
+      setViewerCount(0);
+      setCurrentLivestreamId(null);
+
+      toast.success('Livestream ended successfully');
+
+      // Navigate back after short delay
+      setTimeout(() => {
+        navigate('/livestreams');
+      }, 1500);
+    } catch (error) {
+      console.error('Error ending livestream:', error);
+      toast.error('Failed to end livestream properly');
+    }
+  };
+
+  const toggleCamera = () => {
+    if (webrtcService.localStream) {
+      const videoTrack = webrtcService.localStream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.enabled = !videoTrack.enabled;
+        setIsCameraOn(videoTrack.enabled);
+      }
+    }
+  };
+
+  const toggleMic = () => {
+    if (webrtcService.localStream) {
+      const audioTrack = webrtcService.localStream.getAudioTracks()[0];
+      if (audioTrack) {
+        audioTrack.enabled = !audioTrack.enabled;
+        setIsMicOn(audioTrack.enabled);
+      }
+    }
+  };
+
+  if (isLive) {
+    return (
+      <div className="flex-1 p-6 max-w-7xl mx-auto">
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-red-500 text-white px-4 py-2 rounded-full text-sm font-bold flex items-center gap-2 animate-pulse">
+              <span className="w-3 h-3 bg-white rounded-full"></span>
+              LIVE
+            </div>
+            <div className="text-[#f2e9dd] font-semibold">
+              {viewerCount} viewer{viewerCount !== 1 ? 's' : ''}
+            </div>
+          </div>
+          <Button
+            onClick={handleEndStream}
+            variant="ghost"
+            className="bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/50"
+          >
+            End Stream
+          </Button>
+        </div>
+
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Video Preview */}
+          <div className="lg:col-span-2">
+            <Card className="p-4">
+              <h2 className="text-xl font-bold text-[#f2e9dd] mb-4">Your Stream</h2>
+              <div className="relative aspect-video bg-black rounded-lg overflow-hidden mb-4">
+                <video
+                  ref={videoRef}
+                  autoPlay
+                  muted
+                  playsInline
+                  className="w-full h-full object-cover"
+                />
+                {!isCameraOn && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-gray-900">
+                    <VideoOff size={64} className="text-gray-500" />
+                  </div>
+                )}
+                <div className="absolute top-4 left-4 bg-red-500 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
+                  <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
+                  LIVE
+                </div>
+              </div>
+
+              {/* Controls */}
+              <div className="flex gap-3">
+                <Button
+                  onClick={toggleCamera}
+                  variant={isCameraOn ? 'secondary' : 'ghost'}
+                  className={!isCameraOn ? 'bg-red-500/20 text-red-400 border-red-500/50' : ''}
+                >
+                  {isCameraOn ? <Video size={20} /> : <VideoOff size={20} />}
+                  <span className="ml-2">{isCameraOn ? 'Camera On' : 'Camera Off'}</span>
+                </Button>
+                <Button
+                  onClick={toggleMic}
+                  variant={isMicOn ? 'secondary' : 'ghost'}
+                  className={!isMicOn ? 'bg-red-500/20 text-red-400 border-red-500/50' : ''}
+                >
+                  {isMicOn ? <Mic size={20} /> : <MicOff size={20} />}
+                  <span className="ml-2">{isMicOn ? 'Mic On' : 'Mic Off'}</span>
+                </Button>
+              </div>
+            </Card>
+          </div>
+
+          {/* Stream Info */}
+          <div className="space-y-4">
+            <Card className="p-4">
+              <h3 className="text-lg font-bold text-[#f2e9dd] mb-3">Stream Info</h3>
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm text-[#f2e9dd]/50 mb-1">Title</p>
+                  <p className="text-[#f2e9dd] font-semibold">{title}</p>
+                </div>
+                {description && (
+                  <div>
+                    <p className="text-sm text-[#f2e9dd]/50 mb-1">Description</p>
+                    <p className="text-[#f2e9dd] text-sm">{description}</p>
+                  </div>
+                )}
+                {liveType === 'auction' && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-3">
+                    <p className="text-sm text-yellow-400 mb-1 flex items-center gap-2">
+                      <Gavel size={14} /> Starting Bid
+                    </p>
+                    <p className="text-yellow-400 font-bold text-xl">₱{parseInt(startingBid).toLocaleString()}</p>
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <h3 className="text-lg font-bold text-[#f2e9dd] mb-3">Stats</h3>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-[#f2e9dd]/70">Current Viewers</span>
+                  <span className="text-[#f2e9dd] font-bold">{viewerCount}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-[#f2e9dd]/70">Stream Type</span>
+                  <span className="text-[#f2e9dd] font-semibold capitalize">{liveType}</span>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 p-6 max-w-5xl mx-auto">
@@ -176,13 +525,16 @@ const StartLivePage = () => {
             <div className="pt-4 space-y-3">
               <Button
                 onClick={handleStartLive}
+                disabled={isLoading}
                 className="w-full bg-gradient-to-r from-red-500 to-red-600 shadow-lg shadow-red-500/30 hover:shadow-red-500/50 transform hover:scale-105 transition-all duration-300"
               >
-                <Radio size={16} className="mr-2" /> Go Live Now
+                <Radio size={16} className="mr-2" />
+                {isLoading ? 'Starting...' : 'Go Live Now'}
               </Button>
               <Button
                 variant="ghost"
                 onClick={() => navigate(-1)}
+                disabled={isLoading}
                 className="w-full transform hover:scale-105 transition-all duration-200"
               >
                 Cancel

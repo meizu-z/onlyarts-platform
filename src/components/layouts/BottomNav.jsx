@@ -110,15 +110,6 @@ const BottomNav = () => {
               </NavLink>
 
               <NavLink
-                to="/exhibition"
-                onClick={() => setShowMenu(false)}
-                className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-[#f2e9dd]"
-              >
-                <Palette size={20} />
-                <span className="font-medium">Exhibitions</span>
-              </NavLink>
-
-              <NavLink
                 to="/create-artwork"
                 onClick={() => setShowMenu(false)}
                 className="flex items-center gap-3 p-3 rounded-xl hover:bg-white/5 transition-colors text-[#f2e9dd]"

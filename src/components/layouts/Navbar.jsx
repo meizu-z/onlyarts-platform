@@ -5,6 +5,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../ui/Toast';
 import Button from '../common/Button';
+import NotificationDropdown from '../common/NotificationDropdown';
 import onlyArtsLogo from '../../assets/onlyartslogo.png';
 import { API_CONFIG } from '../../config/api.config';
 
@@ -50,19 +51,10 @@ const Navbar = () => {
     const navigate = useNavigate();
     const toast = useToast();
     const [showUserMenu, setShowUserMenu] = useState(false);
-    const [showNotifications, setShowNotifications] = useState(false);
     const [showCartDropdown, setShowCartDropdown] = useState(false); // New state for cart dropdown
     const [scrolled, setScrolled] = useState(false);
     const [hasChatNotification, setHasChatNotification] = useState(true);
     const [isProcessingPurchase, setIsProcessingPurchase] = useState(false);
-
-    const mockNotifications = [
-        { id: 1, type: 'like', text: 'meizzuuuuuuu liked your artwork Cosmic Dreams.', time: '2 hours ago', read: false },
-        { id: 2, type: 'comment', text: 'jnorman commented on your artwork Sunset Dreams.', time: '4 hours ago', read: false },
-        { id: 3, type: 'follow', text: 'artist1 started following you.', time: '1 day ago', read: true },
-    ];
-
-    const [notifications, setNotifications] = useState(mockNotifications);
 
     useEffect(() => {
         const handleScroll = () => setScrolled(window.scrollY > 20);
@@ -86,28 +78,7 @@ const Navbar = () => {
         setShowCartDropdown(prev => !prev);
         // If the cart dropdown is about to be shown, close other dropdowns
         if (!showCartDropdown) {
-            setShowNotifications(false);
             setShowUserMenu(false);
-        }
-    };
-
-    const handleNotificationsClick = () => {
-        setShowNotifications(prev => !prev);
-        if (!showNotifications) {
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            setShowUserMenu(false);
-            setShowCartDropdown(false);
-        }
-    };
-
-    const unreadCount = notifications.filter(n => !n.read).length;
-
-    const getNotificationIcon = (type) => {
-        switch (type) {
-            case 'like': return <Heart className="w-5 h-5 text-red-500" />;
-            case 'comment': return <MessageCircle className="w-5 h-5 text-blue-500" />;
-            case 'follow': return <User className="w-5 h-5 text-green-500" />;
-            default: return <Sparkles className="w-5 h-5 text-yellow-500" />;
         }
     };
 
@@ -178,42 +149,7 @@ const Navbar = () => {
                                 />
                             </div>
 
-                            <div className="relative">
-                                <button onClick={handleNotificationsClick} className="relative p-1.5 md:p-2 text-[#f2e9dd] hover:bg-white/5 rounded-full transition-colors group">
-                                    <Bell size={18} className="md:w-5 md:h-5 group-hover:rotate-12 transition-transform" />
-                                    {unreadCount > 0 && (
-                                        <>
-                                            <span className={`absolute top-0.5 right-0.5 md:top-1 md:right-1 w-2 h-2 bg-[#FF5F9E] rounded-full ${!showNotifications ? 'animate-ping' : ''}`}></span>
-                                            <span className="absolute top-0.5 right-0.5 md:top-1 md:right-1 w-2 h-2 bg-[#FF5F9E] rounded-full"></span>
-                                        </>
-                                    )}
-                                </button>
-                                {showNotifications && (
-                                    <>
-                                        <div className="fixed inset-0 z-40" onClick={() => setShowNotifications(false)}></div>
-                                        <div className="absolute right-0 mt-2 w-80 bg-[#121212] border border-white/10 rounded-2xl shadow-xl z-50 animate-slideDown">
-                                            <div className="p-3 border-b border-white/10">
-                                                <h3 className="font-bold text-white">Notifications</h3>
-                                            </div>
-                                            <div className="max-h-96 overflow-y-auto custom-scrollbar">
-                                                {notifications.length > 0 ? (
-                                                    notifications.map(notification => (
-                                                        <div key={notification.id} className={`flex items-start gap-3 p-3 border-b border-white/5 ${!notification.read ? 'bg-white/5' : ''}`}>
-                                                            <div className="mt-1">{getNotificationIcon(notification.type)}</div>
-                                                            <div>
-                                                                <p className="text-sm text-gray-200" dangerouslySetInnerHTML={{ __html: notification.text }}></p>
-                                                                <p className="text-xs text-gray-400 mt-1">{notification.time}</p>
-                                                            </div>
-                                                        </div>
-                                                    ))
-                                                ) : (
-                                                    <p className="p-4 text-sm text-gray-400 text-center">No new notifications.</p>
-                                                )}
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
+                            <NotificationDropdown />
 
                             <button onClick={handleChatClick} className="hidden sm:block relative p-1.5 md:p-2 text-[#f2e9dd] hover:bg-white/5 rounded-full transition-colors group">
                                 <MessageSquare size={18} className="md:w-5 md:h-5 group-hover:scale-110 transition-transform" />
@@ -325,7 +261,6 @@ const Navbar = () => {
                                 <button onClick={() => {
                                     setShowUserMenu(!showUserMenu);
                                     if (!showUserMenu) {
-                                        setShowNotifications(false);
                                         setShowCartDropdown(false);
                                     }
                                 }} className="flex items-center gap-1 md:gap-2 px-2 md:px-3 py-1.5 md:py-2 rounded-full hover:bg-white/5 transition-colors group">
