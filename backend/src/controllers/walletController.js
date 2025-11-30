@@ -44,8 +44,8 @@ exports.getTransactions = asyncHandler(async (req, res, next) => {
      FROM wallet_transactions
      WHERE user_id = ?
      ORDER BY created_at DESC
-     LIMIT ? OFFSET ?`,
-    [req.user.id, limit, offset]
+     LIMIT ${limit} OFFSET ${offset}`,
+    [req.user.id]
   );
 
   successResponse(res, {

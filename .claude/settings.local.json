@@ -12,7 +12,9 @@
       "Bash(node test-auction-setup.js:*)",
       "Bash(nul)",
       "Bash(timeout /t 2)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(tasklist:*)",
+      "Bash(cmd /c \"taskkill /F /PID 40696\")"
     ],
     "deny": [],
     "ask": []
