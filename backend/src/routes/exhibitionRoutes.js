@@ -2,6 +2,7 @@ const express = require('express');
 const { body, query } = require('express-validator');
 const exhibitionController = require('../controllers/exhibitionController');
 const { authenticate, optionalAuth } = require('../middleware/authenticate');
+const { uploadSingle } = require('../middleware/upload');
 
 const router = express.Router();
 
@@ -13,6 +14,7 @@ const router = express.Router();
 router.post(
   '/',
   authenticate,
+  uploadSingle,
   [
     body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 255 }).withMessage('Title too long'),
     body('description').trim().notEmpty().withMessage('Description is required').isLength({ max: 2000 }).withMessage('Description too long'),
@@ -20,7 +22,6 @@ router.post(
     body('endDate').isISO8601().withMessage('Invalid end date'),
     body('artworkIds').optional().isArray().withMessage('Artwork IDs must be an array'),
     body('isPrivate').optional().isBoolean().withMessage('isPrivate must be boolean'),
-    body('coverImage').optional().trim().isURL().withMessage('Invalid cover image URL'),
   ],
   exhibitionController.createExhibition
 );
@@ -39,6 +40,50 @@ router.get(
     query('userId').optional().isInt({ min: 1 }).withMessage('User ID must be a positive integer'),
   ],
   exhibitionController.getExhibitions
+);
+
+/**
+ * @route   GET /api/exhibitions/:id/artworks
+ * @desc    Get exhibition artworks
+ * @access  Public
+ */
+router.get('/:id/artworks', exhibitionController.getArtworksByExhibitionId);
+
+/**
+ * @route   POST /api/exhibitions/:id/exclusive-artworks
+ * @desc    Add exclusive artwork to exhibition
+ * @access  Private (Curator only)
+ */
+router.post(
+  '/:id/exclusive-artworks',
+  authenticate,
+  uploadSingle,
+  [
+    body('title').trim().notEmpty().withMessage('Title is required'),
+    body('description').optional().trim(),
+    body('price').optional().isNumeric().withMessage('Price must be a number'),
+    body('category').optional().isIn(['digital', 'painting', 'photography', 'sculpture', 'mixed_media', 'other']).withMessage('Invalid category'),
+  ],
+  exhibitionController.addExclusiveArtwork
+);
+
+/**
+ * @route   GET /api/exhibitions/:id/comments
+ * @desc    Get exhibition comments
+ * @access  Public
+ */
+router.get('/:id/comments', exhibitionController.getCommentsByExhibitionId);
+
+/**
+ * @route   POST /api/exhibitions/:id/comments
+ * @desc    Add comment to exhibition
+ * @access  Private
+ */
+router.post(
+  '/:id/comments',
+  authenticate,
+  [body('content').trim().notEmpty().withMessage('Comment content is required')],
+  exhibitionController.addCommentToExhibition
 );
 
 /**
@@ -88,5 +133,33 @@ router.post('/:id/like', authenticate, exhibitionController.likeExhibition);
  * @access  Private
  */
 router.delete('/:id/like', authenticate, exhibitionController.unlikeExhibition);
+
+/**
+ * @route   POST /api/exhibitions/:id/favorite
+ * @desc    Favorite exhibition
+ * @access  Private
+ */
+router.post('/:id/favorite', authenticate, exhibitionController.favoriteExhibition);
+
+/**
+ * @route   DELETE /api/exhibitions/:id/favorite
+ * @desc    Unfavorite exhibition
+ * @access  Private
+ */
+router.delete('/:id/favorite', authenticate, exhibitionController.unfavoriteExhibition);
+
+/**
+ * @route   POST /api/exhibitions/:id/follow
+ * @desc    Follow exhibition
+ * @access  Private
+ */
+router.post('/:id/follow', authenticate, exhibitionController.followExhibition);
+
+/**
+ * @route   DELETE /api/exhibitions/:id/follow
+ * @desc    Unfollow exhibition
+ * @access  Private
+ */
+router.delete('/:id/follow', authenticate, exhibitionController.unfollowExhibition);
 
 module.exports = router;

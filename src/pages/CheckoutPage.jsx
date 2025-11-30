@@ -8,6 +8,7 @@ import { LoadingPaint } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
 import { cartService, mockCart } from '../services/cart.service';
 import { checkoutService, mockPaymentMethods, mockOrder } from '../services/checkout.service';
+import { walletService } from '../services/wallet.service';
 import { useToast } from '../components/ui/Toast';
 import { api } from '../services/api.client';
 
@@ -26,6 +27,7 @@ const CheckoutPage = () => {
   const [paymentMethods, setPaymentMethods] = useState([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('card'); // Default to card
   const [createdOrder, setCreatedOrder] = useState(null);
+  const [walletBalance, setWalletBalance] = useState(0);
 
   const [step, setStep] = useState(1); // 1: Review, 2: Payment, 3: Confirmation
 
@@ -60,8 +62,12 @@ const CheckoutPage = () => {
         return;
       }
 
-      // REAL API MODE - Get cart data
-      const cartResponse = await cartService.getCart();
+      // REAL API MODE - Get cart data and wallet balance
+      const [cartResponse, walletData] = await Promise.all([
+        cartService.getCart(),
+        walletService.getBalance()
+      ]);
+
       const cartData = cartResponse.data || cartResponse;
 
       // Transform cart data
@@ -86,9 +92,21 @@ const CheckoutPage = () => {
       };
 
       setCart(transformedCart);
-      // For now, use mock payment methods (payment method management not implemented yet)
-      setPaymentMethods(mockPaymentMethods);
-      setSelectedPaymentMethod(mockPaymentMethods[0].id);
+      setWalletBalance(walletData.balance || 0);
+      // Add wallet as a payment method option along with mock payment methods
+      const allPaymentMethods = [
+        {
+          id: 'wallet',
+          type: 'wallet',
+          details: {
+            balance: walletData.balance || 0
+          },
+          isDefault: false,
+        },
+        ...mockPaymentMethods
+      ];
+      setPaymentMethods(allPaymentMethods);
+      setSelectedPaymentMethod(allPaymentMethods[0].id);
     } catch (err) {
       setError(err.message || 'Failed to load checkout. Please try again.');
     } finally {
@@ -136,10 +154,22 @@ const CheckoutPage = () => {
         return;
       }
 
+      // Determine payment method for backend
+      const paymentMethod = selectedPaymentMethod === 'wallet' ? 'wallet' : 'card';
+
+      // Validate wallet balance if using wallet payment
+      if (paymentMethod === 'wallet') {
+        if (walletBalance < cart.total) {
+          toast.error(`Insufficient wallet balance. You need ₱${cart.total.toLocaleString()} but have ₱${walletBalance.toLocaleString()}`);
+          setProcessing(false);
+          return;
+        }
+      }
+
       // REAL API MODE - Create order from backend
       // Backend expects: paymentMethod, shippingAddress, notes
       const backendOrderData = {
-        paymentMethod: 'card', // Backend accepts: 'card', 'wallet', 'bank_transfer'
+        paymentMethod, // Backend accepts: 'card', 'wallet', 'bank_transfer'
         shippingAddress: {
           street: shippingInfo.street,
           city: shippingInfo.city,
@@ -159,6 +189,12 @@ const CheckoutPage = () => {
 
       // Clear cart after successful order
       await cartService.clearCart();
+
+      // Refresh wallet balance if payment was made with wallet
+      if (paymentMethod === 'wallet') {
+        const walletData = await walletService.getBalance();
+        setWalletBalance(walletData.balance || 0);
+      }
     } catch (err) {
       toast.error(err.message || 'Failed to place order. Please try again.');
     } finally {
@@ -327,32 +363,32 @@ const CheckoutPage = () => {
                         <p className="text-[#f2e9dd] text-sm truncate">{item.artwork?.title || item.title}</p>
                         <p className="text-[#f2e9dd]/60 text-xs">Qty: {item.quantity}</p>
                       </div>
-                      <p className="text-[#f2e9dd] text-sm">${item.price.toLocaleString()}</p>
+                      <p className="text-[#f2e9dd] text-sm">₱{item.price.toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
                 <div className="border-t border-[#f2e9dd]/10 pt-4 space-y-2">
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Subtotal</span>
-                    <span>${cart.subtotal.toLocaleString()}</span>
+                    <span>₱{cart.subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Shipping</span>
-                    <span>${cart.shipping.toLocaleString()}</span>
+                    <span>₱{cart.shipping.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Tax</span>
-                    <span>${cart.tax.toLocaleString()}</span>
+                    <span>₱{cart.tax.toLocaleString()}</span>
                   </div>
                   {cart.discount > 0 && (
                     <div className="flex justify-between text-green-400 text-sm">
                       <span>Discount</span>
-                      <span>-${cart.discount.toLocaleString()}</span>
+                      <span>-₱{cart.discount.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="border-t border-[#f2e9dd]/10 pt-2 flex justify-between text-[#f2e9dd] font-bold">
                     <span>Total</span>
-                    <span>${cart.total.toLocaleString()}</span>
+                    <span>₱{cart.total.toLocaleString()}</span>
                   </div>
                 </div>
               </Card>
@@ -380,10 +416,17 @@ const CheckoutPage = () => {
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className="text-2xl">
-                            {method.type === 'paypal' ? '🅿️' : '💳'}
+                            {method.type === 'wallet' ? '💰' : method.type === 'paypal' ? '🅿️' : '💳'}
                           </div>
                           <div>
-                            {method.type === 'card' ? (
+                            {method.type === 'wallet' ? (
+                              <>
+                                <p className="text-[#f2e9dd] font-medium">Wallet</p>
+                                <p className="text-[#f2e9dd]/60 text-sm">
+                                  Balance: ₱{method.details.balance.toLocaleString()}
+                                </p>
+                              </>
+                            ) : method.type === 'card' ? (
                               <>
                                 <p className="text-[#f2e9dd] font-medium">
                                   {method.details.brand} •••• {method.details.last4}
@@ -424,7 +467,7 @@ const CheckoutPage = () => {
                     disabled={processing}
                     className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
                   >
-                    {processing ? 'Processing...' : `Place Order ($${cart.total.toLocaleString()})`}
+                    {processing ? 'Processing...' : `Place Order (₱${cart.total.toLocaleString()})`}
                   </Button>
                 </div>
               </Card>
@@ -442,32 +485,32 @@ const CheckoutPage = () => {
                         <p className="text-[#f2e9dd] text-sm truncate">{item.artwork?.title || item.title}</p>
                         <p className="text-[#f2e9dd]/60 text-xs">Qty: {item.quantity}</p>
                       </div>
-                      <p className="text-[#f2e9dd] text-sm">${item.price.toLocaleString()}</p>
+                      <p className="text-[#f2e9dd] text-sm">₱{item.price.toLocaleString()}</p>
                     </div>
                   ))}
                 </div>
                 <div className="border-t border-[#f2e9dd]/10 pt-4 space-y-2">
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Subtotal</span>
-                    <span>${cart.subtotal.toLocaleString()}</span>
+                    <span>₱{cart.subtotal.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Shipping</span>
-                    <span>${cart.shipping.toLocaleString()}</span>
+                    <span>₱{cart.shipping.toLocaleString()}</span>
                   </div>
                   <div className="flex justify-between text-[#f2e9dd]/70 text-sm">
                     <span>Tax</span>
-                    <span>${cart.tax.toLocaleString()}</span>
+                    <span>₱{cart.tax.toLocaleString()}</span>
                   </div>
                   {cart.discount > 0 && (
                     <div className="flex justify-between text-green-400 text-sm">
                       <span>Discount</span>
-                      <span>-${cart.discount.toLocaleString()}</span>
+                      <span>-₱{cart.discount.toLocaleString()}</span>
                     </div>
                   )}
                   <div className="border-t border-[#f2e9dd]/10 pt-2 flex justify-between text-[#f2e9dd] font-bold">
                     <span>Total</span>
-                    <span>${cart.total.toLocaleString()}</span>
+                    <span>₱{cart.total.toLocaleString()}</span>
                   </div>
                 </div>
               </Card>

@@ -122,6 +122,7 @@ const ArtworkPage = () => {
         year: rawArtwork.year_created,
         stock: rawArtwork.stock_quantity,
         isForSale: rawArtwork.is_for_sale,
+        exhibitions: rawArtwork.exhibitions || [],
       };
 
       // Transform backend comments data to frontend format
@@ -135,6 +136,10 @@ const ArtworkPage = () => {
         timestamp: formatTimeAgo(comment.created_at),
         createdAt: comment.created_at,
       }));
+
+      // Debug: Check if exhibitions data is present
+      console.log('[ArtworkPage] Exhibitions data:', rawArtwork.exhibitions);
+      console.log('[ArtworkPage] Transformed artwork:', transformedArtwork);
 
       setArtwork(transformedArtwork);
       setComments(transformedComments);
@@ -385,9 +390,9 @@ const ArtworkPage = () => {
       <div className="mb-6 md:mb-8 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-4 md:gap-8">
         <div>
           <Card noPadding className="max-w-2xl mx-auto lg:mx-0">
-            <div className="aspect-[4/5] md:aspect-[3/4] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-8xl overflow-hidden">
+            <div className="max-h-[60vh] md:max-h-[70vh] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl md:text-8xl overflow-hidden rounded-lg">
               {getImageUrl(artwork.imageUrl) ? (
-                <img src={getImageUrl(artwork.imageUrl)} alt={artwork.title} className="w-full h-full object-cover" />
+                <img src={getImageUrl(artwork.imageUrl)} alt={artwork.title} className="w-full h-auto max-h-[60vh] md:max-h-[70vh] object-contain" />
               ) : (
                 <span className="text-6xl md:text-8xl">{artwork.image}</span>
               )}
@@ -412,6 +417,34 @@ const ArtworkPage = () => {
               </button>
             </div>
 
+            {/* Exhibition Section */}
+            {artwork.exhibitions && artwork.exhibitions.length > 0 && (
+              <Card className="mb-4 md:mb-6 p-4 bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30">
+                <p className="text-sm text-[#f2e9dd]/70 mb-3">
+                  {artwork.exhibitions.length === 1 ? (
+                    <>This artwork is from the exhibition:</>
+                  ) : (
+                    <>This artwork is featured in {artwork.exhibitions.length} exhibitions:</>
+                  )}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {artwork.exhibitions.map((exhibition) => (
+                    <button
+                      key={exhibition.id}
+                      onClick={() => navigate(`/exhibition/${exhibition.id}`)}
+                      className="group relative px-4 py-2 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] hover:from-[#7C5FFF]/80 hover:to-[#FF5F9E]/80 rounded-lg text-sm font-semibold text-white transition-all duration-300 hover:scale-105 flex items-center gap-2 shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50"
+                    >
+                      <Star size={14} className="text-yellow-300" fill="currentColor" />
+                      <span>{exhibition.title}</span>
+                      {exhibition.artwork_type === 'exclusive' && (
+                        <span className="ml-1 px-2 py-0.5 bg-yellow-400 text-black text-[10px] rounded-full font-bold">EXCLUSIVE</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </Card>
+            )}
+
             <div className="flex flex-col md:flex-row flex-wrap gap-2 md:gap-3">
               {/* Only show Follow button if viewing someone else's artwork */}
               {user && artwork.artistId !== user.id && (
@@ -429,7 +462,8 @@ const ArtworkPage = () => {
               <Button variant="secondary" onClick={handleShare} className="w-full md:w-auto transform hover:scale-105 transition-all duration-300">
                 <Share size={16} className="mr-2" /> Share
               </Button>
-              {artwork.price && (
+              {/* Only show purchase buttons if user is NOT the artwork owner */}
+              {artwork.price && user?.id !== artwork.artistId && (
                 <>
                   <Button
                     onClick={handleAddToCart}

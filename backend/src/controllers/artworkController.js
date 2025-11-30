@@ -87,8 +87,28 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
     values
   );
 
+  // Get exhibitions for each artwork
+  const artworksWithExhibitions = await Promise.all(
+    artworksResult.rows.map(async (artwork) => {
+      const exhibitionsResult = await query(
+        `SELECT e.id, e.title, e.start_date, e.end_date, ea.artwork_type
+         FROM exhibition_artworks ea
+         JOIN exhibitions e ON ea.exhibition_id = e.id
+         WHERE ea.artwork_id = ? AND e.status = 'published'
+         ORDER BY e.start_date DESC
+         LIMIT 3`,
+        [artwork.id]
+      );
+
+      return {
+        ...artwork,
+        exhibitions: exhibitionsResult.rows || []
+      };
+    })
+  );
+
   successResponse(res, {
-    artworks: artworksResult.rows,
+    artworks: artworksWithExhibitions,
     pagination: {
       total: countResult.rows[0].total,
       page: page,
@@ -142,6 +162,17 @@ exports.getArtworkById = asyncHandler(async (req, res, next) => {
     );
     artwork.is_liked = likeResult.rows.length > 0;
   }
+
+  // Get exhibitions this artwork is part of
+  const exhibitionsResult = await query(
+    `SELECT e.id, e.title, e.start_date, e.end_date, ea.artwork_type
+     FROM exhibition_artworks ea
+     JOIN exhibitions e ON ea.exhibition_id = e.id
+     WHERE ea.artwork_id = ? AND e.status = 'published'
+     ORDER BY e.start_date DESC`,
+    [id]
+  );
+  artwork.exhibitions = exhibitionsResult.rows;
 
   // Increment view count (async, don't wait)
   query('UPDATE artworks SET view_count = view_count + 1 WHERE id = ?', [id]);

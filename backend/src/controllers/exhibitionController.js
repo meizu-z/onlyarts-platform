@@ -10,17 +10,32 @@ const { successResponse } = require('../utils/response');
  */
 exports.createExhibition = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
-  const { title, description, startDate, endDate, artworkIds, isPrivate, coverImage } = req.body;
+  let { title, description, startDate, endDate, artworkIds, isPrivate } = req.body;
+
+  // Parse artworkIds if it's a string (from FormData)
+  if (typeof artworkIds === 'string') {
+    try {
+      artworkIds = JSON.parse(artworkIds);
+    } catch (e) {
+      artworkIds = [];
+    }
+  }
+
+  // Convert isPrivate string to boolean/integer for FormData compatibility
+  const isPrivateValue = isPrivate === 'true' || isPrivate === true ? 1 : 0;
 
   // Verify user can create exhibitions (premium or artist)
   if (req.user.subscription_tier === 'free' && req.user.role !== 'artist') {
     return next(new AppError('Upgrade to Premium to create exhibitions', 403));
   }
 
+  // Get cover image path from uploaded file
+  const coverImage = req.file ? `/uploads/${req.file.filename}` : null;
+
   const result = await query(
     `INSERT INTO exhibitions (curator_id, title, description, start_date, end_date, is_private, cover_image, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')`,
-    [userId, title, description, startDate, endDate, isPrivate || false, coverImage || null]
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'published')`,
+    [userId, title, description, startDate, endDate, isPrivateValue, coverImage]
   );
 
   const exhibitionId = result.rows.insertId;
@@ -38,7 +53,7 @@ exports.createExhibition = asyncHandler(async (req, res, next) => {
 
   successResponse(res, {
     id: exhibitionId,
-    status: 'draft',
+    status: 'published',
   }, 'Exhibition created', 201);
 });
 
@@ -150,7 +165,8 @@ exports.getExhibitionById = asyncHandler(async (req, res, next) => {
       a.id, a.title, a.price, a.category, a.like_count,
       u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
       (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
-      ea.display_order
+      ea.display_order,
+      ea.artwork_type
      FROM exhibition_artworks ea
      JOIN artworks a ON ea.artwork_id = a.id
      JOIN users u ON a.artist_id = u.id
@@ -298,6 +314,238 @@ exports.unlikeExhibition = asyncHandler(async (req, res, next) => {
   await query('UPDATE exhibitions SET like_count = like_count - 1 WHERE id = ? AND like_count > 0', [id]);
 
   successResponse(res, null, 'Exhibition unliked');
+});
+
+/**
+ * @route   GET /api/exhibitions/:id/artworks
+ * @desc    Get exhibition artworks
+ * @access  Public
+ */
+exports.getArtworksByExhibitionId = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Verify exhibition exists
+  const exhibitionResult = await query('SELECT id FROM exhibitions WHERE id = ?', [id]);
+  if (exhibitionResult.rows.length === 0) {
+    return next(new AppError('Exhibition not found', 404));
+  }
+
+  // Get artworks in exhibition
+  const artworksResult = await query(
+    `SELECT
+      a.id, a.title, a.price, a.category, a.like_count,
+      u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
+      (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
+      ea.display_order,
+      ea.artwork_type
+     FROM exhibition_artworks ea
+     JOIN artworks a ON ea.artwork_id = a.id
+     JOIN users u ON a.artist_id = u.id
+     WHERE ea.exhibition_id = ?
+     ORDER BY ea.display_order ASC`,
+    [id]
+  );
+
+  successResponse(res, { artworks: artworksResult.rows }, 'Artworks retrieved');
+});
+
+/**
+ * @route   GET /api/exhibitions/:id/comments
+ * @desc    Get exhibition comments
+ * @access  Public
+ */
+exports.getCommentsByExhibitionId = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+
+  // Verify exhibition exists
+  const exhibitionResult = await query('SELECT id FROM exhibitions WHERE id = ?', [id]);
+  if (exhibitionResult.rows.length === 0) {
+    return next(new AppError('Exhibition not found', 404));
+  }
+
+  // TODO: Implement exhibition_comments table
+  // For now, return empty array
+  successResponse(res, { comments: [] }, 'Comments retrieved');
+});
+
+/**
+ * @route   POST /api/exhibitions/:id/exclusive-artworks
+ * @desc    Add exclusive artwork to exhibition
+ * @access  Private (Curator only)
+ */
+exports.addExclusiveArtwork = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+  const { title, description, price, category } = req.body;
+
+  // Verify exhibition exists and user is curator
+  const exhibitionResult = await query(
+    'SELECT curator_id FROM exhibitions WHERE id = ?',
+    [id]
+  );
+
+  if (exhibitionResult.rows.length === 0) {
+    return next(new AppError('Exhibition not found', 404));
+  }
+
+  if (exhibitionResult.rows[0].curator_id !== userId && req.user.role !== 'admin') {
+    return next(new AppError('Only the curator can add exclusive artworks', 403));
+  }
+
+  if (!req.file) {
+    return next(new AppError('Artwork image is required', 400));
+  }
+
+  // Create artwork
+  const artworkResult = await query(
+    `INSERT INTO artworks (artist_id, title, description, price, category, status)
+     VALUES (?, ?, ?, ?, ?, 'published')`,
+    [userId, title, description || '', price || 0, category || 'digital']
+  );
+
+  const artworkId = artworkResult.rows.insertId;
+
+  // Add artwork media
+  const mediaUrl = `/uploads/${req.file.filename}`;
+  await query(
+    'INSERT INTO artwork_media (artwork_id, media_url, media_type, is_primary) VALUES (?, ?, ?, ?)',
+    [artworkId, mediaUrl, 'image', true]
+  );
+
+  // Link artwork to exhibition with exclusive type
+  const displayOrder = await query(
+    'SELECT COALESCE(MAX(display_order), 0) + 1 as next_order FROM exhibition_artworks WHERE exhibition_id = ?',
+    [id]
+  );
+
+  await query(
+    `INSERT INTO exhibition_artworks (exhibition_id, artwork_id, artwork_type, display_order)
+     VALUES (?, ?, 'exclusive', ?)`,
+    [id, artworkId, displayOrder.rows[0].next_order]
+  );
+
+  successResponse(res, {
+    artworkId,
+    message: 'Exclusive artwork added successfully',
+  }, 'Exclusive artwork added', 201);
+});
+
+/**
+ * Add comment to exhibition
+ */
+exports.addCommentToExhibition = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { content } = req.body;
+  const userId = req.user.id;
+
+  // Verify exhibition exists
+  const exhibition = await query('SELECT id FROM exhibitions WHERE id = ?', [id]);
+  if (exhibition.length === 0) {
+    throw new NotFoundError('Exhibition not found');
+  }
+
+  // Insert comment
+  const result = await query(
+    'INSERT INTO exhibition_comments (exhibition_id, user_id, content) VALUES (?, ?, ?)',
+    [id, userId, content]
+  );
+
+  // Get the created comment with user info
+  const comment = await query(
+    `SELECT ec.*, u.username, u.full_name
+     FROM exhibition_comments ec
+     JOIN users u ON ec.user_id = u.id
+     WHERE ec.id = ?`,
+    [result.insertId]
+  );
+
+  successResponse(res, {
+    comment: comment[0],
+  }, 'Comment added successfully', 201);
+});
+
+/**
+ * Favorite exhibition
+ */
+exports.favoriteExhibition = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Check if already favorited
+  const existing = await query(
+    'SELECT * FROM exhibition_favorites WHERE exhibition_id = ? AND user_id = ?',
+    [id, userId]
+  );
+
+  if (existing.length === 0) {
+    await query(
+      'INSERT INTO exhibition_favorites (exhibition_id, user_id) VALUES (?, ?)',
+      [id, userId]
+    );
+  }
+
+  successResponse(res, {
+    favorited: true,
+  }, 'Exhibition favorited');
+});
+
+/**
+ * Unfavorite exhibition
+ */
+exports.unfavoriteExhibition = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  await query(
+    'DELETE FROM exhibition_favorites WHERE exhibition_id = ? AND user_id = ?',
+    [id, userId]
+  );
+
+  successResponse(res, {
+    favorited: false,
+  }, 'Exhibition unfavorited');
+});
+
+/**
+ * Follow exhibition
+ */
+exports.followExhibition = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Check if already following
+  const existing = await query(
+    'SELECT * FROM exhibition_follows WHERE exhibition_id = ? AND user_id = ?',
+    [id, userId]
+  );
+
+  if (existing.length === 0) {
+    await query(
+      'INSERT INTO exhibition_follows (exhibition_id, user_id) VALUES (?, ?)',
+      [id, userId]
+    );
+  }
+
+  successResponse(res, {
+    following: true,
+  }, 'Following exhibition');
+});
+
+/**
+ * Unfollow exhibition
+ */
+exports.unfollowExhibition = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  await query(
+    'DELETE FROM exhibition_follows WHERE exhibition_id = ? AND user_id = ?',
+    [id, userId]
+  );
+
+  successResponse(res, {
+    following: false,
+  }, 'Unfollowed exhibition');
 });
 
 module.exports = exports;

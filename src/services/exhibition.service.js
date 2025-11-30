@@ -96,51 +96,31 @@ export const exhibitionService = {
     const response = await api.delete(`/exhibitions/${id}/follow`);
     return response.data;
   },
-};
 
-// Mock data for demo mode
-export const mockExhibition = {
-  id: '1',
-  title: 'Digital Dreams Collection',
-  curator: '@gallery_master',
-  curatorName: 'Gallery Master',
-  description: 'A curated collection of stunning digital artworks from emerging artists.',
-  bannerImage: '🎨',
-  views: 2345,
-  artworkCount: 15,
-  favorites: 120,
-  isFavorited: false,
-  isFollowing: false,
-  endDate: '2025-11-30',
-  status: 'live',
-};
-
-export const mockExhibitionArtworks = [
-  { id: 1, title: 'Digital Sunset', artist: '@artist1', artistName: 'Sarah Chen', price: 5000, image: '🌅', locked: false },
-  { id: 2, title: 'Abstract Flow', artist: '@artist2', artistName: 'John Doe', price: 7500, image: '🎨', locked: false },
-  { id: 3, title: 'Neon Dreams', artist: '@artist3', artistName: 'Jane Smith', price: 12000, image: '💫', locked: false },
-  { id: 4, title: 'Mountain Vista', artist: '@artist4', artistName: 'Mike Johnson', price: 8000, image: '🏔️', locked: true },
-  { id: 5, title: 'Ocean Waves', artist: '@artist5', artistName: 'Emma Davis', price: 9500, image: '🌊', locked: true },
-  { id: 6, title: 'City Lights', artist: '@artist6', artistName: 'Alex Lee', price: 11000, image: '🌃', locked: true },
-];
-
-export const mockExhibitionComments = [
-  {
-    id: 1,
-    user: '@artlover',
-    userName: 'Art Lover',
-    text: 'This collection is amazing! 🤩',
-    timestamp: '2h ago',
-    createdAt: '2025-10-25T10:00:00Z',
+  /**
+   * Create new exhibition
+   * @param {Object} exhibitionData - Exhibition details
+   * @returns {Promise<{id, status}>}
+   */
+  createExhibition: async (exhibitionData) => {
+    const response = await api.post('/exhibitions', exhibitionData);
+    return response.data;
   },
-  {
-    id: 2,
-    user: '@critic',
-    userName: 'Art Critic',
-    text: 'Interesting use of color and texture.',
-    timestamp: '1h ago',
-    createdAt: '2025-10-25T11:00:00Z',
+
+  /**
+   * Add exclusive artwork to exhibition
+   * @param {string} id - Exhibition ID
+   * @param {FormData} formData - Artwork form data with file
+   * @returns {Promise<{artworkId}>}
+   */
+  addExclusiveArtwork: async (id, formData) => {
+    const response = await api.post(`/exhibitions/${id}/exclusive-artworks`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
   },
-];
+};
 
 export default exhibitionService;

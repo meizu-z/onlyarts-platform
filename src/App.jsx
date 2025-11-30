@@ -37,6 +37,7 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import SalesDashboardPage from './pages/SalesDashboardPage';
 import CommissionRequestPage from './pages/CommissionRequestPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
 
 // Admin Pages
 import AdminRoute from './components/AdminRoute';
@@ -148,6 +149,7 @@ const App = () => {
                 <Route path="/orders" element={<MyOrdersPage />} />
                 <Route path="/sales" element={<SalesDashboardPage />} />
                 <Route path="/request-commission" element={<CommissionRequestPage />} />
+                <Route path="/analytics" element={<AnalyticsPage />} />
               </Route>
 
               {/* Admin routes - protected by AdminRoute guard */}

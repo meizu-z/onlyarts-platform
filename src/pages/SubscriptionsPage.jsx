@@ -34,9 +34,9 @@ const SubscriptionsPage = () => {
       // Transform backend plans to match frontend format
       const transformedPlans = fetchedPlans.map(plan => ({
         name: plan.id,
-        price: plan.price / 100, // Convert cents to dollars
+        price: plan.price, // Price is already in pesos
         title: plan.name.toUpperCase(),
-        popular: plan.id === 'plus',
+        popular: plan.id === 'basic',
         features: plan.features
       }));
 
@@ -204,9 +204,14 @@ const SubscriptionsPage = () => {
                   ) : (
                     <>
                       <span className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
-                        ₱{plan.price}
+                        ₱{billingCycle === 'yearly' ? Math.round(plan.price * 12 * 0.8) : plan.price}
                       </span>
-                      <span className="text-[#f2e9dd]/50 text-lg">/month</span>
+                      <span className="text-[#f2e9dd]/50 text-lg">/{billingCycle === 'yearly' ? 'year' : 'month'}</span>
+                      {billingCycle === 'yearly' && (
+                        <div className="text-xs text-[#f2e9dd]/50 mt-1">
+                          ₱{Math.round(plan.price * 12 * 0.8 / 12)}/month
+                        </div>
+                      )}
                     </>
                   )}
                 </div>
@@ -275,10 +280,17 @@ const SubscriptionsPage = () => {
       <Modal isOpen={showPayment} onClose={() => setShowPayment(false)} title="Complete Your Upgrade">
         <div className="space-y-4 md:space-y-6">
           <div className="bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 rounded-lg p-3 md:p-4">
-            <p className="text-sm md:text-base text-[#f2e9dd] mb-1">Selected Plan: <span className="font-bold capitalize">{selectedPlan?.name}</span></p>
-            <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
-              ₱{selectedPlan?.price}/month
+            <p className="text-sm md:text-base text-[#f2e9dd] mb-1">
+              Selected Plan: <span className="font-bold capitalize">{selectedPlan?.name}</span> ({billingCycle})
             </p>
+            <p className="text-xl md:text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+              ₱{billingCycle === 'yearly' ? Math.round(selectedPlan?.price * 12 * 0.8) : selectedPlan?.price}/{billingCycle === 'yearly' ? 'year' : 'month'}
+            </p>
+            {billingCycle === 'yearly' && (
+              <p className="text-xs text-[#f2e9dd]/70 mt-1">
+                Save ₱{Math.round(selectedPlan?.price * 12 * 0.2)} compared to monthly
+              </p>
+            )}
           </div>
 
           <div>
@@ -353,15 +365,15 @@ const SubscriptionsPage = () => {
           <div className="bg-[#121212] border border-white/10 rounded-lg p-3 md:p-4">
             <div className="flex justify-between mb-2 text-sm md:text-base">
               <span className="text-[#f2e9dd]/70">Subtotal:</span>
-              <span className="text-[#f2e9dd]">₱{selectedPlan?.price}</span>
+              <span className="text-[#f2e9dd]">₱{billingCycle === 'yearly' ? Math.round(selectedPlan?.price * 12 * 0.8) : selectedPlan?.price}</span>
             </div>
             <div className="flex justify-between mb-2 text-sm md:text-base">
-              <span className="text-[#f2e9dd]/70">Tax:</span>
-              <span className="text-[#f2e9dd]">₱{(selectedPlan?.price * 0.1).toFixed(2)}</span>
+              <span className="text-[#f2e9dd]/70">Tax (12%):</span>
+              <span className="text-[#f2e9dd]">₱{Math.round((billingCycle === 'yearly' ? selectedPlan?.price * 12 * 0.8 : selectedPlan?.price) * 0.12)}</span>
             </div>
             <div className="border-t border-white/10 pt-2 flex justify-between text-sm md:text-base">
               <span className="font-bold text-[#f2e9dd]">Total:</span>
-              <span className="font-bold text-[#f2e9dd]">₱{(selectedPlan?.price * 1.1).toFixed(2)}</span>
+              <span className="font-bold text-[#f2e9dd]">₱{Math.round((billingCycle === 'yearly' ? selectedPlan?.price * 12 * 0.8 : selectedPlan?.price) * 1.12)}</span>
             </div>
           </div>
 

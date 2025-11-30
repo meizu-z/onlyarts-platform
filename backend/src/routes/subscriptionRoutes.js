@@ -24,7 +24,7 @@ router.post(
     body('plan')
       .notEmpty()
       .withMessage('Plan is required')
-      .isIn(['free', 'plus', 'premium'])
+      .isIn(['free', 'basic', 'premium'])
       .withMessage('Invalid plan'),
     body('paymentMethodId')
       .optional()

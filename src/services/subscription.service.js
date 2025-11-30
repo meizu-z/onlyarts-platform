@@ -25,7 +25,7 @@ export const subscriptionService = {
 
   /**
    * Create subscription (upgrade/subscribe)
-   * @param {string} planId - Plan ID (plus, premium)
+   * @param {string} planId - Plan ID (basic, premium)
    * @param {string} paymentMethodId - Stripe payment method ID (optional for now)
    */
   createSubscription: async (planId, paymentMethodId = null) => {

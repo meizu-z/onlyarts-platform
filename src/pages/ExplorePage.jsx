@@ -12,9 +12,23 @@ import PremiumBadge from '../components/common/PremiumBadge';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { ChevronDown, Filter, Grid, List, Lock, Crown, Sparkles } from 'lucide-react';
+import { API_CONFIG } from '../config/api.config';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  if (imagePath.startsWith('/')) {
+    const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${serverBaseUrl}${imagePath}`;
+  }
+  return null;
+};
 
 const ExplorePage = () => {
   const { user } = useAuth();
@@ -26,6 +40,16 @@ const ExplorePage = () => {
   const [error, setError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [exhibitions, setExhibitions] = useState([]);
+
+  // Filter and Sort state
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSort, setShowSort] = useState(false);
+  const [filters, setFilters] = useState({
+    premiumOnly: false,
+    featuredOnly: false,
+    curatorTier: 'all', // all, premium, pro, free
+  });
+  const [sortBy, setSortBy] = useState('newest'); // newest, most_pieces, title_asc, title_desc
 
   // Fetch exhibitions on mount
   useEffect(() => {
@@ -75,11 +99,49 @@ const ExplorePage = () => {
   };
 
   const filterExhibitions = () => {
-    if (!searchQuery.trim()) return exhibitions;
-    return exhibitions.filter(e =>
-      e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.curator.toLowerCase().includes(searchQuery.toLowerCase())
-    );
+    let filtered = [...exhibitions];
+
+    // Apply search query
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(e =>
+        e.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        e.curator.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply filters
+    if (filters.premiumOnly) {
+      filtered = filtered.filter(e => e.premium);
+    }
+
+    if (filters.featuredOnly) {
+      filtered = filtered.filter(e => e.featured);
+    }
+
+    if (filters.curatorTier !== 'all') {
+      filtered = filtered.filter(e => e.curatorTier === filters.curatorTier);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'newest':
+        // Assuming newer items have higher IDs
+        filtered.sort((a, b) => b.id - a.id);
+        break;
+      case 'most_pieces':
+        filtered.sort((a, b) => b.pieces - a.pieces);
+        break;
+      case 'title_asc':
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'title_desc':
+        filtered.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
   };
 
   // Client-side pagination for filtered exhibitions
@@ -122,13 +184,125 @@ const ExplorePage = () => {
 
         {/* Controls */}
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-          <div className="flex gap-2">
-            <Button variant="secondary" size="sm" className="flex-1 sm:flex-none transform hover:scale-105 transition-all duration-200">
-              <Filter size={16} className="mr-2" /> Filters
-            </Button>
-            <Button variant="secondary" size="sm" className="flex-1 sm:flex-none transform hover:scale-105 transition-all duration-200">
-              Sort <ChevronDown size={16} className="ml-1" />
-            </Button>
+          <div className="flex gap-2 relative">
+            {/* Filter Dropdown */}
+            <div className="relative flex-1 sm:flex-none">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full transform hover:scale-105 transition-all duration-200"
+                onClick={() => {
+                  setShowFilters(!showFilters);
+                  setShowSort(false);
+                }}
+              >
+                <Filter size={16} className="mr-2" /> Filters
+                {(filters.premiumOnly || filters.featuredOnly || filters.curatorTier !== 'all') && (
+                  <span className="ml-2 w-2 h-2 bg-[#FF5F9E] rounded-full"></span>
+                )}
+              </Button>
+
+              {showFilters && (
+                <div className="absolute top-full mt-2 left-0 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl p-4 z-50 min-w-[250px]">
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.premiumOnly}
+                        onChange={(e) => setFilters({ ...filters, premiumOnly: e.target.checked })}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-[#7C5FFF] focus:ring-[#7C5FFF]"
+                      />
+                      <span className="text-sm text-[#f2e9dd]">Premium Only</span>
+                    </label>
+
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={filters.featuredOnly}
+                        onChange={(e) => setFilters({ ...filters, featuredOnly: e.target.checked })}
+                        className="w-4 h-4 rounded border-white/20 bg-white/5 text-[#7C5FFF] focus:ring-[#7C5FFF]"
+                      />
+                      <span className="text-sm text-[#f2e9dd]">Featured Only</span>
+                    </label>
+
+                    <div className="pt-2 border-t border-white/10">
+                      <p className="text-xs text-[#f2e9dd]/50 mb-2">Curator Tier</p>
+                      <select
+                        value={filters.curatorTier}
+                        onChange={(e) => setFilters({ ...filters, curatorTier: e.target.value })}
+                        className="w-full bg-white/5 border border-white/10 rounded px-3 py-2 text-sm text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-[#7C5FFF]"
+                      >
+                        <option value="all">All Tiers</option>
+                        <option value="premium">Premium</option>
+                        <option value="pro">Pro</option>
+                        <option value="free">Free</option>
+                      </select>
+                    </div>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-[#FF5F9E] hover:bg-[#FF5F9E]/10"
+                      onClick={() => setFilters({ premiumOnly: false, featuredOnly: false, curatorTier: 'all' })}
+                    >
+                      Clear Filters
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Sort Dropdown */}
+            <div className="relative flex-1 sm:flex-none">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full transform hover:scale-105 transition-all duration-200"
+                onClick={() => {
+                  setShowSort(!showSort);
+                  setShowFilters(false);
+                }}
+              >
+                Sort <ChevronDown size={16} className="ml-1" />
+              </Button>
+
+              {showSort && (
+                <div className="absolute top-full mt-2 left-0 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl p-2 z-50 min-w-[200px]">
+                  <button
+                    onClick={() => { setSortBy('newest'); setShowSort(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      sortBy === 'newest' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                    }`}
+                  >
+                    Newest First
+                  </button>
+                  <button
+                    onClick={() => { setSortBy('most_pieces'); setShowSort(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      sortBy === 'most_pieces' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                    }`}
+                  >
+                    Most Pieces
+                  </button>
+                  <button
+                    onClick={() => { setSortBy('title_asc'); setShowSort(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      sortBy === 'title_asc' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                    }`}
+                  >
+                    Title A-Z
+                  </button>
+                  <button
+                    onClick={() => { setSortBy('title_desc'); setShowSort(false); }}
+                    className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                      sortBy === 'title_desc' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                    }`}
+                  >
+                    Title Z-A
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
           <div className="flex gap-2 justify-end">
             <button
@@ -200,9 +374,17 @@ const ExplorePage = () => {
               )}
               <div className="aspect-video bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-5xl md:text-6xl overflow-hidden relative">
                 <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                  {exhibition.image}
-                </span>
+                {getImageUrl(exhibition.cover_image) ? (
+                  <img
+                    src={getImageUrl(exhibition.cover_image)}
+                    alt={exhibition.title}
+                    className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                  />
+                ) : (
+                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                    {exhibition.image || '🎨'}
+                  </span>
+                )}
               </div>
               <div className="p-3 md:p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">

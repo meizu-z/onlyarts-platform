@@ -19,7 +19,7 @@ export const COLORS = {
 // Subscription Tiers
 export const SUBSCRIPTION_TIERS = {
   FREE: 'free',
-  PLUS: 'plus',
+  BASIC: 'basic',
   PREMIUM: 'premium'
 };
 
@@ -32,36 +32,41 @@ export const SUBSCRIPTION_PLANS = [
     currency: 'PHP',
     features: {
       fan: [
-        'View exhibitions in preview mode (cannot bid, cannot engage in auctions)',
-        'No commission requests',
-        'No badges or collectibles'
+        'Browse artworks and exhibitions',
+        'Follow artists',
+        'Like artworks',
+        'Basic profile'
       ],
       artist: [
-        'No access to exhibitions hosting',
-        'Cannot sell or mint NFTs',
-        'Limited analytics (basic profile views only)'
+        'Upload up to 10 artworks',
+        'Basic analytics (profile views only)',
+        'Standard visibility',
+        'No livestream access',
+        'No exhibition hosting'
       ]
     }
   },
   {
-    id: 'plus',
-    name: 'PLUS',
+    id: 'basic',
+    name: 'BASIC',
     price: 149,
     currency: 'PHP',
     popular: true,
     features: {
       fan: [
-        'All Free perks',
-        'Monthly free commission coupon',
+        'Everything in Free',
+        'Comment on artworks',
+        'Save favorites',
         'Bidding access in auctions',
-        'Loyalty & supporter badges displayed on profile',
-        'Direct artist engagement'
+        'Early access to exhibitions'
       ],
       artist: [
-        'All Free artist perks',
-        'Featured slots in group exhibitions',
-        'Expanded analytics (who engages, top fans, revenue breakdown)',
-        'Early access to AI recommendations for content strategy'
+        'Upload up to 50 artworks',
+        'Advanced analytics (engagement metrics, top fans, revenue breakdown)',
+        'Host solo exhibitions (up to 20 artworks)',
+        'Livestream capabilities',
+        'Commission requests',
+        'Priority support'
       ]
     }
   },
@@ -72,18 +77,22 @@ export const SUBSCRIPTION_PLANS = [
     currency: 'PHP',
     features: {
       fan: [
-        'All Plus perks',
-        'Priority bidding access in auctions',
-        'VIP-only showcases (exclusive exhibitions & collabs)',
-        'Exclusive collectibles (NFTs, badges, digital mementos)',
-        '1-on-1 interaction opportunities with selected artists'
+        'Everything in Basic',
+        'VIP badge on profile',
+        'Priority bidding in auctions with last-call feature',
+        'Exclusive VIP exhibitions & showcases',
+        'Exclusive collectibles (NFTs, badges)',
+        '1-on-1 consultation with selected artists'
       ],
       artist: [
-        'All Plus artist perks',
-        'Host solo exhibitions',
-        'Premium placement on the Explore Page',
-        'Audience insights (demographics, fan behavior, sales trends)',
-        'Event collaborations with other Premium creators'
+        'Unlimited artworks',
+        'Premium analytics (demographics, behavior patterns, sales forecasts, AI insights)',
+        'Host solo exhibitions (up to 50 artworks)',
+        'Collaborative exhibitions',
+        'Premium placement on Explore page',
+        'Advanced livestream features',
+        '1-on-1 consultation bookings',
+        'Event collaborations with Premium creators'
       ]
     }
   }

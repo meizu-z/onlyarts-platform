@@ -17,15 +17,17 @@ exports.getPlans = asyncHandler(async (req, res, next) => {
       interval: 'month',
       features: {
         fan: [
-          'Browse artworks',
+          'Browse artworks and exhibitions',
           'Follow artists',
           'Like artworks',
           'Basic profile',
         ],
         artist: [
           'Upload up to 10 artworks',
-          'Basic analytics',
+          'Basic analytics (profile views only)',
           'Standard visibility',
+          'No livestream access',
+          'No exhibition hosting',
         ],
       },
     },
@@ -39,13 +41,16 @@ exports.getPlans = asyncHandler(async (req, res, next) => {
           'Everything in Free',
           'Comment on artworks',
           'Save favorites',
+          'Bidding access in auctions',
           'Early access to exhibitions',
         ],
         artist: [
           'Upload up to 50 artworks',
-          'Advanced analytics',
-          'Priority support',
+          'Advanced analytics (engagement metrics, top fans, revenue breakdown)',
+          'Host solo exhibitions (up to 20 artworks)',
+          'Livestream capabilities',
           'Commission requests',
+          'Priority support',
         ],
       },
     },
@@ -57,15 +62,21 @@ exports.getPlans = asyncHandler(async (req, res, next) => {
       features: {
         fan: [
           'Everything in Basic',
-          'Exclusive content access',
-          'VIP badge',
-          'Premium exhibitions',
+          'VIP badge on profile',
+          'Priority bidding in auctions with last-call feature',
+          'Exclusive VIP exhibitions & showcases',
+          'Exclusive collectibles (NFTs, badges)',
+          '1-on-1 consultation with selected artists',
         ],
         artist: [
           'Unlimited artworks',
-          'Premium analytics',
-          'Livestream capabilities',
-          'Priority placement',
+          'Premium analytics (demographics, behavior patterns, sales forecasts, AI insights)',
+          'Host solo exhibitions (up to 50 artworks)',
+          'Collaborative exhibitions',
+          'Premium placement on Explore page',
+          'Advanced livestream features',
+          '1-on-1 consultation bookings',
+          'Event collaborations with Premium creators',
         ],
       },
     },
@@ -81,41 +92,75 @@ exports.getPlans = asyncHandler(async (req, res, next) => {
  */
 exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
-  const { plan, paymentMethodId } = req.body;
+  const { plan, paymentMethod, billingCycle } = req.body;
 
-  const validPlans = ['free', 'plus', 'premium'];
+  const validPlans = ['free', 'basic', 'premium'];
   if (!validPlans.includes(plan)) {
     return next(new AppError('Invalid subscription plan', 400));
   }
 
-  // Get current subscription
-  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [userId]);
+  // Get current subscription and wallet balance
+  const userResult = await query('SELECT subscription_tier, wallet_balance FROM users WHERE id = ?', [userId]);
   const currentPlan = userResult.rows[0].subscription_tier;
+  const walletBalance = parseFloat(userResult.rows[0].wallet_balance);
 
   // Can't downgrade to free or same plan
-  const planHierarchy = { free: 0, plus: 1, premium: 2 };
+  const planHierarchy = { free: 0, basic: 1, premium: 2 };
   if (planHierarchy[plan] <= planHierarchy[currentPlan]) {
     return next(new AppError('Invalid subscription change', 400));
   }
 
-  // For paid plans, payment method is required
-  if (plan !== 'free' && !paymentMethodId) {
+  // Calculate subscription amount
+  const monthlyPrices = { free: 0, basic: 149, premium: 249 };
+  const monthlyPrice = monthlyPrices[plan];
+  const isYearly = billingCycle === 'yearly';
+  const subscriptionAmount = isYearly ? Math.round(monthlyPrice * 12 * 0.8) : monthlyPrice;
+
+  // For paid plans, payment is required
+  if (plan !== 'free' && !paymentMethod) {
     return next(new AppError('Payment method required for paid plans', 400));
   }
 
-  // TODO: Process payment with Stripe
-  // For now, just update the tier
+  // Handle wallet payment
+  if (paymentMethod === 'wallet') {
+    if (walletBalance < subscriptionAmount) {
+      return next(new AppError('Insufficient wallet balance', 400));
+    }
 
-  await query(
-    'UPDATE users SET subscription_tier = ?, updated_at = NOW() WHERE id = ?',
-    [plan, userId]
-  );
+    // Deduct from wallet
+    await query(
+      'UPDATE users SET wallet_balance = wallet_balance - ?, subscription_tier = ?, updated_at = NOW() WHERE id = ?',
+      [subscriptionAmount, plan, userId]
+    );
+
+    // Get new balance
+    const newBalanceResult = await query('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
+    const newBalance = parseFloat(newBalanceResult.rows[0].wallet_balance);
+
+    // Record wallet transaction
+    await query(
+      `INSERT INTO wallet_transactions (user_id, type, amount, description, payment_method, balance_after)
+       VALUES (?, 'subscription', ?, ?, 'wallet', ?)`,
+      [
+        userId,
+        -subscriptionAmount,
+        `${plan.toUpperCase()} Subscription (${isYearly ? 'Yearly' : 'Monthly'})`,
+        newBalance
+      ]
+    );
+  } else {
+    // For card payments, just update tier (mock payment processing)
+    await query(
+      'UPDATE users SET subscription_tier = ?, updated_at = NOW() WHERE id = ?',
+      [plan, userId]
+    );
+  }
 
   // Log subscription change
   await query(
     `INSERT INTO subscription_history (user_id, from_tier, to_tier, amount, payment_method_id)
      VALUES (?, ?, ?, ?, ?)`,
-    [userId, currentPlan, plan, plan === 'plus' ? 499 : 999, paymentMethodId || null]
+    [userId, currentPlan, plan, subscriptionAmount, paymentMethod || 'none']
   );
 
   // Create notification
@@ -127,6 +172,8 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
 
   successResponse(res, {
     subscription_tier: plan,
+    amount_paid: subscriptionAmount,
+    billing_cycle: billingCycle || 'monthly',
   }, 'Subscription upgraded successfully');
 });
 

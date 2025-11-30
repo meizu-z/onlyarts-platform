@@ -367,7 +367,7 @@ const ProfilePage = () => {
                 <Image size={24} /> Artworks
               </h2>
               {artworks.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
                   {artworks.map((artwork, idx) => (
                     <Card
                       key={artwork.id}
@@ -459,7 +459,7 @@ const ProfilePage = () => {
 
       case 'artworks':
         return profileData.isArtist && artworks.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {artworks.map((artwork, idx) => (
               <Card
                 key={artwork.id}
@@ -503,7 +503,7 @@ const ProfilePage = () => {
           !artwork.inExhibition
         );
         return forSaleArtworks.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {forSaleArtworks.map((artwork, idx) => (
               <Card
                 key={artwork.id}
@@ -555,7 +555,7 @@ const ProfilePage = () => {
 
       case 'shared_artworks':
         return sharedPosts.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {sharedPosts.map((post, idx) => (
               <Card
                 key={post.id}
@@ -598,7 +598,7 @@ const ProfilePage = () => {
         const savedItems = [...savedForLater];
 
         return savedItems.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-6">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
             {savedItems.map((item, idx) => (
               <Card
                 key={item.id}

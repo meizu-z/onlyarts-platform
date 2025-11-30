@@ -4,8 +4,8 @@ import { useToast } from '../components/ui/Toast';
 import { EmptyFavorites } from '../components/ui/EmptyStates';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
-import { favoritesService, mockFavorites, mockFollowingArtists, mockCollections } from '../services/favorites.service';
-import { profileService } from '../services/profile.service';
+import { favoritesService, mockFavorites } from '../services/favorites.service';
+import { api } from '../services/api.client';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import { Heart, Filter, ChevronDown, Users, Calendar, ImageIcon } from 'lucide-react';
@@ -22,8 +22,13 @@ const FavoritesPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [favorites, setFavorites] = useState([]);
-  const [following, setFollowing] = useState([]);
-  const [collections, setCollections] = useState([]);
+  const [purchasedArtworks, setPurchasedArtworks] = useState([]);
+
+  // Filter and Sort state
+  const [showFilters, setShowFilters] = useState(false);
+  const [showSort, setShowSort] = useState(false);
+  const [filterType, setFilterType] = useState('all'); // all, artwork, exhibition
+  const [sortBy, setSortBy] = useState('recent'); // recent, title_asc, title_desc, artist
 
   // Fetch data based on active tab
   useEffect(() => {
@@ -41,10 +46,6 @@ const FavoritesPage = () => {
 
         if (activeTab === 'favorites') {
           setFavorites(mockFavorites);
-        } else if (activeTab === 'following') {
-          setFollowing(mockFollowingArtists);
-        } else if (activeTab === 'collections') {
-          setCollections(mockCollections);
         }
 
         setLoading(false);
@@ -55,12 +56,34 @@ const FavoritesPage = () => {
       if (activeTab === 'favorites') {
         const response = await favoritesService.getFavorites();
         setFavorites(response.favorites || []);
-      } else if (activeTab === 'following') {
-        // TODO: Following is available in Profile page - redirect there or implement proper endpoint
-        setFollowing([]);
       } else if (activeTab === 'collections') {
-        const response = await favoritesService.getCollections();
-        setCollections(response.collections || []);
+        // Get purchased artworks from real orders API
+        const response = await api.get('/orders');
+
+        // After unwrapping by api.client.js, response.data contains { orders: [...], pagination: {...} }
+        const ordersData = response.data?.orders || response.data || [];
+        const orders = Array.isArray(ordersData) ? ordersData : [];
+
+        console.log('Collections - Orders fetched:', orders);
+
+        // Extract artworks from completed orders only
+        const artworks = orders
+          .filter(order => order.status === 'completed' || order.paymentStatus === 'paid' || order.payment_status === 'paid')
+          .flatMap(order => {
+            const items = order.items || [];
+            return items.map(item => ({
+              id: item.artworkId || item.artwork_id,
+              title: item.title,
+              primary_image: item.primaryImage || item.primary_image,
+              price: item.price,
+              orderId: order.id,
+              orderNumber: order.orderNumber || order.order_number,
+              purchaseDate: order.createdAt || order.created_at,
+            }));
+          });
+
+        console.log('Collections - Artworks extracted:', artworks);
+        setPurchasedArtworks(artworks);
       }
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -93,6 +116,41 @@ const FavoritesPage = () => {
     }
   };
 
+  // Filter and sort favorites
+  const getFilteredAndSortedFavorites = () => {
+    let filtered = [...favorites];
+
+    // Apply type filter
+    if (filterType !== 'all') {
+      filtered = filtered.filter(f => f.type === filterType);
+    }
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'recent':
+        // Assuming newer items have higher IDs
+        filtered.sort((a, b) => b.id - a.id);
+        break;
+      case 'title_asc':
+        filtered.sort((a, b) => a.title.localeCompare(b.title));
+        break;
+      case 'title_desc':
+        filtered.sort((a, b) => b.title.localeCompare(a.title));
+        break;
+      case 'artist':
+        filtered.sort((a, b) => {
+          const artistA = a.artist_name || a.artistName || '';
+          const artistB = b.artist_name || b.artistName || '';
+          return artistA.localeCompare(artistB);
+        });
+        break;
+      default:
+        break;
+    }
+
+    return filtered;
+  };
+
   // Helper to get item counts
   const getItemCounts = () => {
     const artworkCount = favorites.filter(f => f.type === 'artwork').length;
@@ -100,34 +158,11 @@ const FavoritesPage = () => {
     return { artworkCount, exhibitionCount };
   };
 
-  // Handle unfollow with optimistic update
-  const handleUnfollow = async (artist) => {
-    const oldFollowing = [...following];
-
-    // Optimistic update
-    setFollowing(following.filter(a => a.id !== artist.id));
-    toast.info(`Unfollowed ${artist.name}`);
-
-    try {
-      // DEMO MODE: Just show toast
-      if (USE_DEMO_MODE) {
-        return;
-      }
-
-      // REAL API MODE: Call backend
-      await profileService.unfollowUser(artist.username.replace('@', ''));
-    } catch (error) {
-      // Revert on error
-      setFollowing(oldFollowing);
-      toast.error('Failed to unfollow. Please try again.');
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
-          <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Following</h1>
+          <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Collections</h1>
           <LoadingPaint message="Loading..." />
           <div className="mt-8">
             <SkeletonGrid count={6} />
@@ -141,7 +176,7 @@ const FavoritesPage = () => {
     return (
       <div className="flex-1">
         <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
-          <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Following</h1>
+          <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Collections</h1>
           <APIError error={error} retry={fetchData} />
         </div>
       </div>
@@ -151,13 +186,13 @@ const FavoritesPage = () => {
   return (
     <div className="flex-1">
       <div className="max-w-7xl mx-auto px-4 py-4 md:p-6 lg:p-8">
-        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Following</h1>
+        <h1 className="text-2xl md:text-4xl font-bold text-[#f2e9dd] mb-8">Favorites & Collections</h1>
 
       {/* Tabs */}
       <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-8">
         {[
           { key: 'favorites', label: 'Favorites' },
-          { key: 'following', label: 'Following' },
+          { key: 'collections', label: 'Collections' },
         ].map(tab => (
           <button
             key={tab.key}
@@ -186,26 +221,119 @@ const FavoritesPage = () => {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
                 {(() => {
                   const { artworkCount, exhibitionCount } = getItemCounts();
+                  const filteredFavorites = getFilteredAndSortedFavorites();
                   return (
                     <p className="text-sm md:text-base text-[#f2e9dd]/70">
-                      {favorites.length} items
+                      {filteredFavorites.length} of {favorites.length} items
                       {artworkCount > 0 && ` (${artworkCount} artwork${artworkCount !== 1 ? 's' : ''})`}
                       {exhibitionCount > 0 && ` (${exhibitionCount} exhibition${exhibitionCount !== 1 ? 's' : ''})`}
                     </p>
                   );
                 })()}
-                <div className="flex gap-2">
-                  <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
-                    <Filter size={16} className="mr-2" /> Filter
-                  </Button>
-                  <Button variant="secondary" size="sm" className="transform hover:scale-105 transition-all duration-200">
-                    Sort <ChevronDown size={16} className="ml-1" />
-                  </Button>
+                <div className="flex gap-2 relative">
+                  {/* Filter Dropdown */}
+                  <div className="relative">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="transform hover:scale-105 transition-all duration-200"
+                      onClick={() => {
+                        setShowFilters(!showFilters);
+                        setShowSort(false);
+                      }}
+                    >
+                      <Filter size={16} className="mr-2" /> Filter
+                      {filterType !== 'all' && (
+                        <span className="ml-2 w-2 h-2 bg-[#FF5F9E] rounded-full"></span>
+                      )}
+                    </Button>
+
+                    {showFilters && (
+                      <div className="absolute top-full mt-2 right-0 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl p-2 z-50 min-w-[180px]">
+                        <button
+                          onClick={() => { setFilterType('all'); setShowFilters(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            filterType === 'all' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          All Items
+                        </button>
+                        <button
+                          onClick={() => { setFilterType('artwork'); setShowFilters(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            filterType === 'artwork' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Artworks Only
+                        </button>
+                        <button
+                          onClick={() => { setFilterType('exhibition'); setShowFilters(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            filterType === 'exhibition' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Exhibitions Only
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Sort Dropdown */}
+                  <div className="relative">
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      className="transform hover:scale-105 transition-all duration-200"
+                      onClick={() => {
+                        setShowSort(!showSort);
+                        setShowFilters(false);
+                      }}
+                    >
+                      Sort <ChevronDown size={16} className="ml-1" />
+                    </Button>
+
+                    {showSort && (
+                      <div className="absolute top-full mt-2 right-0 bg-[#1a1a1a] border border-white/10 rounded-lg shadow-xl p-2 z-50 min-w-[180px]">
+                        <button
+                          onClick={() => { setSortBy('recent'); setShowSort(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            sortBy === 'recent' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Recently Added
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('title_asc'); setShowSort(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            sortBy === 'title_asc' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Title A-Z
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('title_desc'); setShowSort(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            sortBy === 'title_desc' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Title Z-A
+                        </button>
+                        <button
+                          onClick={() => { setSortBy('artist'); setShowSort(false); }}
+                          className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                            sortBy === 'artist' ? 'bg-[#7C5FFF]/20 text-[#7C5FFF]' : 'text-[#f2e9dd] hover:bg-white/5'
+                          }`}
+                        >
+                          Artist Name
+                        </button>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-                {favorites.map((item, idx) => {
+                {getFilteredAndSortedFavorites().map((item, idx) => {
                   const isExhibition = item.type === 'exhibition';
                   const imageUrl = item.primary_image || item.primaryImage;
 
@@ -294,104 +422,86 @@ const FavoritesPage = () => {
         </>
       )}
 
-      {activeTab === 'following' && (
+      {activeTab === 'collections' && (
         <>
-          <p className="text-sm md:text-base text-[#f2e9dd]/70 mb-6">{following.length} artists</p>
-          <div className="space-y-4">
-            {following.map((artist, idx) => (
-              <Card
-                key={idx}
-                className="p-3 md:p-6 transform hover:scale-105 transition-all duration-300 animate-fadeIn"
-                style={{ animationDelay: `${idx * 0.1}s` }}
+          {purchasedArtworks.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-6xl mb-4">🛍️</div>
+              <h3 className="text-xl font-bold text-[#f2e9dd] mb-2">No Purchased Artworks</h3>
+              <p className="text-[#f2e9dd]/50 mb-6">Your purchased artworks will appear here</p>
+              <Button
+                onClick={() => navigate('/dashboard')}
+                className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg"
               >
-                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 md:gap-4">
-                    <div className="w-12 h-12 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center text-white text-xl md:text-2xl font-bold shadow-lg shadow-[#7C5FFF]/30 transform hover:scale-110 transition-transform">
-                      {artist.name[0]}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-bold text-base md:text-lg text-[#f2e9dd]">{artist.name}</h3>
-                        {artist.isLive && (
-                          <span className="bg-red-600 text-white px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg animate-pulse">
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white"></span>
-                            </span>
-                            LIVE
+                Explore Artworks
+              </Button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm md:text-base text-[#f2e9dd]/70 mb-6">
+                {purchasedArtworks.length} purchased artwork{purchasedArtworks.length !== 1 ? 's' : ''}
+              </p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                {purchasedArtworks.map((artwork, idx) => {
+                  const imageUrl = artwork.primary_image;
+
+                  return (
+                    <Card
+                      key={`${artwork.id}-${idx}`}
+                      hover
+                      className="cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
+                      style={{ animationDelay: `${idx * 0.1}s` }}
+                      onClick={() => navigate(`/artwork/${artwork.id}`)}
+                    >
+                      <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+
+                        {/* Purchased Badge */}
+                        <div className="absolute top-2 left-2 z-10">
+                          <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white px-2 py-1 rounded-full text-xs font-bold shadow-lg flex items-center gap-1">
+                            ✓ Purchased
+                          </span>
+                        </div>
+
+                        {imageUrl ? (
+                          <img
+                            src={imageUrl}
+                            alt={artwork.title}
+                            className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-300"
+                          />
+                        ) : (
+                          <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
+                            {artwork.primary_image || '🎨'}
                           </span>
                         )}
                       </div>
-                      <p className="text-sm text-[#f2e9dd]/50">{artist.username} • {artist.artworks} artworks</p>
-                    </div>
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="transform hover:scale-105 transition-all duration-200"
-                      onClick={() => handleUnfollow(artist)}
-                    >
-                      Unfollow
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => {
-                        toast.info(`Viewing ${artist.name}'s profile...`);
-                        navigate(`/profile/${artist.username.replace('@', '')}`);
-                      }}
-                      className="transform hover:scale-105 transition-all duration-200"
-                    >
-                      View Page
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </>
-      )}
-
-      {activeTab === 'collections' && (
-        <>
-          <Button
-            className="mb-6 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
-            onClick={() => toast.info('Create collection feature coming soon!')}
-          >
-            + Create New Collection
-          </Button>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-            {collections.map((collection, idx) => (
-              <Card
-                key={collection.id || idx}
-                hover
-                className="cursor-pointer transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300 animate-fadeIn group"
-                style={{ animationDelay: `${idx * 0.1}s` }}
-              >
-                <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-6xl overflow-hidden relative">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">
-                    {collection.coverImage || '🎨'}
-                  </span>
-                </div>
-                <div className="p-3 md:p-4">
-                  <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
-                    {collection.name}
-                  </h3>
-                  <p className="text-sm text-[#f2e9dd]/50 mb-3">{collection.itemCount} items</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full transform hover:scale-105 transition-all duration-200"
-                    onClick={() => toast.info('Collection options coming soon!')}
-                  >
-                    •••
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
+                      <div className="p-3 md:p-4">
+                        <h3 className="font-bold text-base md:text-lg text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
+                          {artwork.title}
+                        </h3>
+                        <p
+                          className="text-sm text-[#f2e9dd]/50 mb-2 hover:text-[#7C5FFF] cursor-pointer transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const username = artwork.artist_username?.replace('@', '');
+                            if (username) {
+                              navigate(`/portfolio/${username}`);
+                            }
+                          }}
+                        >
+                          {artwork.artist_name || 'Unknown Artist'}
+                        </p>
+                        <div className="flex items-center justify-between text-xs text-[#f2e9dd]/50">
+                          <span>₱{artwork.price?.toLocaleString()}</span>
+                          <span>{new Date(artwork.purchaseDate).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
       </div>

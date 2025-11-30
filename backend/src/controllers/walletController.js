@@ -31,13 +31,25 @@ exports.getTransactions = asyncHandler(async (req, res, next) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = (page - 1) * limit;
 
-  // For now, return empty transactions
-  // In production, you would have a transactions table
-  const transactions = [];
-  const total = 0;
+  // Get total count
+  const countResult = await query(
+    'SELECT COUNT(*) as total FROM wallet_transactions WHERE user_id = ?',
+    [req.user.id]
+  );
+  const total = countResult.rows[0].total;
+
+  // Get transactions
+  const result = await query(
+    `SELECT id, type, amount, description, payment_method, card_last4, balance_after, created_at
+     FROM wallet_transactions
+     WHERE user_id = ?
+     ORDER BY created_at DESC
+     LIMIT ? OFFSET ?`,
+    [req.user.id, limit, offset]
+  );
 
   successResponse(res, {
-    transactions,
+    transactions: result.rows,
     pagination: {
       total,
       page,
@@ -49,11 +61,15 @@ exports.getTransactions = asyncHandler(async (req, res, next) => {
 
 /**
  * @route   POST /api/wallet/add-funds
- * @desc    Add funds to wallet
+ * @desc    Add funds to wallet (mock payment - accepts any card details)
  * @access  Private
  */
 exports.addFunds = asyncHandler(async (req, res, next) => {
-  const { amount } = req.body;
+  const { amount, cardNumber, cardName, expiryDate, cvv } = req.body;
+
+  // Mock payment processing - no validation, accept any card
+  // In production, you would integrate with Stripe/PayPal/PayMongo
+  const cardLast4 = cardNumber ? cardNumber.slice(-4) : '****';
 
   // Update wallet balance
   await query(
@@ -62,13 +78,34 @@ exports.addFunds = asyncHandler(async (req, res, next) => {
   );
 
   // Get updated balance
-  const result = await query(
+  const balanceResult = await query(
     'SELECT wallet_balance FROM users WHERE id = ?',
     [req.user.id]
   );
 
+  const newBalance = parseFloat(balanceResult.rows[0].wallet_balance);
+
+  // Record transaction
+  await query(
+    `INSERT INTO wallet_transactions (user_id, type, amount, description, payment_method, card_last4, balance_after)
+     VALUES (?, 'add_funds', ?, ?, 'card', ?, ?)`,
+    [
+      req.user.id,
+      amount,
+      `Added ₱${amount.toLocaleString()} via Card ending in ${cardLast4}`,
+      cardLast4,
+      newBalance
+    ]
+  );
+
   successResponse(res, {
-    balance: parseFloat(result.rows[0].wallet_balance),
+    balance: newBalance,
+    transaction: {
+      type: 'add_funds',
+      amount,
+      cardLast4,
+      balanceAfter: newBalance
+    }
   }, 'Funds added successfully');
 });
 

@@ -2,8 +2,8 @@ import React from 'react';
 import { Crown } from 'lucide-react';
 
 /**
- * PremiumBadge - Badge component for premium/plus users
- * @param {string} tier - Subscription tier ('plus' or 'premium')
+ * PremiumBadge - Badge component for premium/basic users
+ * @param {string} tier - Subscription tier ('basic' or 'premium')
  * @param {string} size - Size variant ('sm', 'md', 'lg')
  * @param {boolean} showLabel - Whether to show text label
  * @param {string} className - Additional CSS classes
@@ -29,10 +29,10 @@ const PremiumBadge = ({
   };
 
   const colors = {
-    plus: {
+    basic: {
       bg: 'bg-gradient-to-r from-indigo-500 to-purple-500',
       text: 'text-white',
-      label: 'Plus',
+      label: 'Basic',
       glow: 'shadow-lg shadow-indigo-500/30',
     },
     premium: {
@@ -40,6 +40,12 @@ const PremiumBadge = ({
       text: 'text-black',
       label: 'Premium',
       glow: 'shadow-lg shadow-amber-500/40',
+    },
+    vip: {
+      bg: 'bg-gradient-to-r from-purple-600 via-pink-500 to-red-500',
+      text: 'text-white',
+      label: 'VIP',
+      glow: 'shadow-lg shadow-pink-500/50 animate-pulse',
     },
   };
 

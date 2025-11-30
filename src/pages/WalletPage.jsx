@@ -5,6 +5,9 @@ import { APIError } from '../components/ui/ErrorStates';
 import { walletService, mockWallet, mockTransactions } from '../services/wallet.service';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
+import Modal from '../components/common/Modal';
+import MockPaymentForm from '../components/wallet/MockPaymentForm';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -17,6 +20,12 @@ const WalletPage = () => {
   const [error, setError] = useState(null);
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
+
+  // Add Funds modal state
+  const [showAddFunds, setShowAddFunds] = useState(false);
+  const [fundAmount, setFundAmount] = useState('');
+  const [showPaymentForm, setShowPaymentForm] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false);
 
   useEffect(() => {
     fetchWalletData();
@@ -53,7 +62,63 @@ const WalletPage = () => {
   };
 
   const handleAddFunds = () => {
-    toast.info('Add funds feature coming soon!');
+    setShowAddFunds(true);
+    setFundAmount('');
+    setShowPaymentForm(false);
+  };
+
+  const handleAmountSubmit = () => {
+    const amount = parseFloat(fundAmount);
+
+    if (isNaN(amount) || amount <= 0) {
+      toast.error('Please enter a valid amount');
+      return;
+    }
+
+    if (amount < 100) {
+      toast.error('Minimum amount is ₱100');
+      return;
+    }
+
+    if (amount > 100000) {
+      toast.error('Maximum amount is ₱100,000');
+      return;
+    }
+
+    setShowPaymentForm(true);
+  };
+
+  const handlePaymentSubmit = async (paymentData) => {
+    try {
+      setProcessingPayment(true);
+
+      // Simulate payment processing delay
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
+      // Call API to add funds
+      const result = await walletService.addFunds({
+        amount: parseFloat(fundAmount),
+        ...paymentData
+      });
+
+      // Update balance
+      setBalance(result.balance);
+
+      // Refresh transactions
+      await fetchWalletData();
+
+      toast.success(`Successfully added ₱${parseFloat(fundAmount).toLocaleString()} to your wallet!`);
+
+      // Reset and close modal
+      setShowAddFunds(false);
+      setShowPaymentForm(false);
+      setFundAmount('');
+    } catch (err) {
+      console.error('Error adding funds:', err);
+      toast.error(err.response?.data?.message || 'Failed to add funds. Please try again.');
+    } finally {
+      setProcessingPayment(false);
+    }
   };
 
   const handleWithdraw = () => {
@@ -119,10 +184,9 @@ const WalletPage = () => {
       </Card>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-4 md:mb-8 px-3 md:px-0">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-8 px-3 md:px-0">
         {[
           { icon: '💳', label: 'Add Payment Method', color: 'from-[#7C5FFF]/10 to-[#FF5F9E]/10' },
-          { icon: '📊', label: 'Transaction History', color: 'from-blue-600/10 to-[#7C5FFF]/10' },
           { icon: '🎁', label: 'Send Gift', color: 'from-[#FF5F9E]/10 to-orange-600/10' }
         ].map((action, idx) => (
           <Card
@@ -170,6 +234,72 @@ const WalletPage = () => {
           ))}
         </div>
       </Card>
+
+      {/* Add Funds Modal */}
+      <Modal
+        isOpen={showAddFunds}
+        onClose={() => {
+          setShowAddFunds(false);
+          setShowPaymentForm(false);
+          setFundAmount('');
+        }}
+        title="Add Funds to Wallet"
+      >
+        {!showPaymentForm ? (
+          <div className="space-y-4">
+            <div className="bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 rounded-lg p-4 mb-4">
+              <p className="text-sm text-[#f2e9dd]/70 mb-1">Current Balance</p>
+              <p className="text-2xl font-bold bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] bg-clip-text text-transparent">
+                ₱{balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </p>
+            </div>
+
+            <Input
+              label="Amount to Add"
+              type="number"
+              value={fundAmount}
+              onChange={(e) => setFundAmount(e.target.value)}
+              placeholder="Enter amount (min ₱100, max ₱100,000)"
+              min={100}
+              max={100000}
+            />
+
+            <div className="grid grid-cols-3 gap-2">
+              {[500, 1000, 5000].map(amount => (
+                <button
+                  key={amount}
+                  onClick={() => setFundAmount(amount.toString())}
+                  className="px-3 py-2 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#7C5FFF] rounded-lg text-sm transition-all"
+                >
+                  ₱{amount.toLocaleString()}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                onClick={handleAmountSubmit}
+                className="flex-1 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]"
+              >
+                Continue
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => setShowAddFunds(false)}
+              >
+                Cancel
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <MockPaymentForm
+            amount={parseFloat(fundAmount)}
+            onSubmit={handlePaymentSubmit}
+            onCancel={() => setShowPaymentForm(false)}
+            loading={processingPayment}
+          />
+        )}
+      </Modal>
     </div>
   );
 };

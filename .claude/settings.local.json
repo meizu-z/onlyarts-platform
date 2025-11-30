@@ -6,7 +6,13 @@
       "Bash(node -e:*)",
       "Bash(taskkill:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(npm install:*)",
+      "Bash(curl:*)",
+      "Bash(node test-auction-setup.js:*)",
+      "Bash(nul)",
+      "Bash(timeout /t 2)",
+      "Bash(timeout:*)"
     ],
     "deny": [],
     "ask": []

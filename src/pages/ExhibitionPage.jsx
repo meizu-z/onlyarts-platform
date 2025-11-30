@@ -4,16 +4,28 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Modal from '../components/common/Modal';
-import { Lock, Star, MessageSquare } from 'lucide-react';
+import Input from '../components/common/Input';
+import { Lock, Star, MessageSquare, Plus, Upload, X } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { useCart } from '../context/CartContext';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
 import { APIError } from '../components/ui/ErrorStates';
-import { exhibitionService, mockExhibition, mockExhibitionArtworks, mockExhibitionComments } from '../services/exhibition.service';
+import { exhibitionService } from '../services/exhibition.service';
 import { favoritesService } from '../services/favorites.service';
+import { API_CONFIG } from '../config/api.config';
 
-// Demo mode flag - set to false when backend is ready
-const USE_DEMO_MODE = false;
+// Helper function to get full image URL
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return null;
+  if (imagePath.startsWith('http://') || imagePath.startsWith('https://')) {
+    return imagePath;
+  }
+  if (imagePath.startsWith('/')) {
+    const serverBaseUrl = API_CONFIG.baseURL.replace('/api', '');
+    return `${serverBaseUrl}${imagePath}`;
+  }
+  return null;
+};
 
 const ExhibitionPage = () => {
   const { user } = useAuth();
@@ -31,11 +43,21 @@ const ExhibitionPage = () => {
   const [comments, setComments] = useState([]);
   const [favorites, setFavorites] = useState(0);
   const [isFavorited, setIsFavorited] = useState(false);
-  const [isFollowing, setIsFollowing] = useState(false);
 
   const [newComment, setNewComment] = useState('');
   const [selectedArtwork, setSelectedArtwork] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Exclusive artwork upload state
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [uploadForm, setUploadForm] = useState({
+    title: '',
+    description: '',
+    price: '',
+    category: 'digital',
+    file: null,
+    preview: null,
+  });
 
   // Fetch exhibition data on mount
   useEffect(() => {
@@ -47,26 +69,7 @@ const ExhibitionPage = () => {
       setLoading(true);
       setError(null);
 
-      // DEMO MODE: Use mock data
-      if (USE_DEMO_MODE) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setExhibition(mockExhibition);
-
-        // Apply locked state based on user subscription
-        const processedArtworks = mockExhibitionArtworks.map((artwork, index) => ({
-          ...artwork,
-          locked: index >= 3 && isFreeUser, // Lock artworks 4-6 for free users
-        }));
-        setArtworks(processedArtworks);
-        setComments(mockExhibitionComments);
-        setFavorites(mockExhibition.favorites);
-        setIsFavorited(mockExhibition.isFavorited);
-        setIsFollowing(mockExhibition.isFollowing);
-        setLoading(false);
-        return;
-      }
-
-      // REAL API MODE: Parallel fetching
+      // Parallel fetching
       const [exhibitionData, artworksData, commentsData] = await Promise.all([
         exhibitionService.getExhibition(id),
         exhibitionService.getExhibitionArtworks(id),
@@ -78,7 +81,6 @@ const ExhibitionPage = () => {
       setComments(commentsData.comments || commentsData);
       setFavorites(exhibitionData.exhibition?.favorites || 0);
       setIsFavorited(exhibitionData.exhibition?.isFavorited || false);
-      setIsFollowing(exhibitionData.exhibition?.isFollowing || false);
     } catch (err) {
       console.error('Error fetching exhibition:', err);
       setError(err.message || 'Failed to load exhibition. Please try again.');
@@ -95,13 +97,6 @@ const ExhibitionPage = () => {
     setFavorites(isFavorited ? favorites - 1 : favorites + 1);
 
     try {
-      // DEMO MODE: Just show toast
-      if (USE_DEMO_MODE) {
-        toast.success(isFavorited ? 'Removed from favorites' : 'Added to favorites');
-        return;
-      }
-
-      // REAL API MODE: Call backend
       if (isFavorited) {
         await exhibitionService.unfavoriteExhibition(id);
         toast.success('Removed from favorites');
@@ -110,36 +105,9 @@ const ExhibitionPage = () => {
         toast.success('Added to favorites');
       }
     } catch (error) {
-      // Revert on error
       setIsFavorited(oldFavorited);
       setFavorites(oldCount);
       toast.error('Failed to update favorite status');
-    }
-  };
-
-  const handleFollow = async () => {
-    const oldFollowing = isFollowing;
-    setIsFollowing(!isFollowing);
-
-    try {
-      // DEMO MODE: Just show toast
-      if (USE_DEMO_MODE) {
-        toast.success(isFollowing ? 'Unfollowed exhibition' : 'Following exhibition!');
-        return;
-      }
-
-      // REAL API MODE: Call backend
-      if (isFollowing) {
-        await exhibitionService.unfollowExhibition(id);
-        toast.success('Unfollowed exhibition');
-      } else {
-        await exhibitionService.followExhibition(id);
-        toast.success('Following exhibition!');
-      }
-    } catch (error) {
-      // Revert on error
-      setIsFollowing(oldFollowing);
-      toast.error('Failed to update follow status');
     }
   };
 
@@ -156,32 +124,18 @@ const ExhibitionPage = () => {
       createdAt: new Date().toISOString(),
     };
 
-    // Optimistic UI update
     setComments([...comments, tempComment]);
     const commentText = newComment;
     setNewComment('');
     setIsSubmitting(true);
 
     try {
-      // DEMO MODE: Just show success
-      if (USE_DEMO_MODE) {
-        await new Promise(resolve => setTimeout(resolve, 800));
-        toast.success('Comment posted!');
-        setIsSubmitting(false);
-        return;
-      }
-
-      // REAL API MODE: Call backend
       const response = await exhibitionService.addComment(id, commentText);
-
-      // Replace temp comment with real comment from API
       setComments(prev => prev.map(c =>
         c.id === tempComment.id ? response.comment : c
       ));
-
       toast.success('Comment posted!');
     } catch (error) {
-      // Revert on error
       setComments(prev => prev.filter(c => c.id !== tempComment.id));
       setNewComment(commentText);
       toast.error('Failed to post comment. Please try again.');
@@ -192,24 +146,6 @@ const ExhibitionPage = () => {
 
   const handleSaveForLater = async (artwork) => {
     try {
-      // DEMO MODE: Use localStorage
-      if (USE_DEMO_MODE) {
-        const savedItems = JSON.parse(localStorage.getItem('savedForLater') || '[]');
-        const isAlreadySaved = savedItems.some(item => item.id === artwork.id);
-
-        if (isAlreadySaved) {
-          toast.info('This artwork is already in your saved list.');
-          return;
-        }
-
-        savedItems.push(artwork);
-        localStorage.setItem('savedForLater', JSON.stringify(savedItems));
-        toast.success('Artwork saved for later!');
-        setSelectedArtwork(null);
-        return;
-      }
-
-      // REAL API MODE: Call backend
       await favoritesService.addFavorite(artwork.id);
       toast.success('Artwork saved for later!');
       setSelectedArtwork(null);
@@ -223,6 +159,65 @@ const ExhibitionPage = () => {
     toast.success(`"${artwork.title}" added to cart!`);
     setSelectedArtwork(null);
   };
+
+  // File upload handlers
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    setUploadForm({
+      ...uploadForm,
+      file,
+      preview: URL.createObjectURL(file),
+    });
+  };
+
+  const handleUploadSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!uploadForm.title || !uploadForm.file) {
+      toast.error('Please provide a title and image');
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append('title', uploadForm.title);
+      formData.append('description', uploadForm.description);
+      formData.append('price', uploadForm.price || 0);
+      formData.append('category', uploadForm.category);
+      formData.append('image', uploadForm.file);
+
+      await exhibitionService.addExclusiveArtwork(id, formData);
+
+      toast.success('Exclusive artwork uploaded!');
+      setShowUploadModal(false);
+      setUploadForm({
+        title: '',
+        description: '',
+        price: '',
+        category: 'digital',
+        file: null,
+        preview: null,
+      });
+
+      // Refresh exhibition data
+      await fetchExhibitionData();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to upload artwork');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const isCurator = user && exhibition && (user.id === exhibition.curator_id || user.id === exhibition.curator_id);
 
   if (loading) {
     return (
@@ -256,53 +251,42 @@ const ExhibitionPage = () => {
   }
 
   return (
-    <div className="flex-1 p-3 sm:p-6 md:p-8">
+    <div className="flex-1 p-3 sm:p-6 md:p-8 overflow-x-hidden">
+      <div className="max-w-7xl mx-auto">
       <div className="mb-4 sm:mb-6 md:mb-8">
         <div className="aspect-[3/1] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 rounded-2xl mb-4 sm:mb-6 flex items-center justify-center text-6xl sm:text-8xl md:text-9xl animate-fadeIn group hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 transition-all duration-500 overflow-hidden relative">
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-          <span className="transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 relative z-10">
-            {exhibition.bannerImage}
-          </span>
+          {getImageUrl(exhibition.cover_image) ? (
+            <img
+              src={getImageUrl(exhibition.cover_image)}
+              alt={exhibition.title}
+              className="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500"
+            />
+          ) : (
+            <span className="transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 relative z-10">
+              {exhibition.bannerImage || '🎨'}
+            </span>
+          )}
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 sm:gap-6 md:gap-8">
           <div className="flex-1">
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-[#f2e9dd] mb-2">{exhibition.title}</h1>
-            <p className="text-[#f2e9dd]/70 mb-4">Curated by {exhibition.curator}</p>
-            {isFreeUser && (
-              <div className="bg-gradient-to-r from-orange-600/10 to-[#FF5F9E]/10 border border-orange-500/30 rounded-lg p-3 sm:p-4 mb-3 sm:mb-4 animate-fadeIn hover:border-orange-500/50 transition-all duration-300">
-                <p className="text-orange-400 font-bold mb-1 flex items-center gap-2 text-sm sm:text-base">
-                  <Lock size={16} className="animate-pulse" /> PREVIEW MODE
-                </p>
-                <p className="text-[#f2e9dd]/70 text-xs sm:text-sm">
-                  You can view {artworks.filter(a => !a.locked).length} of {exhibition.artworkCount} artworks in preview mode. Upgrade to Plus to unlock full access.
-                </p>
-              </div>
-            )}
+            <p className="text-[#f2e9dd]/70 mb-4">Curated by @{exhibition.curator_username || exhibition.curator}</p>
             <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-[#f2e9dd]/70 mb-4 sm:mb-6 text-sm sm:text-base">
-              <span>👁 {exhibition.views?.toLocaleString() || '0'} views</span>
+              <span>👁 {exhibition.view_count?.toLocaleString() || '0'} views</span>
               <span>•</span>
-              <span>{exhibition.artworkCount} artworks</span>
+              <span>{artworks.length} artworks</span>
               <span>•</span>
-              <span className="whitespace-nowrap">Live until {new Date(exhibition.endDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+              <span className="whitespace-nowrap">Live until {new Date(exhibition.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
-              <Button
-                onClick={handleFollow}
-                className={`w-full sm:w-auto shadow-lg transform hover:scale-105 transition-all duration-300 ${
-                  isFollowing
-                    ? 'bg-gray-600 hover:bg-gray-700'
-                    : 'bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50'
-                }`}
-              >
-                <Star size={16} className="mr-2" /> {isFollowing ? 'Following' : 'Follow'}
-              </Button>
               <Button
                 variant={isFavorited ? "primary" : "secondary"}
                 onClick={handleFavorite}
                 className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300 flex items-center gap-2 justify-center"
               >
-                <Star size={16} /> {favorites}
+                <Star size={16} fill={isFavorited ? "currentColor" : "none"} /> {isFavorited ? 'Favorited' : 'Add to Favorites'} ({favorites})
               </Button>
               <Button variant="secondary" className="w-full sm:w-auto transform hover:scale-105 transition-all duration-300">
                 Share
@@ -312,90 +296,203 @@ const ExhibitionPage = () => {
         </div>
       </div>
 
-      {isFreeUser && (
-        <Card className="mb-4 sm:mb-6 md:mb-8 p-4 sm:p-6 bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 animate-fadeIn hover:border-[#7C5FFF]/50 transition-all duration-300">
-          <h3 className="font-bold text-[#f2e9dd] mb-2 flex items-center gap-2 text-base sm:text-lg">
-            <Lock size={20} className="text-[#B15FFF]" />
-            Unlock full exhibition access
-          </h3>
-          <ul className="text-xs sm:text-sm text-[#f2e9dd]/70 mb-4 space-y-1">
-            <li>✓ View all {exhibition.artworkCount} artworks</li>
-            <li>✓ Participate in auctions</li>
-            <li>✓ Engage with artist</li>
-          </ul>
-          <Button
-            onClick={() => navigate('/subscriptions')}
-            className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50 transform hover:scale-105 transition-all duration-300"
-          >
-            Upgrade to Plus - ₱149/mo
-          </Button>
-        </Card>
+      {/* Exclusive Artworks Section */}
+      {(artworks.filter(a => a.artwork_type === 'exclusive').length > 0 || isCurator) && (
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <h2 className="text-2xl font-bold text-[#f2e9dd] flex items-center gap-2">
+                <Star className="text-yellow-400" size={24} />
+                Exclusive Artworks
+              </h2>
+            </div>
+            {isCurator && (
+              <Button
+                onClick={() => setShowUploadModal(true)}
+                className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600 flex items-center gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-4 py-1.5 sm:py-2"
+              >
+                <Plus size={16} className="sm:hidden" />
+                <Plus size={18} className="hidden sm:block" />
+                <span className="hidden sm:inline">Add Exclusive Artwork</span>
+                <span className="sm:hidden">Add Artwork</span>
+              </Button>
+            )}
+          </div>
+          <p className="text-[#f2e9dd]/70 mb-6 text-sm">Unique pieces available only in this exhibition</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {artworks.filter(a => a.artwork_type === 'exclusive').map((artwork, idx) => (
+              <div key={artwork.id} onClick={() => artwork.price && setSelectedArtwork(artwork)} className="h-full">
+                <Card
+                  hover={true}
+                  className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group border-2 border-yellow-500/30 h-full flex flex-col"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <div className="absolute top-3 right-3 z-20 bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                    <Star size={12} fill="currentColor" />
+                    EXCLUSIVE
+                  </div>
+                  <div className="aspect-square bg-gradient-to-br from-yellow-500/20 to-orange-500/20 flex items-center justify-center text-5xl sm:text-6xl overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {getImageUrl(artwork.primary_image) ? (
+                      <img src={getImageUrl(artwork.primary_image)} alt={artwork.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    ) : (
+                      <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">🎨</span>
+                    )}
+                  </div>
+                  <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-yellow-400 transition-colors">
+                      {artwork.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#f2e9dd]/50 mb-2">by @{artwork.artist_username}</p>
+                    {artwork.price && artwork.price > 0 ? (
+                      <div className="flex flex-col gap-1 mt-auto">
+                        <p className="text-yellow-400 font-bold text-sm">₱{artwork.price.toLocaleString()}</p>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBuyNow(artwork);
+                          }}
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-2 py-0.5 rounded-md text-[10px]"
+                        >
+                          Buy Now
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-green-400 font-bold text-sm mt-auto">Free Artwork</p>
+                    )}
+                  </div>
+                </Card>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-        {artworks.map((artwork, idx) => (
-          <div key={artwork.id} onClick={() => !artwork.locked && artwork.price && setSelectedArtwork(artwork)}>
-            <Card
-              hover={!artwork.locked}
-              className={`relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group ${
-                artwork.locked ? 'cursor-not-allowed' : ''
-              }`}
-              style={{ animationDelay: `${idx * 0.1}s` }}
-            >
-              {artwork.locked && (
-                <div className="absolute inset-0 bg-black/60 backdrop-blur-sm z-10 flex items-center justify-center rounded-2xl group-hover:bg-black/70 transition-all duration-300">
-                  <div className="text-center transform group-hover:scale-110 transition-transform duration-300">
-                    <Lock className="mx-auto mb-2 text-[#f2e9dd]/50" size={32} />
-                    <p className="text-[#f2e9dd] font-bold">Locked</p>
-                    <p className="text-sm text-[#f2e9dd]/70">Upgrade to view</p>
+      {/* For Sale Artworks Section */}
+      {artworks.filter(a => a.artwork_type === 'for_sale').length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4">For Sale</h2>
+          <p className="text-[#f2e9dd]/70 mb-6 text-sm">Available artworks for purchase</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {artworks.filter(a => a.artwork_type === 'for_sale').map((artwork, idx) => (
+              <div key={artwork.id} onClick={() => artwork.price && setSelectedArtwork(artwork)} className="h-full">
+                <Card
+                  hover={true}
+                  className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group h-full flex flex-col"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-5xl sm:text-6xl overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {getImageUrl(artwork.primary_image) ? (
+                      <img src={getImageUrl(artwork.primary_image)} alt={artwork.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    ) : (
+                      <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">🎨</span>
+                    )}
                   </div>
-                </div>
-              )}
-              <div className="aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-5xl sm:text-6xl overflow-hidden relative">
-                {!artwork.locked && (
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                )}
-                <span className={`transform transition-transform duration-300 relative z-10 ${
-                  !artwork.locked ? 'group-hover:scale-110' : ''
-                }`}>
-                  {artwork.image}
-                </span>
+                  <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-[#7C5FFF] transition-colors">
+                      {artwork.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#f2e9dd]/50 mb-2">by @{artwork.artist_username}</p>
+                    {artwork.price && artwork.price > 0 ? (
+                      <div className="flex flex-col gap-1 mt-auto">
+                        <p className="text-[#B15FFF] font-bold text-sm">₱{artwork.price.toLocaleString()}</p>
+                        <Button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleBuyNow(artwork);
+                          }}
+                          className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-2 py-0.5 rounded-md text-[10px]"
+                        >
+                          Buy Now
+                        </Button>
+                      </div>
+                    ) : (
+                      <p className="text-green-400 font-bold text-sm mt-auto">Free Artwork</p>
+                    )}
+                  </div>
+                </Card>
               </div>
-              <div className="p-3 sm:p-4">
-                <h3 className={`font-bold text-[#f2e9dd] mb-1 transition-colors ${
-                  !artwork.locked ? 'group-hover:text-[#7C5FFF]' : ''
-                }`}>
-                  {artwork.title}
-                </h3>
-                <p className="text-xs sm:text-sm text-[#f2e9dd]/50 mb-2">{artwork.artist}</p>
-                {!artwork.locked && artwork.price && (
-                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                    <p className="text-[#B15FFF] font-bold text-sm sm:text-base">₱{artwork.price.toLocaleString()}</p>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Display Only Artworks Section */}
+      {artworks.filter(a => a.artwork_type === 'display_only').length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold text-[#f2e9dd] mb-4 flex items-center gap-2">
+            <Lock className="text-gray-400" size={24} />
+            Display Only
+          </h2>
+          <p className="text-[#f2e9dd]/70 mb-6 text-sm">Exhibition pieces for viewing only</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4">
+            {artworks.filter(a => a.artwork_type === 'display_only').map((artwork, idx) => (
+              <div key={artwork.id} onClick={() => setSelectedArtwork(artwork)} className="h-full">
+                <Card
+                  hover={true}
+                  className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group border-2 border-gray-500/30 h-full flex flex-col"
+                  style={{ animationDelay: `${idx * 0.1}s` }}
+                >
+                  <div className="absolute top-3 right-3 z-20 bg-gray-600 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 shadow-lg">
+                    <Lock size={12} />
+                    VIEW ONLY
+                  </div>
+                  <div className="aspect-square bg-gradient-to-br from-gray-500/20 to-gray-700/20 flex items-center justify-center text-5xl sm:text-6xl overflow-hidden relative">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    {getImageUrl(artwork.primary_image) ? (
+                      <img src={getImageUrl(artwork.primary_image)} alt={artwork.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300" />
+                    ) : (
+                      <span className="transform group-hover:scale-110 transition-transform duration-300 relative z-10">🎨</span>
+                    )}
+                  </div>
+                  <div className="p-3 sm:p-4 flex flex-col flex-1">
+                    <h3 className="font-bold text-[#f2e9dd] mb-1 group-hover:text-gray-400 transition-colors">
+                      {artwork.title}
+                    </h3>
+                    <p className="text-xs sm:text-sm text-[#f2e9dd]/50 mb-2">by @{artwork.artist_username}</p>
                     <Button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleBuyNow(artwork);
+                        setSelectedArtwork(artwork);
                       }}
-                      className="w-full sm:w-auto bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-4 py-1 rounded-lg text-sm"
+                      variant="secondary"
+                      className="w-full text-sm mt-auto"
                     >
-                      Buy Now
+                      View Details
                     </Button>
                   </div>
-                )}
+                </Card>
               </div>
-            </Card>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {artworks.length === 0 && (
+        <Card className="p-8 text-center">
+          <h3 className="text-xl font-bold text-[#f2e9dd] mb-2">No Artworks Yet</h3>
+          <p className="text-[#f2e9dd]/70">This exhibition doesn't have any artworks yet.</p>
+        </Card>
+      )}
 
       {selectedArtwork && (
         <Modal isOpen={!!selectedArtwork} onClose={() => setSelectedArtwork(null)} title={selectedArtwork.title}>
           <div className="flex flex-col items-center">
-            <div className="w-full aspect-square bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-8xl mb-4 rounded-lg">
-              {selectedArtwork.image}
+            <div className="w-full max-h-[70vh] bg-gradient-to-br from-[#7C5FFF]/20 to-[#FF5F9E]/20 flex items-center justify-center text-8xl mb-4 rounded-lg overflow-hidden">
+              {getImageUrl(selectedArtwork.primary_image) ? (
+                <img src={getImageUrl(selectedArtwork.primary_image)} alt={selectedArtwork.title} className="w-full h-auto max-h-[70vh] object-contain" />
+              ) : (
+                <span>🎨</span>
+              )}
             </div>
-            <p className="text-2xl font-bold text-[#f2e9dd] mb-2">₱{selectedArtwork.price.toLocaleString()}</p>
-            <p className="text-lg text-[#f2e9dd]/70 mb-6">by {selectedArtwork.artist}</p>
+            {selectedArtwork.price && selectedArtwork.price > 0 ? (
+              <p className="text-2xl font-bold text-[#f2e9dd] mb-2">₱{selectedArtwork.price.toLocaleString()}</p>
+            ) : (
+              <p className="text-2xl font-bold text-green-400 mb-2">Free Artwork</p>
+            )}
+            <p className="text-lg text-[#f2e9dd]/70 mb-6">by @{selectedArtwork.artist_username || selectedArtwork.artist}</p>
             <div className="flex gap-4 w-full">
               <Button
                 onClick={() => handleSaveForLater(selectedArtwork)}
@@ -404,21 +501,141 @@ const ExhibitionPage = () => {
               >
                 Save for Later
               </Button>
-              <Button
-                onClick={() => handleBuyNow(selectedArtwork)}
-                className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50"
-              >
-                Buy Now
-              </Button>
+              {selectedArtwork.price && selectedArtwork.price > 0 && (
+                <Button
+                  onClick={() => handleBuyNow(selectedArtwork)}
+                  className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] shadow-lg shadow-[#7C5FFF]/30 hover:shadow-[#7C5FFF]/50"
+                >
+                  Buy Now
+                </Button>
+              )}
             </div>
           </div>
         </Modal>
       )}
 
+      {/* Upload Exclusive Artwork Modal */}
+      {showUploadModal && (
+        <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="Add Exclusive Artwork">
+          <form onSubmit={handleUploadSubmit} className="space-y-4">
+            {/* File Upload */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#f2e9dd]">Artwork Image</label>
+              <div className="relative">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  id="exclusive-artwork-upload"
+                />
+                <label
+                  htmlFor="exclusive-artwork-upload"
+                  className="flex items-center justify-center w-full h-40 border-2 border-dashed border-[#f2e9dd]/20 rounded-lg cursor-pointer hover:border-yellow-500/50 transition-colors bg-[#1e1e1e]"
+                >
+                  {uploadForm.preview ? (
+                    <div className="relative w-full h-full">
+                      <img src={uploadForm.preview} alt="Preview" className="w-full h-full object-cover rounded-lg" />
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setUploadForm({ ...uploadForm, file: null, preview: null });
+                        }}
+                        className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center gap-2 text-[#f2e9dd]/50">
+                      <Upload size={32} />
+                      <span>Click to browse files</span>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+
+            {/* Title */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#f2e9dd]">Title</label>
+              <Input
+                value={uploadForm.title}
+                onChange={(e) => setUploadForm({ ...uploadForm, title: e.target.value })}
+                placeholder="Enter artwork title"
+                required
+              />
+            </div>
+
+            {/* Description */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#f2e9dd]">Description</label>
+              <textarea
+                value={uploadForm.description}
+                onChange={(e) => setUploadForm({ ...uploadForm, description: e.target.value })}
+                placeholder="Enter artwork description"
+                className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                rows="3"
+              />
+            </div>
+
+            {/* Price */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#f2e9dd]">Price (₱)</label>
+              <Input
+                type="number"
+                value={uploadForm.price}
+                onChange={(e) => setUploadForm({ ...uploadForm, price: e.target.value })}
+                placeholder="0 for display only"
+                min="0"
+              />
+            </div>
+
+            {/* Category */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-[#f2e9dd]">Category</label>
+              <select
+                value={uploadForm.category}
+                onChange={(e) => setUploadForm({ ...uploadForm, category: e.target.value })}
+                className="w-full bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-lg p-3 text-[#f2e9dd] focus:outline-none focus:ring-2 focus:ring-yellow-500"
+              >
+                <option value="digital">Digital Art</option>
+                <option value="painting">Painting</option>
+                <option value="photography">Photography</option>
+                <option value="sculpture">Sculpture</option>
+                <option value="mixed_media">Mixed Media</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowUploadModal(false)}
+                className="w-full"
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white hover:from-yellow-600 hover:to-orange-600"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? 'Uploading...' : 'Upload Artwork'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
+      )}
+
       <div className="mt-6 sm:mt-8">
         <h2 className="text-xl sm:text-2xl font-bold text-[#f2e9dd] mb-3 sm:mb-4 flex items-center gap-2">
-          <MessageSquare size={20} className="sm:hidden" />
-          <MessageSquare size={24} className="hidden sm:block" />
+          <MessageSquare size={16} className="sm:hidden" />
+          <MessageSquare size={18} className="hidden sm:block" />
           Comments
         </h2>
         <div className="space-y-3 sm:space-y-4">
@@ -442,6 +659,7 @@ const ExhibitionPage = () => {
             {isSubmitting ? 'Submitting...' : 'Submit Comment'}
           </Button>
         </form>
+      </div>
       </div>
     </div>
   );

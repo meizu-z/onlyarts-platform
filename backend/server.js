@@ -167,6 +167,12 @@ app.use('/api/wallet', require('./src/routes/walletRoutes'));
 // Favorites routes
 app.use('/api/favorites', require('./src/routes/favoriteRoutes'));
 
+// Auction routes
+app.use('/api/auctions', require('./src/routes/auctionRoutes'));
+
+// Analytics routes
+app.use('/api/analytics', require('./src/routes/analyticsRoutes'));
+
 // ==========================================
 // SOCKET.IO SETUP
 // ==========================================
@@ -174,9 +180,13 @@ app.use('/api/favorites', require('./src/routes/favoriteRoutes'));
 // Make io accessible to routes
 app.set('io', io);
 
+// Export io for use in services
+module.exports.io = io;
+
 // Socket.io connection handler
 require('./src/sockets/chatSocket')(io);
 require('./src/sockets/livestreamSocket')(io);
+require('./src/sockets/auctionSocket')(io);
 
 // ==========================================
 // ERROR HANDLING

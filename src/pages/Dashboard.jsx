@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus, Plus, RefreshCw } from 'lucide-react';
+import { Heart, MessageCircle, Users, Sparkles, TrendingUp, UserPlus, Plus, RefreshCw, Star } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
@@ -132,7 +132,8 @@ const Dashboard = () => {
         timeAgo: formatTimeAgo(artwork.created_at),
         price: artwork.price,
         category: artwork.category,
-        isLiked: artwork.is_liked > 0
+        isLiked: artwork.is_liked > 0,
+        exhibitions: artwork.exhibitions || []
       }));
 
       setArtworks(transformedArtworks);
@@ -357,7 +358,7 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 mb-6 md:mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 sm:gap-4 mb-6 md:mb-8">
         {artworks.map((artwork, idx) => (
           <Card
             key={artwork.id}
@@ -396,6 +397,33 @@ const Dashboard = () => {
                     )}
                   </div>
                   <p className="text-xs text-[#f2e9dd]/40 mt-1">{artwork.timeAgo}</p>
+
+                  {/* Exhibition Badges */}
+                  {artwork.exhibitions && artwork.exhibitions.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {artwork.exhibitions.slice(0, 2).map((exhibition) => (
+                        <button
+                          key={exhibition.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/exhibition/${exhibition.id}`);
+                          }}
+                          className="group/badge px-2 py-0.5 bg-gradient-to-r from-[#7C5FFF]/20 to-[#FF5F9E]/20 hover:from-[#7C5FFF]/30 hover:to-[#FF5F9E]/30 border border-[#7C5FFF]/30 rounded-full text-[10px] font-medium text-[#f2e9dd] transition-all duration-300 hover:scale-105 flex items-center gap-1"
+                        >
+                          <Star size={10} className="text-yellow-400" fill="currentColor" />
+                          <span className="truncate max-w-[80px]">{exhibition.title}</span>
+                          {exhibition.artwork_type === 'exclusive' && (
+                            <span className="ml-0.5 px-1 bg-yellow-500 text-black text-[8px] rounded-full font-bold">EX</span>
+                          )}
+                        </button>
+                      ))}
+                      {artwork.exhibitions.length > 2 && (
+                        <span className="px-2 py-0.5 bg-[#1e1e1e] border border-[#f2e9dd]/20 rounded-full text-[10px] text-[#f2e9dd]/50">
+                          +{artwork.exhibitions.length - 2}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -404,13 +432,13 @@ const Dashboard = () => {
                 {artwork.reason && (
                   <div className="mb-2 text-xs text-[#B15FFF] bg-[#7C5FFF]/10 px-2 py-1 rounded">{artwork.reason}</div>
                 )}
-                <div className="flex items-center gap-3 md:gap-4 text-xs md:text-sm text-[#f2e9dd]/70">
+                <div className="flex items-center gap-3 md:gap-4 text-[10px] md:text-xs text-[#f2e9dd]/70">
                   <button onClick={() => toggleLike(artwork.id)} className={`flex items-center gap-1 transition-all duration-200 group/like ${likedArtworks.has(artwork.id) ? 'text-[#FF5F9E]' : 'hover:text-[#FF5F9E]'}`}>
-                    <Heart size={16} className={`group-hover/like:scale-125 transition-transform ${likedArtworks.has(artwork.id) ? 'fill-current' : ''}`} />
+                    <Heart size={12} className={`group-hover/like:scale-125 transition-transform ${likedArtworks.has(artwork.id) ? 'fill-current' : ''}`} />
                     {artwork.likes}
                   </button>
                   <button onClick={() => handleArtworkClick(artwork)} className="flex items-center gap-1 hover:text-[#7C5FFF] transition-colors group/comment">
-                    <MessageCircle size={16} className="group-hover/comment:scale-110 transition-transform" />
+                    <MessageCircle size={12} className="group-hover/comment:scale-110 transition-transform" />
                     {artwork.comments}
                   </button>
                 </div>
