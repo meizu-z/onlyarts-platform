@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
@@ -14,7 +14,8 @@ import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import PremiumBadge from '../components/common/PremiumBadge';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3, ShoppingBag, Check, XCircle } from 'lucide-react';
+import RequestConsultationModal from '../components/common/RequestConsultationModal';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3, ShoppingBag, Check, XCircle, Video, Trash2, ChevronRight, ChevronLeft, ChevronDown } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -73,8 +74,23 @@ const ProfilePage = () => {
   const [engagementTimeline, setEngagementTimeline] = useState(null);
   const [revenueAnalytics, setRevenueAnalytics] = useState(null);
   const [commissions, setCommissions] = useState([]);
+  const [isConsultationModalOpen, setConsultationModalOpen] = useState(false);
+  const [openCommissionStatus, setOpenCommissionStatus] = useState(null);
+  const tabsRef = useRef(null);
 
   const isOwnProfile = user?.username === username;
+
+  const scrollTabsRight = () => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({ left: 200, behavior: 'smooth' });
+    }
+  };
+
+  const scrollTabsLeft = () => {
+    if (tabsRef.current) {
+      tabsRef.current.scrollBy({ left: -200, behavior: 'smooth' });
+    }
+  };
   const isPremiumOrPlus = user?.subscription === 'premium' || user?.subscription === 'plus';
 
   // Fetch profile data
@@ -384,6 +400,24 @@ const ProfilePage = () => {
     } catch (error) {
       console.error('Error updating commission status:', error);
       toast.error('Failed to update commission status');
+    }
+  };
+
+  const handleDeleteCommission = async (commissionId) => {
+    if (!window.confirm('Are you sure you want to delete this commission? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await commissionService.cancelCommission(commissionId);
+
+      // Remove from local state
+      setCommissions(prev => prev.filter(c => c.id !== commissionId));
+
+      toast.success('Commission deleted successfully!');
+    } catch (error) {
+      console.error('Error deleting commission:', error);
+      toast.error(error.response?.data?.message || 'Failed to delete commission');
     }
   };
 
@@ -1059,65 +1093,41 @@ const ProfilePage = () => {
 
         return (
           <div className="space-y-6 animate-fadeIn">
-            {/* Commission Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="p-4 bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border-yellow-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock3 size={18} className="text-yellow-400" />
-                  <p className="text-xs text-[#f2e9dd]/70">Pending</p>
-                </div>
-                <p className="text-2xl font-bold text-[#f2e9dd]">{pendingCommissions.length}</p>
-              </Card>
+            {/* Commission Stats - Clickable with Dropdowns */}
+            <div className="flex flex-col gap-3">
+              {/* Pending */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setOpenCommissionStatus(openCommissionStatus === 'pending' ? null : 'pending')}
+                  className="w-full p-3 bg-gradient-to-br from-yellow-500/10 to-amber-500/10 border border-yellow-500/30 rounded-lg hover:border-yellow-500/50 transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock3 size={16} className="text-yellow-400" />
+                    <div className="text-left">
+                      <p className="text-xs text-[#f2e9dd]/70">Pending</p>
+                      <p className="text-xl font-bold text-[#f2e9dd]">{pendingCommissions.length}</p>
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`text-yellow-400 transition-transform ${openCommissionStatus === 'pending' ? 'rotate-180' : ''}`} />
+                </button>
+                {openCommissionStatus === 'pending' && pendingCommissions.length > 0 && (
+                  <div className="space-y-2 ml-4 animate-fadeIn">
+                    {pendingCommissions.map((commission, idx) => {
+                      const statusInfo = getStatusBadge(commission.status);
+                      const StatusIcon = statusInfo.icon;
+                      const nextStatuses = getNextStatusActions(commission.status);
 
-              <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Clock size={18} className="text-blue-400" />
-                  <p className="text-xs text-[#f2e9dd]/70">Accepted</p>
-                </div>
-                <p className="text-2xl font-bold text-[#f2e9dd]">{acceptedCommissions.length}</p>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <Loader size={18} className="text-purple-400" />
-                  <p className="text-xs text-[#f2e9dd]/70">In Progress</p>
-                </div>
-                <p className="text-2xl font-bold text-[#f2e9dd]">{inProgressCommissions.length}</p>
-              </Card>
-
-              <Card className="p-4 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border-green-500/30">
-                <div className="flex items-center gap-2 mb-2">
-                  <CheckCircle size={18} className="text-green-400" />
-                  <p className="text-xs text-[#f2e9dd]/70">Completed</p>
-                </div>
-                <p className="text-2xl font-bold text-[#f2e9dd]">{completedCommissions.length}</p>
-              </Card>
-            </div>
-
-            {/* Commission List */}
-            {commissions.length > 0 ? (
-              <div className="space-y-4">
-                {commissions.map((commission, idx) => {
-                  const statusInfo = getStatusBadge(commission.status);
-                  const StatusIcon = statusInfo.icon;
-                  const nextStatuses = getNextStatusActions(commission.status);
-                  const isCompleted = commission.status === 'completed';
-
-                  return (
-                    <Card
-                      key={commission.id}
-                      className={`p-6 transition-all animate-fadeIn cursor-pointer ${
-                        isCompleted
-                          ? 'opacity-50 hover:opacity-70 hover:border-purple-500/30'
-                          : 'hover:border-purple-500/50'
-                      }`}
-                      style={{ animationDelay: `${idx * 0.1}s` }}
-                      onClick={() => navigate(`/commissions/${commission.id}`)}
-                    >
-                      <div className="flex flex-col md:flex-row gap-4">
+                      return (
+                        <Card
+                          key={commission.id}
+                          className="p-4 transition-all animate-fadeIn cursor-pointer hover:border-purple-500/50"
+                          style={{ animationDelay: `${idx * 0.1}s` }}
+                          onClick={() => navigate(`/commissions/${commission.id}`)}
+                        >
+                      <div className="flex flex-col md:flex-row gap-3">
                         {/* Client Info */}
-                        <div className="flex items-start gap-4 flex-1">
-                          <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                        <div className="flex items-start gap-3 flex-1">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
                             {commission.client_image ? (
                               <img
                                 src={getImageUrl(commission.client_image)}
@@ -1189,14 +1199,294 @@ const ProfilePage = () => {
                         )}
                       </div>
 
-                      <p className="text-xs text-[#f2e9dd]/40 mt-4">
-                        Requested {new Date(commission.created_at).toLocaleDateString()}
-                      </p>
-                    </Card>
-                  );
-                })}
+                      {/* Bottom Section with Delete Button */}
+                      <div className="flex items-center justify-between mt-4">
+                        <p className="text-xs text-[#f2e9dd]/40">
+                          Requested {new Date(commission.created_at).toLocaleDateString()}
+                        </p>
+
+                        {/* Delete Button - Only for pending commissions */}
+                        {isOwnProfile && commission.status === 'pending' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCommission(commission.id);
+                            }}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                          >
+                            <Trash2 size={14} className="mr-1" />
+                            Delete
+                          </Button>
+                        )}
+                      </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
-            ) : (
+
+              {/* Accepted */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setOpenCommissionStatus(openCommissionStatus === 'accepted' ? null : 'accepted')}
+                  className="w-full p-3 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border border-blue-500/30 rounded-lg hover:border-blue-500/50 transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <Clock size={16} className="text-blue-400" />
+                    <div className="text-left">
+                      <p className="text-xs text-[#f2e9dd]/70">Accepted</p>
+                      <p className="text-xl font-bold text-[#f2e9dd]">{acceptedCommissions.length}</p>
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`text-blue-400 transition-transform ${openCommissionStatus === 'accepted' ? 'rotate-180' : ''}`} />
+                </button>
+                {openCommissionStatus === 'accepted' && acceptedCommissions.length > 0 && (
+                  <div className="space-y-2 ml-4 animate-fadeIn">
+                    {acceptedCommissions.map((commission, idx) => {
+                      const statusInfo = getStatusBadge(commission.status);
+                      const StatusIcon = statusInfo.icon;
+                      const nextStatuses = getNextStatusActions(commission.status);
+
+                      return (
+                        <Card
+                          key={commission.id}
+                          className="p-4 transition-all animate-fadeIn cursor-pointer hover:border-purple-500/50"
+                          style={{ animationDelay: `${idx * 0.1}s` }}
+                          onClick={() => navigate(`/commissions/${commission.id}`)}
+                        >
+                          <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {commission.client_image ? (
+                                  <img
+                                    src={getImageUrl(commission.client_image)}
+                                    alt={commission.client_name}
+                                    className="w-full h-full object-cover rounded-full"
+                                  />
+                                ) : (
+                                  commission.client_name?.charAt(0) || 'U'
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                  <h3 className="font-bold text-[#f2e9dd]">{commission.title}</h3>
+                                  <span className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${statusInfo.color}`}>
+                                    <StatusIcon size={12} />
+                                    {statusInfo.label}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#f2e9dd]/60 mb-2">
+                                  From {commission.client_name || 'Unknown'}
+                                </p>
+                                <div className="space-y-2 text-sm">
+                                  <p className="text-[#f2e9dd]/90 p-3 bg-white/5 rounded-lg line-clamp-2">
+                                    {commission.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            {isOwnProfile && nextStatuses.length > 0 && (
+                              <div className="flex flex-col gap-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                                <p className="text-xs text-[#f2e9dd]/50 mb-1">Update Status:</p>
+                                {nextStatuses.map(status => (
+                                  <Button
+                                    key={status}
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateCommissionStatus(commission.id, status);
+                                    }}
+                                    className="text-xs capitalize"
+                                  >
+                                    {status === 'in_progress' && <Loader size={14} className="mr-1" />}
+                                    {status.replace('_', ' ')}
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-xs text-[#f2e9dd]/40">
+                              Requested {new Date(commission.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* In Progress */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setOpenCommissionStatus(openCommissionStatus === 'in_progress' ? null : 'in_progress')}
+                  className="w-full p-3 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg hover:border-purple-500/50 transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <Loader size={16} className="text-purple-400" />
+                    <div className="text-left">
+                      <p className="text-xs text-[#f2e9dd]/70">In Progress</p>
+                      <p className="text-xl font-bold text-[#f2e9dd]">{inProgressCommissions.length}</p>
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`text-purple-400 transition-transform ${openCommissionStatus === 'in_progress' ? 'rotate-180' : ''}`} />
+                </button>
+                {openCommissionStatus === 'in_progress' && inProgressCommissions.length > 0 && (
+                  <div className="space-y-2 ml-4 animate-fadeIn">
+                    {inProgressCommissions.map((commission, idx) => {
+                      const statusInfo = getStatusBadge(commission.status);
+                      const StatusIcon = statusInfo.icon;
+                      const nextStatuses = getNextStatusActions(commission.status);
+
+                      return (
+                        <Card
+                          key={commission.id}
+                          className="p-4 transition-all animate-fadeIn cursor-pointer hover:border-purple-500/50"
+                          style={{ animationDelay: `${idx * 0.1}s` }}
+                          onClick={() => navigate(`/commissions/${commission.id}`)}
+                        >
+                          <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {commission.client_image ? (
+                                  <img
+                                    src={getImageUrl(commission.client_image)}
+                                    alt={commission.client_name}
+                                    className="w-full h-full object-cover rounded-full"
+                                  />
+                                ) : (
+                                  commission.client_name?.charAt(0) || 'U'
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                  <h3 className="font-bold text-[#f2e9dd]">{commission.title}</h3>
+                                  <span className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${statusInfo.color}`}>
+                                    <StatusIcon size={12} />
+                                    {statusInfo.label}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#f2e9dd]/60 mb-2">
+                                  From {commission.client_name || 'Unknown'}
+                                </p>
+                                <div className="space-y-2 text-sm">
+                                  <p className="text-[#f2e9dd]/90 p-3 bg-white/5 rounded-lg line-clamp-2">
+                                    {commission.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                            {isOwnProfile && nextStatuses.length > 0 && (
+                              <div className="flex flex-col gap-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
+                                <p className="text-xs text-[#f2e9dd]/50 mb-1">Update Status:</p>
+                                {nextStatuses.map(status => (
+                                  <Button
+                                    key={status}
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleUpdateCommissionStatus(commission.id, status);
+                                    }}
+                                    className="text-xs capitalize"
+                                  >
+                                    {status === 'completed' && <CheckCircle size={14} className="mr-1" />}
+                                    {status.replace('_', ' ')}
+                                  </Button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-xs text-[#f2e9dd]/40">
+                              Requested {new Date(commission.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Completed */}
+              <div className="space-y-2">
+                <button
+                  onClick={() => setOpenCommissionStatus(openCommissionStatus === 'completed' ? null : 'completed')}
+                  className="w-full p-3 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/30 rounded-lg hover:border-green-500/50 transition-all flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <CheckCircle size={16} className="text-green-400" />
+                    <div className="text-left">
+                      <p className="text-xs text-[#f2e9dd]/70">Completed</p>
+                      <p className="text-xl font-bold text-[#f2e9dd]">{completedCommissions.length}</p>
+                    </div>
+                  </div>
+                  <ChevronDown size={18} className={`text-green-400 transition-transform ${openCommissionStatus === 'completed' ? 'rotate-180' : ''}`} />
+                </button>
+                {openCommissionStatus === 'completed' && completedCommissions.length > 0 && (
+                  <div className="space-y-2 ml-4 animate-fadeIn">
+                    {completedCommissions.map((commission, idx) => {
+                      const statusInfo = getStatusBadge(commission.status);
+                      const StatusIcon = statusInfo.icon;
+
+                      return (
+                        <Card
+                          key={commission.id}
+                          className="p-4 transition-all animate-fadeIn cursor-pointer opacity-70 hover:opacity-100 hover:border-purple-500/50"
+                          style={{ animationDelay: `${idx * 0.1}s` }}
+                          onClick={() => navigate(`/commissions/${commission.id}`)}
+                        >
+                          <div className="flex flex-col md:flex-row gap-3">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
+                                {commission.client_image ? (
+                                  <img
+                                    src={getImageUrl(commission.client_image)}
+                                    alt={commission.client_name}
+                                    className="w-full h-full object-cover rounded-full"
+                                  />
+                                ) : (
+                                  commission.client_name?.charAt(0) || 'U'
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                                  <h3 className="font-bold text-[#f2e9dd]">{commission.title}</h3>
+                                  <span className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${statusInfo.color}`}>
+                                    <StatusIcon size={12} />
+                                    {statusInfo.label}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-[#f2e9dd]/60 mb-2">
+                                  From {commission.client_name || 'Unknown'}
+                                </p>
+                                <div className="space-y-2 text-sm">
+                                  <p className="text-[#f2e9dd]/90 p-3 bg-white/5 rounded-lg line-clamp-2">
+                                    {commission.description}
+                                  </p>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center justify-between mt-4">
+                            <p className="text-xs text-[#f2e9dd]/40">
+                              Completed {new Date(commission.updated_at || commission.created_at).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Empty State - Only show if no commissions at all */}
+            {commissions.length === 0 && (
               <Card className="p-12 text-center">
                 <Briefcase size={48} className="mx-auto mb-4 text-[#f2e9dd]/30" />
                 <h3 className="text-xl font-bold text-[#f2e9dd] mb-2">No Commissions Yet</h3>
@@ -1371,6 +1661,16 @@ const ProfilePage = () => {
                   </Button>
                 )}
                 <div className="flex gap-2">
+                  {!isOwnProfile && profileData.isArtist && profileData.id && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setConsultationModalOpen(true)}
+                      className="flex-1 md:flex-none transform hover:scale-105 transition-all duration-200"
+                    >
+                      <Video size={16} />
+                    </Button>
+                  )}
                   <Button
                     variant="secondary"
                     size="sm"
@@ -1431,7 +1731,17 @@ const ProfilePage = () => {
       </div>
 
       {!['followers', 'following'].includes(activeTab) && (
-        <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
+        <div className="relative">
+          {/* Scroll Left Button - Only show on mobile */}
+          <button
+            onClick={scrollTabsLeft}
+            className="md:hidden absolute left-0 top-1/2 -translate-y-1/2 bg-[#1a1a1a]/95 border border-[#7C5FFF]/30 rounded-full p-2 hover:bg-[#7C5FFF]/20 transition-colors z-10"
+            aria-label="Scroll tabs left"
+          >
+            <ChevronLeft size={18} className="text-[#7C5FFF]" />
+          </button>
+
+          <div ref={tabsRef} className="flex gap-4 md:gap-8 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
           {profileData.isArtist && (
             <button
               onClick={() => setActiveTab('portfolio')}
@@ -1533,6 +1843,16 @@ const ProfilePage = () => {
               )}
             </button>
           )}
+          </div>
+
+          {/* Scroll Right Button - Only show on mobile */}
+          <button
+            onClick={scrollTabsRight}
+            className="md:hidden absolute right-0 top-1/2 -translate-y-1/2 bg-[#1a1a1a]/95 border border-[#7C5FFF]/30 rounded-full p-2 hover:bg-[#7C5FFF]/20 transition-colors z-10"
+            aria-label="Scroll tabs right"
+          >
+            <ChevronRight size={18} className="text-[#7C5FFF]" />
+          </button>
         </div>
       )}
 
@@ -1551,6 +1871,17 @@ const ProfilePage = () => {
 
       {renderContent()}
 
+      {/* Consultation Request Modal */}
+      <RequestConsultationModal
+        isOpen={isConsultationModalOpen}
+        onClose={() => setConsultationModalOpen(false)}
+        artist={{
+          id: profileData?.id,
+          name: profileData?.displayName,
+          username: profileData?.username,
+          profileImage: profileData?.avatar,
+        }}
+      />
     </div>
   );
 };

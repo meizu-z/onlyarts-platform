@@ -69,12 +69,11 @@ export const chatService = {
 
   /**
    * Delete a message
-   * @param {string} conversationId
    * @param {string} messageId
    * @returns {Promise<{success}>}
    */
-  deleteMessage: async (conversationId, messageId) => {
-    const response = await api.delete(`/chat/conversations/${conversationId}/messages/${messageId}`);
+  deleteMessage: async (messageId) => {
+    const response = await api.delete(`/chat/messages/${messageId}`);
     return response.data;
   },
 };

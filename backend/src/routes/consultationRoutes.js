@@ -29,6 +29,13 @@ router.get('/artists/:id/availability', consultationController.getArtistAvailabi
 router.get('/my-bookings', consultationController.getMyBookings);
 
 /**
+ * @route   POST /api/consultations/request
+ * @desc    Request a consultation with an artist (simplified flow)
+ * @access  Private
+ */
+router.post('/request', consultationController.requestConsultation);
+
+/**
  * @route   POST /api/consultations/book
  * @desc    Book a consultation session
  * @access  Private

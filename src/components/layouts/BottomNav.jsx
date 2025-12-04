@@ -11,14 +11,14 @@ const BottomNavItem = ({ to, icon: Icon, label, badge }) => {
     <NavLink
       to={to}
       className={`
-        flex flex-col items-center justify-center flex-1 py-3 px-2 relative
+        flex flex-col items-center justify-center flex-1 py-2 px-2 relative
         transition-all duration-300 ease-out
         ${isActive ? 'text-[#7C5FFF]' : 'text-gray-400'}
       `}
     >
       {/* Top gradient indicator for active state */}
       {isActive && (
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-gradient-to-r from-[#7C5FFF] via-[#B15FFF] to-[#FF5F9E] rounded-b-full" />
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-0.5 bg-gradient-to-r from-[#7C5FFF] via-[#B15FFF] to-[#FF5F9E] rounded-b-full" />
       )}
 
       {/* Pill background for active state */}
@@ -30,7 +30,7 @@ const BottomNavItem = ({ to, icon: Icon, label, badge }) => {
         relative transition-all duration-300 z-10
         ${isActive ? 'scale-110 -translate-y-0.5' : 'scale-100'}
       `}>
-        <Icon size={26} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
+        <Icon size={22} className={isActive ? 'stroke-[2.5]' : 'stroke-2'} />
         {badge > 0 && (
           <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1 shadow-lg shadow-red-500/50">
             {badge > 99 ? '99+' : badge}
@@ -38,7 +38,7 @@ const BottomNavItem = ({ to, icon: Icon, label, badge }) => {
         )}
       </div>
       <span className={`
-        text-xs mt-1.5 font-semibold z-10 relative
+        text-xs mt-1 font-semibold z-10 relative
         ${isActive ? 'text-[#7C5FFF]' : 'text-gray-400'}
       `}>
         {label}
@@ -55,19 +55,19 @@ const BottomNav = () => {
   return (
     <>
       <nav className="flex md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#1a1a1a]/95 backdrop-blur-xl border-t border-white/10 shadow-lg shadow-black/20 safe-area-pb">
-        <div className="flex items-center justify-around h-20 w-full px-2">
+        <div className="flex items-center justify-around h-16 w-full px-2">
           <BottomNavItem to="/dashboard" icon={Home} label="Feed" />
           <BottomNavItem to="/explore" icon={Compass} label="Explore" />
           <BottomNavItem to="/chat" icon={MessageCircle} label="Chat" />
           <BottomNavItem to="/livestreams" icon={Tv} label="Live" />
           <button
             onClick={() => setShowMenu(true)}
-            className="flex flex-col items-center justify-center flex-1 py-3 px-2 text-gray-400 hover:text-white transition-all duration-300 group"
+            className="flex flex-col items-center justify-center flex-1 py-2 px-2 text-gray-400 hover:text-white transition-all duration-300 group"
           >
             <div className="relative">
-              <Menu size={26} className="group-hover:scale-110 transition-transform" />
+              <Menu size={22} className="group-hover:scale-110 transition-transform" />
             </div>
-            <span className="text-xs mt-1.5 font-semibold">More</span>
+            <span className="text-xs mt-1 font-semibold">More</span>
           </button>
         </div>
 

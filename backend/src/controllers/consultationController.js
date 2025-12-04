@@ -63,6 +63,56 @@ exports.getArtistAvailability = asyncHandler(async (req, res, next) => {
 });
 
 /**
+ * @route   POST /api/consultations/request
+ * @desc    Request a consultation with an artist (simplified flow)
+ * @access  Private
+ */
+exports.requestConsultation = asyncHandler(async (req, res, next) => {
+  const { artistId, dateTime, topic, notes } = req.body;
+  const userId = req.user.id;
+
+  // Validate required fields
+  if (!artistId || !dateTime || !topic) {
+    return res.status(400).json({
+      success: false,
+      message: 'Artist ID, date/time, and topic are required'
+    });
+  }
+
+  // Check if artist exists
+  const artistCheck = await query(
+    'SELECT id, username, full_name FROM users WHERE id = ? AND is_active = TRUE',
+    [artistId]
+  );
+
+  if (artistCheck.rows.length === 0) {
+    return res.status(404).json({
+      success: false,
+      message: 'Artist not found'
+    });
+  }
+
+  // For now, create a mock consultation request
+  // In a full implementation, this would create a database record
+  const consultation = {
+    id: Date.now(),
+    userId,
+    artistId,
+    artistName: artistCheck.rows[0].full_name || artistCheck.rows[0].username,
+    dateTime,
+    topic,
+    notes: notes || null,
+    status: 'pending',
+    createdAt: new Date().toISOString()
+  };
+
+  // TODO: Send notification to the artist about the consultation request
+  // TODO: Store the consultation request in a consultations table
+
+  successResponse(res, consultation, 'Consultation request sent successfully', 201);
+});
+
+/**
  * @route   POST /api/consultations/book
  * @desc    Book a consultation session
  * @access  Private

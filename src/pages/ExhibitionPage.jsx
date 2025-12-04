@@ -707,11 +707,11 @@ const ExhibitionPage = () => {
           <MessageSquare size={18} className="hidden sm:block" />
           Comments
         </h2>
-        <div className="space-y-3 sm:space-y-4">
+        <div className="space-y-2 sm:space-y-3">
           {comments.map((comment) => (
-            <Card key={comment.id} className="p-3 sm:p-4">
-              <p className="font-bold text-[#f2e9dd] text-sm sm:text-base">{comment.user}</p>
-              <p className="text-[#f2e9dd]/70 text-sm sm:text-base">{comment.text}</p>
+            <Card key={comment.id} className="p-2 sm:p-3">
+              <p className="font-bold text-[#f2e9dd] text-sm">{comment.user}</p>
+              <p className="text-[#f2e9dd]/70 text-xs sm:text-sm">{comment.text}</p>
             </Card>
           ))}
         </div>

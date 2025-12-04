@@ -5,7 +5,7 @@ import Input from '../components/common/Input';
 import Card from '../components/common/Card';
 import { useToast } from '../components/ui/Toast';
 import { useAuth } from '../context/AuthContext';
-import { Video, Gavel, ArrowLeft, Radio, DollarSign, VideoOff, Mic, MicOff } from 'lucide-react';
+import { Video, Gavel, ArrowLeft, Radio, DollarSign, VideoOff, Mic, MicOff, Send } from 'lucide-react';
 import socketService from '../services/socket.service';
 import webrtcService from '../services/webrtc.service';
 import { livestreamService } from '../services/livestream.service';
@@ -24,10 +24,13 @@ const StartLivePage = () => {
   const [isMicOn, setIsMicOn] = useState(true);
   const [viewerCount, setViewerCount] = useState(0);
   const [currentLivestreamId, setCurrentLivestreamId] = useState(null);
+  const [comments, setComments] = useState([]);
+  const [newComment, setNewComment] = useState('');
 
   const toast = useToast();
   const videoRef = useRef(null);
   const viewersRef = useRef(new Set());
+  const chatEndRef = useRef(null);
 
   // Initialize WebRTC and socket
   useEffect(() => {
@@ -61,11 +64,14 @@ const StartLivePage = () => {
     // Initialize WebRTC service
     webrtcService.initialize(socketService.getLivestreamSocket());
 
-    // Listen for new viewers
+    // Listen for new viewers (exclude host)
     socketService.onNewViewer(async ({ viewerId }) => {
       console.log('New viewer connected:', viewerId);
-      viewersRef.current.add(viewerId);
-      setViewerCount(viewersRef.current.size);
+      // Don't count the host as a viewer
+      if (viewerId !== user?.id) {
+        viewersRef.current.add(viewerId);
+        setViewerCount(viewersRef.current.size);
+      }
 
       try {
         // Create WebRTC offer for new viewer
@@ -103,15 +109,29 @@ const StartLivePage = () => {
       webrtcService.closePeerConnection(viewerId);
     });
 
-    // Listen for viewer count updates
+    // Listen for viewer count updates (exclude host)
     socketService.onViewerCountUpdate(({ viewerCount }) => {
-      setViewerCount(viewerCount);
+      // Subtract 1 if host is counted
+      setViewerCount(Math.max(0, viewerCount - 1));
     });
+
+    // Listen for chat messages
+    const handleChatMessage = ({ user: messageUser, message, timestamp }) => {
+      setComments(prev => [...prev, {
+        id: Date.now() + Math.random(),
+        user: messageUser,
+        comment: message,
+        timestamp: timestamp || new Date().toISOString()
+      }]);
+    };
+
+    socketService.getLivestreamSocket()?.on('chat_message', handleChatMessage);
 
     return () => {
       socketService.removeAllLivestreamListeners();
+      socketService.getLivestreamSocket()?.off('chat_message', handleChatMessage);
     };
-  }, [isLive, currentLivestreamId]);
+  }, [isLive, currentLivestreamId, user]);
 
   const handleStartLive = async () => {
     if (!title.trim()) {
@@ -217,14 +237,25 @@ const StartLivePage = () => {
   };
 
   const handleEndStream = async () => {
-    try {
-      if (currentLivestreamId) {
-        // End stream via API
-        await livestreamService.endStream(currentLivestreamId);
+    // Prevent double calls
+    if (!isLive || !currentLivestreamId) {
+      return;
+    }
 
-        // End stream via socket
-        socketService.endStream(currentLivestreamId);
-        socketService.leaveStream(currentLivestreamId);
+    // Immediately set isLive to false to prevent double calls
+    setIsLive(false);
+
+    try {
+      // End stream via socket first
+      socketService.endStream(currentLivestreamId);
+      socketService.leaveStream(currentLivestreamId);
+
+      // Then end via API (with better error handling)
+      try {
+        await livestreamService.endStream(currentLivestreamId);
+      } catch (apiError) {
+        // Silently handle error - stream might already be ended
+        console.log('Stream already ended or error:', apiError.response?.data?.message || apiError.message);
       }
 
       // Cleanup WebRTC
@@ -236,9 +267,9 @@ const StartLivePage = () => {
       }
 
       viewersRef.current.clear();
-      setIsLive(false);
       setViewerCount(0);
       setCurrentLivestreamId(null);
+      setComments([]);
 
       toast.success('Livestream ended successfully');
 
@@ -249,7 +280,39 @@ const StartLivePage = () => {
     } catch (error) {
       console.error('Error ending livestream:', error);
       toast.error('Failed to end livestream properly');
+      // Reset state even on error
+      setIsLive(false);
+      setCurrentLivestreamId(null);
     }
+  };
+
+  const handleSendComment = () => {
+    if (!newComment.trim() || !currentLivestreamId) return;
+
+    const comment = {
+      user: user?.username || 'Host',
+      message: newComment.trim(),
+      timestamp: new Date().toISOString()
+    };
+
+    // Send via socket
+    socketService.getLivestreamSocket()?.emit('chat_message', {
+      streamId: currentLivestreamId,
+      ...comment
+    });
+
+    // Add to local state immediately
+    setComments(prev => [...prev, {
+      id: Date.now(),
+      ...comment,
+      comment: comment.message,
+      isHost: true
+    }]);
+
+    setNewComment('');
+
+    // Scroll to bottom
+    setTimeout(() => chatEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
   };
 
   const toggleCamera = () => {
@@ -377,6 +440,70 @@ const StartLivePage = () => {
                   <span className="text-[#f2e9dd]/70">Stream Type</span>
                   <span className="text-[#f2e9dd] font-semibold capitalize">{liveType}</span>
                 </div>
+              </div>
+            </Card>
+
+            {/* Live Chat */}
+            <Card className="p-4">
+              <h3 className="text-lg font-bold text-[#f2e9dd] mb-3">Live Chat</h3>
+
+              {/* Comments List */}
+              <div className="h-64 overflow-y-auto mb-3 space-y-2 border border-[#f2e9dd]/10 rounded-lg p-2 bg-black/20">
+                {comments.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-[#f2e9dd]/50 text-sm">No comments yet. Start the conversation!</p>
+                  </div>
+                ) : (
+                  comments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className={`p-2 rounded-lg ${
+                        comment.isHost ? 'bg-[#7C5FFF]/20 border border-[#7C5FFF]/30' : 'bg-[#f2e9dd]/5'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={`text-xs font-bold ${
+                          comment.isHost ? 'text-[#7C5FFF]' : 'text-[#f2e9dd]'
+                        }`}>
+                          {comment.user}
+                        </span>
+                        {comment.isHost && (
+                          <span className="text-[10px] bg-[#7C5FFF] text-white px-1.5 py-0.5 rounded">
+                            HOST
+                          </span>
+                        )}
+                        <span className="text-[10px] text-[#f2e9dd]/40 ml-auto">
+                          {new Date(comment.timestamp).toLocaleTimeString([], {
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-sm text-[#f2e9dd]/90">{comment.comment}</p>
+                    </div>
+                  ))
+                )}
+                <div ref={chatEndRef} />
+              </div>
+
+              {/* Comment Input */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newComment}
+                  onChange={(e) => setNewComment(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendComment()}
+                  placeholder="Send a message..."
+                  className="flex-1 bg-[#1a1625] border border-[#f2e9dd]/20 rounded-lg px-3 py-2 text-sm text-[#f2e9dd] placeholder:text-[#f2e9dd]/40 focus:outline-none focus:border-[#7C5FFF] transition-colors"
+                />
+                <Button
+                  onClick={handleSendComment}
+                  disabled={!newComment.trim()}
+                  size="sm"
+                  className="bg-[#7C5FFF] hover:bg-[#7C5FFF]/80 disabled:opacity-50"
+                >
+                  <Send size={16} />
+                </Button>
               </div>
             </Card>
           </div>

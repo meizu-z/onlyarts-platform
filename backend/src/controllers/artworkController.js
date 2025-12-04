@@ -70,6 +70,21 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
   // Get artworks with artist info and primary image
   // SECURITY NOTE: Using template literals for sortField/sortOrder is safe because they're validated above
   // Using string interpolation for LIMIT/OFFSET temporarily - will fix properly later
+
+  // Build is_liked subquery based on whether user is authenticated
+  // CAST to SIGNED to ensure we get an integer, not BigInt
+  let isLikedSubquery = 'CAST(0 AS SIGNED) as is_liked';
+  console.log('=== ARTWORK QUERY DEBUG ===');
+  console.log('User authenticated:', !!req.user);
+  console.log('User ID:', req.user?.id);
+
+  if (req.user?.id) {
+    isLikedSubquery = `CAST((SELECT COUNT(*) FROM likes WHERE user_id = ${req.user.id} AND artwork_id = a.id) AS SIGNED) as is_liked`;
+    console.log('Using is_liked subquery for user:', req.user.id);
+  } else {
+    console.log('No user authenticated, using 0 for is_liked');
+  }
+
   const artworksResult = await query(
     `SELECT a.id, a.title, a.description, a.price, a.category, a.medium,
             a.dimensions, a.year_created, a.like_count, a.comment_count, a.view_count,
@@ -77,7 +92,7 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
             u.profile_image as artist_image,
             (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
-            0 as is_liked
+            ${isLikedSubquery}
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE ${whereClause}
@@ -85,6 +100,12 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
      LIMIT ${limit} OFFSET ${offset}`,
     values
   );
+
+  console.log('Artworks fetched:', artworksResult.rows.length);
+  if (artworksResult.rows.length > 0) {
+    console.log('First artwork is_liked value:', artworksResult.rows[0].is_liked, 'Type:', typeof artworksResult.rows[0].is_liked);
+  }
+  console.log('===========================');
 
   // Get total count
   const countResult = await query(
@@ -95,7 +116,7 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
     values
   );
 
-  // Get exhibitions for each artwork
+  // Get exhibitions for each artwork and ensure proper data types
   const artworksWithExhibitions = await Promise.all(
     artworksResult.rows.map(async (artwork) => {
       const exhibitionsResult = await query(
@@ -108,12 +129,24 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
         [artwork.id]
       );
 
+      // Explicitly convert is_liked to integer to handle BigInt/String issues
+      const isLiked = Number(artwork.is_liked) || 0;
+
       return {
         ...artwork,
+        is_liked: isLiked, // Ensure it's a proper number (0 or 1)
         exhibitions: exhibitionsResult.rows || []
       };
     })
   );
+
+  // Debug: Log final data being sent to frontend
+  console.log('Final artworks being sent:', artworksWithExhibitions.length);
+  const likedArtworks = artworksWithExhibitions.filter(a => a.is_liked > 0);
+  console.log('Artworks with is_liked > 0:', likedArtworks.length);
+  if (likedArtworks.length > 0) {
+    console.log('Liked artwork IDs:', likedArtworks.map(a => ({ id: a.id, is_liked: a.is_liked })));
+  }
 
   successResponse(res, {
     artworks: artworksWithExhibitions,

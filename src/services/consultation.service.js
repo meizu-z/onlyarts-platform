@@ -38,6 +38,16 @@ export const consultationService = {
   },
 
   /**
+   * Request a consultation with an artist (simplified flow)
+   * @param {Object} requestData - Request details (artistId, dateTime, topic, notes)
+   * @returns {Promise} Request confirmation
+   */
+  requestConsultation: async (requestData) => {
+    const response = await api.post('/consultations/request', requestData);
+    return response.data;
+  },
+
+  /**
    * Get user's booked consultations
    * @param {Object} params - Filter params (status, upcoming, past)
    * @returns {Promise} List of consultations

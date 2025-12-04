@@ -41,7 +41,9 @@
       "Bash(cmd /c \"timeout /t 3 >nul && cd backend && node server.js\")",
       "Bash(cmd /c \"timeout /t 4 >nul && npm run dev\")",
       "Bash(cmd /c \"timeout /t 2 >nul && cd backend && node server.js\")",
-      "Bash(cmd /c \"timeout /t 3 >nul && npm run dev\")"
+      "Bash(cmd /c \"timeout /t 3 >nul && npm run dev\")",
+      "Bash(cmd /c \"timeout /t 2 >nul && npm run dev\")",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []

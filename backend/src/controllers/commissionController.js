@@ -410,4 +410,60 @@ exports.getCommissionMessages = asyncHandler(async (req, res, next) => {
   successResponse(res, result.rows, 'Messages retrieved');
 });
 
+/**
+ * @route   DELETE /api/commissions/:id
+ * @desc    Delete/cancel commission request
+ * @access  Private (Client can delete if pending, Artist/Admin can delete any)
+ */
+exports.deleteCommission = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Get commission details
+  const commissionResult = await query('SELECT * FROM commissions WHERE id = ?', [id]);
+  if (commissionResult.rows.length === 0) {
+    return next(new AppError('Commission not found', 404));
+  }
+
+  const commission = commissionResult.rows[0];
+  const isClient = commission.client_id === userId;
+  const isArtist = commission.artist_id === userId;
+  const isAdmin = req.user.is_admin;
+
+  // Authorization check
+  if (!isClient && !isArtist && !isAdmin) {
+    return next(new AppError('Access denied', 403));
+  }
+
+  // Business rule: Clients can only delete pending commissions
+  if (isClient && !isAdmin && commission.status !== 'pending') {
+    return next(new AppError('Can only delete pending commissions. Please contact the artist to cancel.', 400));
+  }
+
+  // Delete commission messages first (foreign key constraint)
+  await query('DELETE FROM commission_messages WHERE commission_id = ?', [id]);
+
+  // Delete the commission
+  await query('DELETE FROM commissions WHERE id = ?', [id]);
+
+  // Create notification for the other party
+  if (isClient && commission.artist_id) {
+    await createNotification(
+      commission.artist_id,
+      'commission_cancelled',
+      `Commission request "${commission.title}" has been cancelled by the client`,
+      `/commissions/${id}`
+    );
+  } else if (isArtist && commission.client_id) {
+    await createNotification(
+      commission.client_id,
+      'commission_cancelled',
+      `Commission "${commission.title}" has been cancelled`,
+      `/commissions/${id}`
+    );
+  }
+
+  successResponse(res, null, 'Commission deleted successfully');
+});
+
 module.exports = exports;

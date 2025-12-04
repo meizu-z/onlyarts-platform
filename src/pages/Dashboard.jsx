@@ -120,21 +120,27 @@ const Dashboard = () => {
       const response = await artworkService.getArtworks(params);
 
       // Transform backend data to match frontend format
-      const transformedArtworks = (response.artworks || []).map(artwork => ({
-        id: artwork.id,
-        title: artwork.title,
-        artist: `@${artwork.artist_username}`,
-        artistName: artwork.artist_name,
-        likes: artwork.like_count || 0,
-        comments: artwork.comment_count || 0,
-        image: artwork.primary_image || '🎨',
-        isFollowing: false,
-        timeAgo: formatTimeAgo(artwork.created_at),
-        price: artwork.price,
-        category: artwork.category,
-        isLiked: artwork.is_liked > 0,
-        exhibitions: artwork.exhibitions || []
-      }));
+      const transformedArtworks = (response.artworks || []).map(artwork => {
+        // Backend now returns is_liked as a proper integer (0 or 1)
+        // Convert to boolean: any truthy value or > 0 means liked
+        const isLikedValue = Boolean(artwork.is_liked) && Number(artwork.is_liked) > 0;
+
+        return {
+          id: artwork.id,
+          title: artwork.title,
+          artist: `@${artwork.artist_username}`,
+          artistName: artwork.artist_name,
+          likes: artwork.like_count || 0,
+          comments: artwork.comment_count || 0,
+          image: artwork.primary_image || '🎨',
+          isFollowing: false,
+          timeAgo: formatTimeAgo(artwork.created_at),
+          price: artwork.price,
+          category: artwork.category,
+          isLiked: isLikedValue,
+          exhibitions: artwork.exhibitions || []
+        };
+      });
 
       setArtworks(transformedArtworks);
 
@@ -143,6 +149,25 @@ const Dashboard = () => {
         transformedArtworks.filter(a => a.isLiked).map(a => a.id)
       );
       setLikedArtworks(likedIds);
+
+      // Debug: Log to verify data and Set population
+      console.log('=== LIKED ARTWORKS DEBUG ===');
+      console.log('Total artworks fetched:', transformedArtworks.length);
+      console.log('Liked artworks count:', likedIds.size);
+      console.log('Liked artwork IDs:', Array.from(likedIds));
+      console.log('First 5 artworks raw is_liked values:', response.artworks?.slice(0, 5).map(a => ({
+        id: a.id,
+        title: a.title,
+        is_liked_raw: a.is_liked,
+        is_liked_type: typeof a.is_liked
+      })));
+      console.log('First 5 artworks transformed:', transformedArtworks.slice(0, 5).map(a => ({
+        id: a.id,
+        title: a.title,
+        isLiked: a.isLiked,
+        inSet: likedIds.has(a.id)
+      })));
+      console.log('===========================');
 
       setTotalItems(response.data?.pagination?.total || response.pagination?.total || 0);
     } catch (err) {

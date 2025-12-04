@@ -18,7 +18,7 @@ const ConsultationPage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('browse');
+  const [activeTab, setActiveTab] = useState('my-bookings');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [artists, setArtists] = useState([]);
@@ -48,25 +48,14 @@ const ConsultationPage = () => {
 
       if (USE_DEMO_MODE) {
         await new Promise(resolve => setTimeout(resolve, 500));
-
-        if (activeTab === 'browse') {
-          setArtists(mockArtists);
-        } else {
-          setConsultations(mockConsultations);
-        }
-
+        setConsultations(mockConsultations);
         setLoading(false);
         return;
       }
 
-      // REAL API MODE
-      if (activeTab === 'browse') {
-        const response = await consultationService.getAvailableArtists();
-        setArtists(response.artists || []);
-      } else {
-        const response = await consultationService.getMyConsultations();
-        setConsultations(response.consultations || []);
-      }
+      // REAL API MODE - Fetch consultations only
+      const response = await consultationService.getMyConsultations();
+      setConsultations(response.consultations || []);
     } catch (err) {
       console.error('Error fetching data:', err);
       setError(err.message || 'Failed to load data');
@@ -210,7 +199,6 @@ const ConsultationPage = () => {
       {/* Tabs */}
       <div className="flex gap-4 md:gap-8 border-b border-white/10 mb-6 md:mb-8 overflow-x-auto scrollbar-hide">
         {[
-          { key: 'browse', label: 'Browse Artists' },
           { key: 'my-bookings', label: 'My Bookings' },
           { key: 'calendar', label: 'Calendar' },
         ].map(tab => (
@@ -230,72 +218,6 @@ const ConsultationPage = () => {
           </button>
         ))}
       </div>
-
-      {/* Browse Artists */}
-      {activeTab === 'browse' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {artists.map((artist) => (
-            <Card key={artist.id} hover className="p-4 md:p-6">
-              <div className="flex items-start gap-4 mb-4">
-                <div className="text-4xl">{artist.avatar}</div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-lg text-[#f2e9dd] mb-1">{artist.name}</h3>
-                  <p className="text-sm text-[#f2e9dd]/60 mb-2">{artist.username}</p>
-                  <div className="flex items-center gap-2 text-sm">
-                    <div className="flex items-center gap-1 text-yellow-400">
-                      <Star size={14} className="fill-current" />
-                      <span>{artist.rating}</span>
-                    </div>
-                    <span className="text-[#f2e9dd]/50">({artist.reviewCount} reviews)</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <p className="text-sm font-semibold text-[#7C5FFF] mb-2">{artist.specialty}</p>
-                <p className="text-sm text-[#f2e9dd]/70 mb-3">{artist.description}</p>
-
-                <div className="flex items-center gap-2 text-sm text-[#f2e9dd]/60 mb-3">
-                  <Clock size={14} />
-                  <span>{artist.availability}</span>
-                </div>
-
-                <div className="flex flex-wrap gap-2 mb-4">
-                  {artist.topics.map((topic, idx) => (
-                    <span
-                      key={idx}
-                      className="text-xs px-2 py-1 bg-[#f2e9dd]/10 rounded-full text-[#f2e9dd]/80"
-                    >
-                      {topic}
-                    </span>
-                  ))}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  {isPremium ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold text-green-400">FREE</span>
-                      <span className="text-sm text-[#f2e9dd]/50 line-through">${artist.hourlyRate}/hr</span>
-                    </div>
-                  ) : (
-                    <span className="text-lg font-bold text-[#f2e9dd]">
-                      ${artist.hourlyRate}/hr
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              <Button
-                onClick={() => handleBookClick(artist)}
-                className="w-full bg-gradient-to-r from-green-500 to-emerald-500"
-              >
-                <Calendar size={16} className="mr-2" />
-                Book Free Session
-              </Button>
-            </Card>
-          ))}
-        </div>
-      )}
 
       {/* My Bookings */}
       {activeTab === 'my-bookings' && (

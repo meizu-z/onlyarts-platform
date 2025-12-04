@@ -92,4 +92,11 @@ router.get('/unread-count', chatController.getUnreadCount);
  */
 router.delete('/conversations/:id', chatController.deleteConversation);
 
+/**
+ * @route   DELETE /api/chat/messages/:id
+ * @desc    Delete individual message
+ * @access  Private (Only message sender)
+ */
+router.delete('/messages/:id', chatController.deleteMessage);
+
 module.exports = router;

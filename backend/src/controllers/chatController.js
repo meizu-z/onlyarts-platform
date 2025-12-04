@@ -287,4 +287,36 @@ exports.deleteConversation = asyncHandler(async (req, res, next) => {
   successResponse(res, null, 'Conversation deleted');
 });
 
+/**
+ * @route   DELETE /api/chat/messages/:id
+ * @desc    Delete individual message
+ * @access  Private (Only message sender)
+ */
+exports.deleteMessage = asyncHandler(async (req, res, next) => {
+  const { id } = req.params;
+  const userId = req.user.id;
+
+  // Verify message exists and user is the sender
+  const messageResult = await query(
+    'SELECT id, sender_id FROM messages WHERE id = ?',
+    [id]
+  );
+
+  if (messageResult.rows.length === 0) {
+    return next(new AppError('Message not found', 404));
+  }
+
+  const message = messageResult.rows[0];
+
+  // Only the sender can delete their own message
+  if (message.sender_id !== userId && !req.user.is_admin) {
+    return next(new AppError('You can only delete your own messages', 403));
+  }
+
+  // Delete the message
+  await query('DELETE FROM messages WHERE id = ?', [id]);
+
+  successResponse(res, null, 'Message deleted successfully');
+});
+
 module.exports = exports;

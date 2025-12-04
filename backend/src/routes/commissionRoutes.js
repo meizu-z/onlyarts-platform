@@ -102,4 +102,11 @@ router.post(
  */
 router.get('/:id/messages', commissionController.getCommissionMessages);
 
+/**
+ * @route   DELETE /api/commissions/:id
+ * @desc    Delete/cancel commission request
+ * @access  Private
+ */
+router.delete('/:id', commissionController.deleteCommission);
+
 module.exports = router;

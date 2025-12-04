@@ -553,11 +553,11 @@ const ArtworkPage = () => {
         <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3 md:mb-4 flex items-center gap-2">
           <MessageSquare size={18} className="md:w-5 md:h-5" /> Comments
         </h2>
-        <div className="space-y-3 md:space-y-4">
+        <div className="space-y-2 md:space-y-3">
           {comments.map((comment, idx) => (
-            <Card key={idx} className="p-3 md:p-4">
-              <p className="font-bold text-sm md:text-base text-[#f2e9dd]">{comment.user}</p>
-              <p className="text-xs md:text-sm text-[#f2e9dd]/70">{comment.text}</p>
+            <Card key={idx} className="p-2 md:p-3">
+              <p className="font-bold text-sm text-[#f2e9dd]">{comment.user}</p>
+              <p className="text-xs text-[#f2e9dd]/70">{comment.text}</p>
             </Card>
           ))}
         </div>
