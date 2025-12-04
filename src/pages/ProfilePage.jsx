@@ -8,12 +8,13 @@ import { APIError } from '../components/ui/ErrorStates';
 import { profileService, mockProfileData, mockArtworks, mockExhibitions, mockFollowers, mockFollowing, mockSavedItems } from '../services/profile.service';
 import { analyticsService, mockProfileAnalytics, mockAudienceDemographics, mockEngagementTimeline, mockRevenueAnalytics, mockArtworkAnalytics } from '../services/analytics.service';
 import { chatService } from '../services/chat.service';
+import { commissionService } from '../services';
 import { API_CONFIG } from '../config/api.config';
 import Card from '../components/common/Card';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
 import PremiumBadge from '../components/common/PremiumBadge';
-import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3, ShoppingBag, Check } from 'lucide-react';
+import { Users, Heart, MessageCircle, Settings as SettingsIcon, Share2, Sparkles, ArrowLeft, Plus, Bookmark, Image, Calendar, TrendingUp, BarChart3, Eye, DollarSign, MapPin, Clock, Crown, Briefcase, CheckCircle, Loader, Clock3, ShoppingBag, Check, XCircle } from 'lucide-react';
 
 // Demo mode flag - set to false when backend is ready
 const USE_DEMO_MODE = false;
@@ -158,11 +159,15 @@ const ProfilePage = () => {
       setEditedBio(transformedProfile.bio);
 
       // Fetch user's content
-      const [artworksData, exhibitionsData, followersData, followingData] = await Promise.all([
+      const [artworksData, exhibitionsData, followersData, followingData, commissionsData] = await Promise.all([
         profileService.getUserArtworks(targetUsername).catch(() => ({ data: { artworks: [] } })),
         profileService.getUserExhibitions(targetUsername).catch(() => ({ data: { exhibitions: [] } })),
         profileService.getFollowers(targetUsername).catch(() => ({ data: { followers: [] } })),
         profileService.getFollowing(targetUsername).catch(() => ({ data: { following: [] } })),
+        // Fetch commissions for artists
+        (transformedProfile?.isArtist && isOwnProfile)
+          ? commissionService.getCommissionRequests().catch(() => ({ data: { commissions: [] } }))
+          : Promise.resolve({ data: { commissions: [] } }),
       ]);
 
       // Add display fields to artworks (normalization handled by API client)
@@ -200,6 +205,11 @@ const ProfilePage = () => {
       console.log('[ProfilePage] Following data:', followingData);
       console.log('[ProfilePage] Transformed following:', transformedFollowing);
       setFollowing(transformedFollowing);
+
+      // Set commissions data
+      const transformedCommissions = (commissionsData?.data?.commissions || commissionsData?.commissions || []);
+      console.log('[ProfilePage] Commissions data:', transformedCommissions);
+      setCommissions(transformedCommissions);
 
       // Fetch saved items for own profile
       if (isOwnProfile) {
@@ -342,18 +352,22 @@ const ProfilePage = () => {
     }
   };
 
-  const handleUpdateCommissionStatus = (commissionId, newStatus) => {
-    // Update commission status in localStorage
-    const allCommissions = JSON.parse(localStorage.getItem('commissionRequests') || '[]');
-    const updatedCommissions = allCommissions.map(c =>
-      c.id === commissionId ? { ...c, status: newStatus, updatedAt: new Date().toISOString() } : c
-    );
-    localStorage.setItem('commissionRequests', JSON.stringify(updatedCommissions));
+  const handleUpdateCommissionStatus = async (commissionId, newStatus) => {
+    try {
+      await commissionService.updateCommissionStatus(commissionId, newStatus);
 
-    // Update local state
-    setCommissions(updatedCommissions.filter(c => c.artistId === user?.id || c.artistName === profileData.displayName));
+      // Update local state
+      setCommissions(prev =>
+        prev.map(c =>
+          c.id === commissionId ? { ...c, status: newStatus } : c
+        )
+      );
 
-    toast.success(`Commission marked as ${newStatus}!`);
+      toast.success(`Commission marked as ${newStatus}!`);
+    } catch (error) {
+      console.error('Error updating commission status:', error);
+      toast.error('Failed to update commission status');
+    }
   };
 
   const renderContent = () => {
@@ -1010,6 +1024,16 @@ const ProfilePage = () => {
           return badges[status] || badges.pending;
         };
 
+        // Get next status actions based on current status (workflow-based)
+        const getNextStatusActions = (currentStatus) => {
+          const statusFlow = {
+            pending: ['accepted', 'rejected'],
+            accepted: ['in_progress'],
+            in_progress: ['completed']
+          };
+          return statusFlow[currentStatus] || [];
+        };
+
         // Group commissions by status
         const pendingCommissions = commissions.filter(c => c.status === 'pending');
         const acceptedCommissions = commissions.filter(c => c.status === 'accepted');
@@ -1059,125 +1083,97 @@ const ProfilePage = () => {
                 {commissions.map((commission, idx) => {
                   const statusInfo = getStatusBadge(commission.status);
                   const StatusIcon = statusInfo.icon;
+                  const nextStatuses = getNextStatusActions(commission.status);
+                  const isCompleted = commission.status === 'completed';
 
                   return (
                     <Card
                       key={commission.id}
-                      className="p-6 hover:border-purple-500/50 transition-all animate-fadeIn"
+                      className={`p-6 transition-all animate-fadeIn cursor-pointer ${
+                        isCompleted
+                          ? 'opacity-50 hover:opacity-70 hover:border-purple-500/30'
+                          : 'hover:border-purple-500/50'
+                      }`}
                       style={{ animationDelay: `${idx * 0.1}s` }}
+                      onClick={() => navigate(`/commissions/${commission.id}`)}
                     >
                       <div className="flex flex-col md:flex-row gap-4">
                         {/* Client Info */}
                         <div className="flex items-start gap-4 flex-1">
                           <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold flex-shrink-0">
-                            {commission.userName?.charAt(0) || 'U'}
+                            {commission.client_image ? (
+                              <img
+                                src={getImageUrl(commission.client_image)}
+                                alt={commission.client_name}
+                                className="w-full h-full object-cover rounded-full"
+                              />
+                            ) : (
+                              commission.client_name?.charAt(0) || 'U'
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2 mb-2 flex-wrap">
-                              <h3 className="font-bold text-[#f2e9dd]">{commission.userName || 'Anonymous'}</h3>
+                              <h3 className="font-bold text-[#f2e9dd]">{commission.title}</h3>
                               <span className={`px-2 py-1 rounded-full text-xs border flex items-center gap-1 ${statusInfo.color}`}>
                                 <StatusIcon size={12} />
                                 {statusInfo.label}
                               </span>
                             </div>
+                            <p className="text-sm text-[#f2e9dd]/60 mb-2">
+                              From {commission.client_name || 'Unknown'}
+                            </p>
                             <div className="space-y-2 text-sm">
-                              <p className="text-[#f2e9dd]/70">
-                                <span className="font-semibold text-[#f2e9dd]">Type:</span> {commission.artworkType}
-                              </p>
-                              <p className="text-[#f2e9dd]/70">
-                                <span className="font-semibold text-[#f2e9dd]">Format:</span> {commission.deliveryFormat === 'nft' ? '🎨 NFT' : commission.deliveryFormat === 'physical' ? '📦 Physical' : '💾 Digital'}
-                              </p>
-                              {commission.size && (
-                                <p className="text-[#f2e9dd]/70">
-                                  <span className="font-semibold text-[#f2e9dd]">Size:</span> {commission.size}
-                                </p>
-                              )}
-                              <p className="text-[#f2e9dd]/70">
-                                <span className="font-semibold text-[#f2e9dd]">Budget:</span> ₱{parseInt(commission.budgetMin).toLocaleString()}{commission.budgetMax ? ` - ₱${parseInt(commission.budgetMax).toLocaleString()}` : '+'}
-                              </p>
-                              {commission.deadline && (
-                                <p className="text-[#f2e9dd]/70">
-                                  <span className="font-semibold text-[#f2e9dd]">Deadline:</span> {new Date(commission.deadline).toLocaleDateString()}
-                                </p>
-                              )}
-                              <p className="text-[#f2e9dd]/90 mt-3 p-3 bg-white/5 rounded-lg">
+                              <p className="text-[#f2e9dd]/90 p-3 bg-white/5 rounded-lg line-clamp-2">
                                 {commission.description}
                               </p>
-                              {commission.referenceImages && commission.referenceImages.length > 0 && (
+                              {commission.reference_images && commission.reference_images.length > 0 && (
                                 <div className="flex gap-2 mt-2 overflow-x-auto">
-                                  {commission.referenceImages.map((img, imgIdx) => (
+                                  {commission.reference_images.slice(0, 3).map((img, imgIdx) => (
                                     <img
                                       key={imgIdx}
-                                      src={img.url}
-                                      alt="Reference"
+                                      src={img}
+                                      alt={`Reference ${imgIdx + 1}`}
                                       className="w-16 h-16 object-cover rounded border border-white/10"
                                     />
                                   ))}
+                                  {commission.reference_images.length > 3 && (
+                                    <div className="w-16 h-16 rounded bg-[#2a2a2a] flex items-center justify-center text-xs text-[#f2e9dd]/50">
+                                      +{commission.reference_images.length - 3}
+                                    </div>
+                                  )}
                                 </div>
                               )}
                             </div>
                           </div>
                         </div>
 
-                        {/* Actions (Only for own profile) */}
-                        {isOwnProfile && (
-                          <div className="flex flex-col gap-2 min-w-[140px]">
+                        {/* Actions (Only for own profile and if not completed/rejected/cancelled) */}
+                        {isOwnProfile && nextStatuses.length > 0 && (
+                          <div className="flex flex-col gap-2 min-w-[140px]" onClick={(e) => e.stopPropagation()}>
                             <p className="text-xs text-[#f2e9dd]/50 mb-1">Update Status:</p>
-                            <Button
-                              size="sm"
-                              variant={commission.status === 'pending' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'pending')}
-                              disabled={commission.status === 'pending'}
-                              className="text-xs"
-                            >
-                              <Clock3 size={14} className="mr-1" />
-                              Pending
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={commission.status === 'accepted' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'accepted')}
-                              disabled={commission.status === 'accepted'}
-                              className="text-xs"
-                            >
-                              <Clock size={14} className="mr-1" />
-                              Accepted
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={commission.status === 'in_progress' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'in_progress')}
-                              disabled={commission.status === 'in_progress'}
-                              className="text-xs"
-                            >
-                              <Loader size={14} className="mr-1" />
-                              In Progress
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={commission.status === 'completed' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'completed')}
-                              disabled={commission.status === 'completed'}
-                              className="text-xs"
-                            >
-                              <CheckCircle size={14} className="mr-1" />
-                              Completed
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="text-xs mt-2"
-                              onClick={() => navigate('/chat')}
-                            >
-                              <MessageCircle size={14} className="mr-1" />
-                              Chat
-                            </Button>
+                            {nextStatuses.map(status => (
+                              <Button
+                                key={status}
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdateCommissionStatus(commission.id, status);
+                                }}
+                                className="text-xs capitalize"
+                              >
+                                {status === 'accepted' && <Clock size={14} className="mr-1" />}
+                                {status === 'rejected' && <XCircle size={14} className="mr-1" />}
+                                {status === 'in_progress' && <Loader size={14} className="mr-1" />}
+                                {status === 'completed' && <CheckCircle size={14} className="mr-1" />}
+                                {status.replace('_', ' ')}
+                              </Button>
+                            ))}
                           </div>
                         )}
                       </div>
 
                       <p className="text-xs text-[#f2e9dd]/40 mt-4">
-                        Requested {new Date(commission.createdAt).toLocaleDateString()}
+                        Requested {new Date(commission.created_at).toLocaleDateString()}
                       </p>
                     </Card>
                   );
