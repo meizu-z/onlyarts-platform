@@ -2,6 +2,7 @@ const { query } = require('../config/database');
 const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { successResponse } = require('../utils/response');
+const { createNotification } = require('../utils/notificationHelper');
 
 /**
  * Helper function to safely parse reference_images field
@@ -109,19 +110,23 @@ exports.createCommission = asyncHandler(async (req, res, next) => {
     ]
   );
 
-  // Create notification for artist
-  await query(
-    `INSERT INTO notifications (user_id, type, title, message, data)
-     VALUES (?, 'system', 'New Commission Request', ?, ?)`,
-    [
-      artistId,
-      `You have a new commission request for "${title}"`,
-      JSON.stringify({
+  // Create notification for artist (with real-time emission)
+  try {
+    const io = req.app.get('io');
+    await createNotification({
+      userId: artistId,
+      type: 'system',
+      title: 'New Commission Request',
+      message: `You have a new commission request for "${title}"`,
+      data: {
         commissionId: result.rows.insertId,
         link: `/commissions/${result.rows.insertId}`
-      })
-    ]
-  );
+      }
+    }, io);
+  } catch (error) {
+    console.error('Failed to create commission notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, {
     id: result.rows.insertId,
@@ -314,21 +319,25 @@ exports.updateCommissionStatus = asyncHandler(async (req, res, next) => {
 
   await query('UPDATE commissions SET status = ?, updated_at = NOW() WHERE id = ?', [status, id]);
 
-  // Create notification
-  const notifyUserId = status === 'cancelled' ? commission.artist_id : commission.client_id;
-  await query(
-    `INSERT INTO notifications (user_id, type, title, message, data)
-     VALUES (?, 'system', 'Commission Update', ?, ?)`,
-    [
-      notifyUserId,
-      message || `Commission "${commission.title}" status: ${status}`,
-      JSON.stringify({
+  // Create notification (with real-time emission)
+  try {
+    const io = req.app.get('io');
+    const notifyUserId = status === 'cancelled' ? commission.artist_id : commission.client_id;
+    await createNotification({
+      userId: notifyUserId,
+      type: 'system',
+      title: 'Commission Update',
+      message: message || `Commission "${commission.title}" status: ${status}`,
+      data: {
         commissionId: id,
         link: `/commissions/${id}`,
         status: status
-      })
-    ]
-  );
+      }
+    }, io);
+  } catch (error) {
+    console.error('Failed to create commission status notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, { status }, 'Commission status updated');
 });

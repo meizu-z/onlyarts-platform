@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './components/ui/Toast';
+import { SocketProvider } from './context/SocketContext';
 import { initializeMockOrders } from './services/order.service';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
@@ -111,10 +112,11 @@ const App = () => {
       <AuthProvider>
         <CartProvider>
           <ToastProvider>
-            <Router>
-              <Routes>
-                {/* The root path redirects to the appropriate page based on auth state. */}
-                <Route path="/" element={<RootRedirect />} />
+            <SocketProvider>
+              <Router>
+                <Routes>
+                  {/* The root path redirects to the appropriate page based on auth state. */}
+                  <Route path="/" element={<RootRedirect />} />
               
               {/* Public routes accessible to everyone. */}
               <Route path="/landing" element={<LandingPage />} />
@@ -179,10 +181,11 @@ const App = () => {
               <Route path="*" element={<NotFoundPage />} />
             </Routes>
           </Router>
-        </ToastProvider>
-      </CartProvider>
-    </AuthProvider>
-    </ErrorBoundary>
+        </SocketProvider>
+      </ToastProvider>
+    </CartProvider>
+  </AuthProvider>
+  </ErrorBoundary>
   );
 };
 

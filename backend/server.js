@@ -187,6 +187,7 @@ module.exports.io = io;
 require('./src/sockets/chatSocket')(io);
 require('./src/sockets/livestreamSocket')(io);
 require('./src/sockets/auctionSocket')(io);
+require('./src/sockets/notificationSocket')(io);
 
 // ==========================================
 // ERROR HANDLING

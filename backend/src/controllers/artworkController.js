@@ -4,6 +4,12 @@ const asyncHandler = require('../utils/asyncHandler');
 const AppError = require('../utils/AppError');
 const { successResponse } = require('../utils/response');
 const { notifyNewArtwork } = require('../utils/notifications');
+const {
+  createLikeNotification,
+  createCommentNotification,
+  createNewPostNotification,
+  createShareNotification
+} = require('../utils/notificationHelper');
 
 /**
  * @route   GET /api/artworks
@@ -387,6 +393,19 @@ exports.createArtwork = asyncHandler(async (req, res, next) => {
     }
   }
 
+  // Notify all followers about the new post (real-time)
+  try {
+    const io = req.app.get('io');
+    await createNewPostNotification({
+      artworkId: artworkId,
+      artistId: req.user.id,
+      artworkTitle: title.trim()
+    }, io);
+  } catch (error) {
+    console.error('Failed to create new post notifications:', error);
+    // Don't fail the request if notification fails
+  }
+
   successResponse(res, artworkResult.rows[0], 'Artwork created successfully', 201);
 });
 
@@ -551,15 +570,17 @@ exports.deleteArtwork = asyncHandler(async (req, res, next) => {
 exports.likeArtwork = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  // Check if artwork exists
+  // Check if artwork exists and get artist info
   const artworkResult = await query(
-    'SELECT id FROM artworks WHERE id = ? AND status = ?',
+    'SELECT id, title, artist_id FROM artworks WHERE id = ? AND status = ?',
     [id, 'published']
   );
 
   if (artworkResult.rows.length === 0) {
     return next(new AppError('Artwork not found', 404));
   }
+
+  const artwork = artworkResult.rows[0];
 
   // Check if already liked
   const existingLike = await query(
@@ -593,6 +614,20 @@ exports.likeArtwork = asyncHandler(async (req, res, next) => {
     'UPDATE artworks SET like_count = like_count + 1 WHERE id = ?',
     [id]
   );
+
+  // Create notification for the artist (async, don't wait)
+  try {
+    const io = req.app.get('io');
+    await createLikeNotification({
+      artworkId: id,
+      likerId: req.user.id,
+      artistId: artwork.artist_id,
+      artworkTitle: artwork.title
+    }, io);
+  } catch (error) {
+    console.error('Failed to create like notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, { liked: true }, 'Artwork liked successfully');
 });
@@ -638,15 +673,17 @@ exports.unlikeArtwork = asyncHandler(async (req, res, next) => {
 exports.shareArtwork = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
-  // Check if artwork exists and is published
+  // Check if artwork exists and is published, get artist info
   const artworkResult = await query(
-    'SELECT id, title FROM artworks WHERE id = ? AND status = ?',
+    'SELECT id, title, artist_id FROM artworks WHERE id = ? AND status = ?',
     [id, 'published']
   );
 
   if (artworkResult.rows.length === 0) {
     return next(new AppError('Artwork not found', 404));
   }
+
+  const artwork = artworkResult.rows[0];
 
   // Check if already shared
   const existingShare = await query(
@@ -664,6 +701,20 @@ exports.shareArtwork = asyncHandler(async (req, res, next) => {
     'INSERT INTO shares (user_id, artwork_id) VALUES (?, ?)',
     [req.user.id, id]
   );
+
+  // Create notification for the artist (async, don't wait)
+  try {
+    const io = req.app.get('io');
+    await createShareNotification({
+      artworkId: id,
+      sharerId: req.user.id,
+      artistId: artwork.artist_id,
+      artworkTitle: artwork.title
+    }, io);
+  } catch (error) {
+    console.error('Failed to create share notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, { artwork_id: id, already_shared: false }, 'Artwork shared to your profile successfully');
 });
@@ -729,15 +780,17 @@ exports.addComment = asyncHandler(async (req, res, next) => {
     return next(new AppError('Upgrade to BASIC or PREMIUM plan to comment on artworks', 403));
   }
 
-  // Check if artwork exists
+  // Check if artwork exists and get artist info
   const artworkResult = await query(
-    'SELECT id FROM artworks WHERE id = ? AND status = ?',
+    'SELECT id, title, artist_id FROM artworks WHERE id = ? AND status = ?',
     [id, 'published']
   );
 
   if (artworkResult.rows.length === 0) {
     return next(new AppError('Artwork not found', 404));
   }
+
+  const artwork = artworkResult.rows[0];
 
   // If parentId provided, check if parent comment exists
   if (parentId) {
@@ -774,6 +827,21 @@ exports.addComment = asyncHandler(async (req, res, next) => {
      WHERE c.id = ?`,
     [commentId]
   );
+
+  // Create notification for the artist (async, don't wait)
+  try {
+    const io = req.app.get('io');
+    await createCommentNotification({
+      artworkId: id,
+      commenterId: req.user.id,
+      artistId: artwork.artist_id,
+      artworkTitle: artwork.title,
+      commentText: content.trim()
+    }, io);
+  } catch (error) {
+    console.error('Failed to create comment notification:', error);
+    // Don't fail the request if notification fails
+  }
 
   successResponse(res, commentResult.rows[0], 'Comment added successfully', 201);
 });

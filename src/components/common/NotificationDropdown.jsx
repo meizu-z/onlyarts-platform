@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Bell, Check, X, Heart, MessageCircle, ShoppingCart, UserPlus, Award, Video, Image } from 'lucide-react';
 import { notificationService } from '../../services';
 import { useNavigate } from 'react-router-dom';
+import { useSocket } from '../../context/SocketContext';
 
 const NotificationDropdown = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,14 +12,36 @@ const NotificationDropdown = () => {
   const [showingAll, setShowingAll] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { socket, notifications: realtimeNotifications } = useSocket();
 
   useEffect(() => {
     fetchNotifications();
 
-    // Poll for new notifications every 30 seconds
-    const interval = setInterval(fetchNotifications, 30000);
+    // Poll for new notifications every 2 minutes as fallback
+    // Real-time updates are handled via Socket.io
+    const interval = setInterval(fetchNotifications, 120000);
     return () => clearInterval(interval);
   }, []);
+
+  // Listen for real-time notifications from SocketContext
+  useEffect(() => {
+    if (realtimeNotifications.length > 0) {
+      // Add new real-time notifications to the list
+      const latestNotification = realtimeNotifications[realtimeNotifications.length - 1];
+
+      // Check if notification already exists to avoid duplicates
+      setNotifications(prev => {
+        const exists = prev.some(n => n.id === latestNotification.id);
+        if (exists) return prev;
+
+        // Add to the beginning of the list
+        return [latestNotification, ...prev];
+      });
+
+      // Increment unread count
+      setUnreadCount(prev => prev + 1);
+    }
+  }, [realtimeNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -98,6 +121,10 @@ const NotificationDropdown = () => {
         return <Heart {...iconProps} />;
       case 'comment':
         return <MessageCircle {...iconProps} />;
+      case 'post':
+        return <Image {...iconProps} />;
+      case 'share':
+        return <Image {...iconProps} />;
       case 'order':
         return <ShoppingCart {...iconProps} />;
       case 'follow':
