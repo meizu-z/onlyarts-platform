@@ -158,6 +158,11 @@ const ProfilePage = () => {
       setProfileData(transformedProfile);
       setEditedBio(transformedProfile.bio);
 
+      // Set follow status from backend response
+      if (!isOwnProfile) {
+        setIsFollowing(response.isFollowing || response.is_following || false);
+      }
+
       // Fetch user's content
       const [artworksData, exhibitionsData, followersData, followingData, commissionsData] = await Promise.all([
         profileService.getUserArtworks(targetUsername).catch(() => ({ data: { artworks: [] } })),
@@ -261,6 +266,13 @@ const ProfilePage = () => {
     // Optimistic UI update
     setIsFollowing(!isFollowing);
 
+    // Update follower count optimistically
+    setProfileData(prev => ({
+      ...prev,
+      followerCount: prev.followerCount + (wasFollowing ? -1 : 1),
+      followers_count: prev.followers_count + (wasFollowing ? -1 : 1),
+    }));
+
     try {
       // DEMO MODE: Just show toast
       if (USE_DEMO_MODE) {
@@ -283,6 +295,11 @@ const ProfilePage = () => {
     } catch (error) {
       // Revert on error
       setIsFollowing(wasFollowing);
+      setProfileData(prev => ({
+        ...prev,
+        followerCount: prev.followerCount + (wasFollowing ? 1 : -1),
+        followers_count: prev.followers_count + (wasFollowing ? 1 : -1),
+      }));
       toast.error('Failed to update. Please try again.');
     }
   };
