@@ -124,7 +124,7 @@ exports.refundPayment = asyncHandler(async (req, res, next) => {
   const order = orderResult.rows[0];
 
   // Verify user is buyer or admin
-  if (order.buyer_id !== req.user.id && req.user.role !== 'admin') {
+  if (order.buyer_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('Not authorized to refund this order', 403));
   }
 

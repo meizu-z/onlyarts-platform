@@ -16,6 +16,11 @@ exports.placeBid = asyncHandler(async (req, res, next) => {
   const username = req.user.username;
   const userTier = req.user.subscription_tier || 'free';
 
+  // Check subscription tier - only Basic and Premium can bid in auctions
+  if (userTier === 'free') {
+    return next(new AppError('Upgrade to BASIC or PREMIUM plan to bid in auctions', 403));
+  }
+
   // Validate bid amount
   if (!bidAmount || bidAmount <= 0) {
     return next(new AppError('Invalid bid amount', 400));

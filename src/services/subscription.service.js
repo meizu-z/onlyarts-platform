@@ -25,13 +25,15 @@ export const subscriptionService = {
 
   /**
    * Create subscription (upgrade/subscribe)
-   * @param {string} planId - Plan ID (basic, premium)
-   * @param {string} paymentMethodId - Stripe payment method ID (optional for now)
+   * @param {string} planId - Plan ID (free, basic, premium)
+   * @param {string} paymentMethod - Payment method ('wallet', 'card', 'paypal', 'crypto')
+   * @param {string} billingCycle - Billing cycle ('monthly' or 'yearly')
    */
-  createSubscription: async (planId, paymentMethodId = null) => {
+  createSubscription: async (planId, paymentMethod = null, billingCycle = 'monthly') => {
     const response = await api.post(API_ENDPOINTS.subscriptions.subscribe, {
-      planId,
-      paymentMethodId
+      plan: planId,
+      paymentMethod,
+      billingCycle
     });
     return response.data;
   },

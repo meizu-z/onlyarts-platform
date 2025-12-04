@@ -4,13 +4,74 @@ const AppError = require('../utils/AppError');
 const { successResponse } = require('../utils/response');
 
 /**
+ * Helper function to safely parse reference_images field
+ * Handles both string JSON and already-parsed arrays
+ */
+const parseReferenceImages = (referenceImages) => {
+  // If it's already an array, return it
+  if (Array.isArray(referenceImages)) {
+    return referenceImages;
+  }
+
+  // If it's null or undefined, return empty array
+  if (!referenceImages) {
+    return [];
+  }
+
+  // If it's a string, try to parse it
+  if (typeof referenceImages === 'string') {
+    const trimmed = referenceImages.trim();
+    if (trimmed === '' || trimmed === 'null') {
+      return [];
+    }
+    try {
+      const parsed = JSON.parse(trimmed);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      console.error('Failed to parse reference_images:', e);
+      return [];
+    }
+  }
+
+  // If it's an object but not an array, return empty array
+  return [];
+};
+
+/**
  * @route   POST /api/commissions
  * @desc    Create commission request
  * @access  Private
  */
 exports.createCommission = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
-  const { artistId, title, description, budget, deadline, referenceImages } = req.body;
+  const {
+    artistId,
+    artworkType,
+    deliveryFormat,
+    size,
+    budgetMin,
+    budgetMax,
+    description,
+    deadline,
+    referenceImages
+  } = req.body;
+
+  // Validate required fields
+  if (!artistId) {
+    return next(new AppError('Artist ID is required', 400));
+  }
+
+  if (!artworkType || artworkType.trim() === '') {
+    return next(new AppError('Artwork type is required', 400));
+  }
+
+  if (!description || description.trim() === '') {
+    return next(new AppError('Description is required', 400));
+  }
+
+  if (!budgetMin) {
+    return next(new AppError('Budget is required', 400));
+  }
 
   // Validate artist exists
   const artistResult = await query(
@@ -27,21 +88,38 @@ exports.createCommission = asyncHandler(async (req, res, next) => {
     return next(new AppError('You cannot commission yourself', 400));
   }
 
+  // Auto-generate title from artwork type
+  const title = `${artworkType} Commission`;
+
+  // Calculate budget (use min for now, max can be stored separately in future)
+  const budget = parseFloat(budgetMin);
+
   const result = await query(
     `INSERT INTO commissions
      (client_id, artist_id, title, description, budget, deadline, reference_images, status)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'pending')`,
-    [userId, artistId, title, description, budget, deadline, JSON.stringify(referenceImages || [])]
+    [
+      userId,
+      artistId,
+      title,
+      description || null,
+      budget || null,
+      deadline || null,
+      JSON.stringify(referenceImages || [])
+    ]
   );
 
   // Create notification for artist
   await query(
-    `INSERT INTO notifications (user_id, type, title, message, link)
-     VALUES (?, 'commission', 'New Commission Request', ?, ?)`,
+    `INSERT INTO notifications (user_id, type, title, message, data)
+     VALUES (?, 'system', 'New Commission Request', ?, ?)`,
     [
       artistId,
       `You have a new commission request for "${title}"`,
-      `/commissions/${result.rows.insertId}`
+      JSON.stringify({
+        commissionId: result.rows.insertId,
+        link: `/commissions/${result.rows.insertId}`
+      })
     ]
   );
 
@@ -74,7 +152,7 @@ exports.getMyCommissions = asyncHandler(async (req, res, next) => {
   const result = await query(
     `SELECT
       c.id, c.title, c.description, c.budget, c.deadline, c.status,
-      c.created_at, c.updated_at,
+      c.reference_images, c.created_at, c.updated_at,
       u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
       u.profile_image as artist_image
      FROM commissions c
@@ -85,6 +163,12 @@ exports.getMyCommissions = asyncHandler(async (req, res, next) => {
     params
   );
 
+  // Parse reference_images JSON
+  const commissions = result.rows.map(commission => ({
+    ...commission,
+    reference_images: parseReferenceImages(commission.reference_images),
+  }));
+
   const countResult = await query(
     `SELECT COUNT(*) as total FROM commissions c WHERE ${whereClause}`,
     params
@@ -94,7 +178,7 @@ exports.getMyCommissions = asyncHandler(async (req, res, next) => {
   const totalPages = Math.ceil(total / limit);
 
   successResponse(res, {
-    commissions: result.rows,
+    commissions,
     pagination: { page, limit, total, totalPages },
   }, 'Commissions retrieved');
 });
@@ -136,7 +220,7 @@ exports.getCommissionRequests = asyncHandler(async (req, res, next) => {
   // Parse reference_images JSON
   const commissions = result.rows.map(commission => ({
     ...commission,
-    reference_images: commission.reference_images ? JSON.parse(commission.reference_images) : [],
+    reference_images: parseReferenceImages(commission.reference_images),
   }));
 
   const countResult = await query(
@@ -184,12 +268,12 @@ exports.getCommissionById = asyncHandler(async (req, res, next) => {
   const commission = result.rows[0];
 
   // Check if user has access
-  if (commission.client_id !== userId && commission.artist_id !== userId && req.user.role !== 'admin') {
+  if (commission.client_id !== userId && commission.artist_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 
   // Parse reference_images
-  commission.reference_images = commission.reference_images ? JSON.parse(commission.reference_images) : [];
+  commission.reference_images = parseReferenceImages(commission.reference_images);
 
   successResponse(res, commission, 'Commission retrieved');
 });
@@ -233,12 +317,16 @@ exports.updateCommissionStatus = asyncHandler(async (req, res, next) => {
   // Create notification
   const notifyUserId = status === 'cancelled' ? commission.artist_id : commission.client_id;
   await query(
-    `INSERT INTO notifications (user_id, type, title, message, link)
-     VALUES (?, 'commission', 'Commission Update', ?, ?)`,
+    `INSERT INTO notifications (user_id, type, title, message, data)
+     VALUES (?, 'system', 'Commission Update', ?, ?)`,
     [
       notifyUserId,
       message || `Commission "${commission.title}" status: ${status}`,
-      `/commissions/${id}`
+      JSON.stringify({
+        commissionId: id,
+        link: `/commissions/${id}`,
+        status: status
+      })
     ]
   );
 
@@ -294,7 +382,7 @@ exports.getCommissionMessages = asyncHandler(async (req, res, next) => {
   }
 
   const commission = commissionResult.rows[0];
-  if (commission.client_id !== userId && commission.artist_id !== userId && req.user.role !== 'admin') {
+  if (commission.client_id !== userId && commission.artist_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 

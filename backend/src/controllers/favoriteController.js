@@ -88,6 +88,14 @@ exports.getFavorites = asyncHandler(async (req, res, next) => {
 exports.addFavorite = asyncHandler(async (req, res, next) => {
   const { artworkId } = req.body;
 
+  // Check subscription tier - only Basic and Premium can save favorites
+  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [req.user.id]);
+  const subscriptionTier = userResult.rows[0]?.subscription_tier || 'free';
+
+  if (subscriptionTier === 'free') {
+    return next(new AppError('Upgrade to BASIC or PREMIUM plan to save favorites', 403));
+  }
+
   // Check if artwork exists
   const artworkResult = await query(
     'SELECT id FROM artworks WHERE id = ?',

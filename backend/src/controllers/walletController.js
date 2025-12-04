@@ -83,7 +83,7 @@ exports.addFunds = asyncHandler(async (req, res, next) => {
     [req.user.id]
   );
 
-  const newBalance = parseFloat(balanceResult.rows[0].wallet_balance);
+  const newBalance = parseFloat(balanceResult.rows[0].wallet_balance) || 0;
 
   // Record transaction
   await query(
@@ -130,6 +130,6 @@ exports.withdraw = asyncHandler(async (req, res, next) => {
   );
 
   successResponse(res, {
-    balance: parseFloat(result.rows[0].wallet_balance),
+    balance: parseFloat(result.rows[0].wallet_balance) || 0,
   }, 'Withdrawal successful');
 });

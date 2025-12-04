@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = {
         ...userData,
         subscription: userData.subscription_tier || userData.subscription || 'free',
+        isAdmin: userData.is_admin || false,
       };
 
       // Store user data and tokens
@@ -126,6 +127,7 @@ export const AuthProvider = ({ children }) => {
       const normalizedUser = {
         ...newUser,
         subscription: newUser.subscription_tier || newUser.subscription || 'free',
+        isAdmin: newUser.is_admin || false,
       };
 
       // Store user data and tokens

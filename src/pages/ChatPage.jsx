@@ -298,8 +298,8 @@ const ChatPage = () => {
   }
 
   return (
-    <div className="p-3 md:p-6 max-w-7xl mx-auto pb-20 md:pb-6">
-      <div className="flex items-center justify-between mb-4 md:mb-6">
+    <div className="h-[100vh] md:h-screen flex flex-col p-3 md:p-6 max-w-7xl mx-auto overflow-hidden">
+      <div className="flex items-center justify-between mb-4 md:mb-6 flex-shrink-0">
         <h1 className="text-2xl md:text-3xl font-bold text-[#f2e9dd]">Messages</h1>
         <div className="flex items-center gap-2 md:gap-3">
           {/* Consultations Button */}
@@ -322,7 +322,7 @@ const ChatPage = () => {
         </div>
       </div>
 
-      <Card className="h-[calc(100vh-180px)] md:h-[75vh] flex relative overflow-hidden" noPadding>
+      <Card className="flex-1 flex relative overflow-hidden min-h-0" noPadding>
         {/* Mobile Overlay */}
         {isSidebarOpen && (
           <div

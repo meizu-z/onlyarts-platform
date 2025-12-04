@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ShoppingBag, Shield } from 'lucide-react';
+import { Home, Compass, Tv, Star, User, Settings, Wallet, Sparkles, ShoppingBag, Shield, Briefcase } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { API_CONFIG } from '../../config/api.config';
 
@@ -137,7 +137,7 @@ const Sidebar = () => {
                         bg-gradient-to-r from-transparent via-white/10 to-transparent`} />
 
           {/* Admin Section - Only for admin users */}
-          {user?.role === 'admin' && (
+          {user?.isAdmin && (
             <div className="mb-8">
               <p className={`px-4 mb-4 text-xs font-bold text-red-400 uppercase tracking-widest
                           transition-all duration-200 ease-out overflow-hidden
@@ -151,7 +151,7 @@ const Sidebar = () => {
           )}
 
           {/* Divider after admin section */}
-          {user?.role === 'admin' && (
+          {user?.isAdmin && (
             <div className={`transition-all duration-200 ease-out overflow-hidden
                           ${isHovered ? 'h-px mb-6' : 'h-0 my-0'}
                           bg-gradient-to-r from-transparent via-white/10 to-transparent`} />
@@ -167,6 +167,7 @@ const Sidebar = () => {
             <div className="space-y-1">
               <NavItem to={`/portfolio/${user.username}`} icon={<User size={20} />} isHovered={isHovered}>Portfolio</NavItem>
               <NavItem to="/orders" icon={<ShoppingBag size={20} />} isHovered={isHovered}>My Orders</NavItem>
+              <NavItem to="/commissions" icon={<Briefcase size={20} />} isHovered={isHovered}>Commissions</NavItem>
               <NavItem to="/wallet" icon={<Wallet size={20} />} isHovered={isHovered}>Wallet</NavItem>
               <NavItem to="/settings" icon={<Settings size={20} />} isHovered={isHovered}>Settings</NavItem>
             </div>

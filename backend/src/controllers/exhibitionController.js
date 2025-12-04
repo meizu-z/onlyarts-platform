@@ -24,9 +24,32 @@ exports.createExhibition = asyncHandler(async (req, res, next) => {
   // Convert isPrivate string to boolean/integer for FormData compatibility
   const isPrivateValue = isPrivate === 'true' || isPrivate === true ? 1 : 0;
 
-  // Verify user can create exhibitions (premium or artist)
-  if (req.user.subscription_tier === 'free' && req.user.role !== 'artist') {
-    return next(new AppError('Upgrade to Premium to create exhibitions', 403));
+  // Get user's subscription tier
+  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [userId]);
+  const subscriptionTier = userResult.rows[0]?.subscription_tier || 'free';
+
+  // Check exhibition hosting permissions
+  if (subscriptionTier === 'free') {
+    if (req.file) {
+      await require('fs').promises.unlink(req.file.path);
+    }
+    return next(new AppError('Upgrade to BASIC or PREMIUM plan to host exhibitions', 403));
+  }
+
+  // Check artwork count limits per tier
+  const artworkCountLimits = {
+    basic: 20,
+    premium: 50
+  };
+
+  const artworkCount = artworkIds ? artworkIds.length : 0;
+  const limit = artworkCountLimits[subscriptionTier];
+
+  if (limit && artworkCount > limit) {
+    if (req.file) {
+      await require('fs').promises.unlink(req.file.path);
+    }
+    return next(new AppError(`${subscriptionTier.toUpperCase()} plan allows up to ${limit} artworks per exhibition. You selected ${artworkCount}. Upgrade to PREMIUM for more.`, 403));
   }
 
   // Get cover image path from uploaded file
@@ -42,12 +65,17 @@ exports.createExhibition = asyncHandler(async (req, res, next) => {
 
   // Add artworks to exhibition
   if (artworkIds && artworkIds.length > 0) {
-    const values = artworkIds.map((artworkId, index) =>
-      `(${exhibitionId}, ${artworkId}, ${index + 1})`
-    ).join(',');
+    // Build parameterized query for multiple inserts
+    const placeholders = artworkIds.map(() => '(?, ?, ?)').join(',');
+    const values = [];
+
+    artworkIds.forEach((artworkId, index) => {
+      values.push(exhibitionId, artworkId, index + 1);
+    });
 
     await query(
-      `INSERT INTO exhibition_artworks (exhibition_id, artwork_id, display_order) VALUES ${values}`
+      `INSERT INTO exhibition_artworks (exhibition_id, artwork_id, display_order) VALUES ${placeholders}`,
+      values
     );
   }
 
@@ -152,7 +180,7 @@ exports.getExhibitionById = asyncHandler(async (req, res, next) => {
   const exhibition = result.rows[0];
 
   // Check access for private exhibitions
-  if (exhibition.is_private && (!userId || (userId !== exhibition.curator_id && req.user.role !== 'admin'))) {
+  if (exhibition.is_private && (!userId || (userId !== exhibition.curator_id && !req.user.is_admin))) {
     return next(new AppError('This exhibition is private', 403));
   }
 
@@ -177,6 +205,24 @@ exports.getExhibitionById = asyncHandler(async (req, res, next) => {
 
   exhibition.artworks = artworksResult.rows;
 
+  // Check if exhibition has exclusive artworks (Premium only)
+  const hasExclusiveArtworks = artworksResult.rows.some(artwork => artwork.artwork_type === 'exclusive');
+
+  if (hasExclusiveArtworks) {
+    // Get user's subscription tier if authenticated
+    if (!userId) {
+      return next(new AppError('You must be logged in to view exclusive exhibitions', 401));
+    }
+
+    const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [userId]);
+    const userTier = userResult.rows[0]?.subscription_tier || 'free';
+
+    // Only Premium users can access exhibitions with exclusive artworks
+    if (userTier !== 'premium') {
+      return next(new AppError('Upgrade to PREMIUM plan to access exclusive exhibitions', 403));
+    }
+  }
+
   successResponse(res, exhibition, 'Exhibition retrieved');
 });
 
@@ -196,7 +242,7 @@ exports.updateExhibition = asyncHandler(async (req, res, next) => {
     return next(new AppError('Exhibition not found', 404));
   }
 
-  if (exhibitionResult.rows[0].curator_id !== userId && req.user.role !== 'admin') {
+  if (exhibitionResult.rows[0].curator_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 
@@ -259,7 +305,7 @@ exports.deleteExhibition = asyncHandler(async (req, res, next) => {
     return next(new AppError('Exhibition not found', 404));
   }
 
-  if (exhibitionResult.rows[0].curator_id !== userId && req.user.role !== 'admin') {
+  if (exhibitionResult.rows[0].curator_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 
@@ -388,7 +434,7 @@ exports.addExclusiveArtwork = asyncHandler(async (req, res, next) => {
     return next(new AppError('Exhibition not found', 404));
   }
 
-  if (exhibitionResult.rows[0].curator_id !== userId && req.user.role !== 'admin') {
+  if (exhibitionResult.rows[0].curator_id !== userId && !req.user.is_admin) {
     return next(new AppError('Only the curator can add exclusive artworks', 403));
   }
 
@@ -477,7 +523,7 @@ exports.favoriteExhibition = asyncHandler(async (req, res) => {
     [id, userId]
   );
 
-  if (existing.length === 0) {
+  if (existing.rows.length === 0) {
     await query(
       'INSERT INTO exhibition_favorites (exhibition_id, user_id) VALUES (?, ?)',
       [id, userId]

@@ -34,7 +34,7 @@ const authenticate = async (req, res, next) => {
 
     // Get user from database
     const result = await query(
-      'SELECT id, username, email, role, subscription_tier, is_active FROM users WHERE id = ?',
+      'SELECT id, username, email, role, subscription_tier, is_admin, is_active FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -97,7 +97,7 @@ const optionalAuth = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_ACCESS_SECRET);
 
     const result = await query(
-      'SELECT id, username, email, role, subscription_tier, is_active FROM users WHERE id = ?',
+      'SELECT id, username, email, role, subscription_tier, is_admin, is_active FROM users WHERE id = ?',
       [decoded.userId]
     );
 
@@ -112,8 +112,25 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * Middleware to check if user is an admin
+ * Checks the is_admin field instead of role
+ */
+const requireAdmin = (req, res, next) => {
+  if (!req.user) {
+    return next(new AppError('Authentication required', 401));
+  }
+
+  if (!req.user.is_admin) {
+    return next(new AppError('Admin privileges required', 403));
+  }
+
+  next();
+};
+
 module.exports = {
   authenticate,
   requireRole,
+  requireAdmin,
   optionalAuth,
 };

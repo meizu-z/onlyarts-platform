@@ -28,11 +28,20 @@ export const commissionService = {
   },
 
   /**
-   * Get all commissions for current user
+   * Get all commissions for current user (as client)
    * @param {Object} filters - Filter parameters
    */
   getMyCommissions: async (filters = {}) => {
     const response = await api.get('/commissions', { params: filters });
+    return response.data;
+  },
+
+  /**
+   * Get commission requests for current user (as artist)
+   * @param {Object} filters - Filter parameters
+   */
+  getCommissionRequests: async (filters = {}) => {
+    const response = await api.get('/commissions/requests', { params: filters });
     return response.data;
   },
 
@@ -96,6 +105,25 @@ export const commissionService = {
    */
   cancelCommission: async (id, reason = '') => {
     const response = await api.delete(`/commissions/${id}`, { data: { reason } });
+    return response.data;
+  },
+
+  /**
+   * Get commission messages
+   * @param {string} id - Commission ID
+   */
+  getCommissionMessages: async (id) => {
+    const response = await api.get(`/commissions/${id}/messages`);
+    return response.data;
+  },
+
+  /**
+   * Add message to commission
+   * @param {string} id - Commission ID
+   * @param {string} message - Message text
+   */
+  addCommissionMessage: async (id, message) => {
+    const response = await api.post(`/commissions/${id}/messages`, { message });
     return response.data;
   }
 };

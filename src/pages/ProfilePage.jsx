@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/ui/Toast';
 import { EmptyArtworks, EmptyFollowers, EmptyFollowing } from '../components/ui/EmptyStates';
@@ -40,7 +40,7 @@ const transformUserData = (backendData) => {
     avatar: backendData.profileImage || backendData.profile_image || '👤',
     coverImage: backendData.coverImage || backendData.cover_image || '🎨',
     displayName: backendData.fullName || backendData.full_name || backendData.username,
-    isArtist: backendData.role === 'artist' || backendData.role === 'admin' || backendData.isArtist,
+    isArtist: backendData.role === 'artist' || backendData.isArtist,
   };
 };
 
@@ -49,7 +49,8 @@ const ProfilePage = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState('shared_artworks');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'shared_artworks');
   const [isFollowing, setIsFollowing] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedBio, setEditedBio] = useState('');
@@ -183,7 +184,7 @@ const ProfilePage = () => {
         ...follower,
         name: follower.fullName || follower.full_name || follower.username,
         avatar: follower.profileImage || follower.profile_image || '👤',
-        isArtist: follower.role === 'artist' || follower.role === 'admin',
+        isArtist: follower.role === 'artist',
       }));
       console.log('[ProfilePage] Followers data:', followersData);
       console.log('[ProfilePage] Transformed followers:', transformedFollowers);
@@ -194,7 +195,7 @@ const ProfilePage = () => {
         ...follow,
         name: follow.fullName || follow.full_name || follow.username,
         avatar: follow.profileImage || follow.profile_image || '👤',
-        isArtist: follow.role === 'artist' || follow.role === 'admin',
+        isArtist: follow.role === 'artist',
       }));
       console.log('[ProfilePage] Following data:', followingData);
       console.log('[ProfilePage] Transformed following:', transformedFollowing);
@@ -219,13 +220,13 @@ const ProfilePage = () => {
         console.log('[ProfilePage] Shared posts:', transformedPosts);
         setSharedPosts(transformedPosts);
 
-        if (response.role === 'artist' || response.role === 'admin') {
+        if (response.role === 'artist') {
           setActiveTab('portfolio');
         } else {
           setActiveTab('shared_artworks');
         }
       } else {
-        setActiveTab(response.role === 'artist' || response.role === 'admin' ? 'portfolio' : 'shared_artworks');
+        setActiveTab(response.role === 'artist' ? 'portfolio' : 'shared_artworks');
       }
     } catch (err) {
       console.error('Error fetching profile:', err);
@@ -1002,8 +1003,8 @@ const ProfilePage = () => {
         const getStatusBadge = (status) => {
           const badges = {
             pending: { icon: Clock3, color: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30', label: 'Pending' },
-            queued: { icon: Clock, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'Queued' },
-            'in-progress': { icon: Loader, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', label: 'In Progress' },
+            accepted: { icon: Clock, color: 'bg-blue-500/20 text-blue-400 border-blue-500/30', label: 'Accepted' },
+            in_progress: { icon: Loader, color: 'bg-purple-500/20 text-purple-400 border-purple-500/30', label: 'In Progress' },
             completed: { icon: CheckCircle, color: 'bg-green-500/20 text-green-400 border-green-500/30', label: 'Completed' },
           };
           return badges[status] || badges.pending;
@@ -1011,8 +1012,8 @@ const ProfilePage = () => {
 
         // Group commissions by status
         const pendingCommissions = commissions.filter(c => c.status === 'pending');
-        const queuedCommissions = commissions.filter(c => c.status === 'queued');
-        const inProgressCommissions = commissions.filter(c => c.status === 'in-progress');
+        const acceptedCommissions = commissions.filter(c => c.status === 'accepted');
+        const inProgressCommissions = commissions.filter(c => c.status === 'in_progress');
         const completedCommissions = commissions.filter(c => c.status === 'completed');
 
         return (
@@ -1030,9 +1031,9 @@ const ProfilePage = () => {
               <Card className="p-4 bg-gradient-to-br from-blue-500/10 to-cyan-500/10 border-blue-500/30">
                 <div className="flex items-center gap-2 mb-2">
                   <Clock size={18} className="text-blue-400" />
-                  <p className="text-xs text-[#f2e9dd]/70">Queued</p>
+                  <p className="text-xs text-[#f2e9dd]/70">Accepted</p>
                 </div>
-                <p className="text-2xl font-bold text-[#f2e9dd]">{queuedCommissions.length}</p>
+                <p className="text-2xl font-bold text-[#f2e9dd]">{acceptedCommissions.length}</p>
               </Card>
 
               <Card className="p-4 bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/30">
@@ -1134,19 +1135,19 @@ const ProfilePage = () => {
                             </Button>
                             <Button
                               size="sm"
-                              variant={commission.status === 'queued' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'queued')}
-                              disabled={commission.status === 'queued'}
+                              variant={commission.status === 'accepted' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'accepted')}
+                              disabled={commission.status === 'accepted'}
                               className="text-xs"
                             >
                               <Clock size={14} className="mr-1" />
-                              Queued
+                              Accepted
                             </Button>
                             <Button
                               size="sm"
-                              variant={commission.status === 'in-progress' ? 'primary' : 'secondary'}
-                              onClick={() => handleUpdateCommissionStatus(commission.id, 'in-progress')}
-                              disabled={commission.status === 'in-progress'}
+                              variant={commission.status === 'in_progress' ? 'primary' : 'secondary'}
+                              onClick={() => handleUpdateCommissionStatus(commission.id, 'in_progress')}
+                              disabled={commission.status === 'in_progress'}
                               className="text-xs"
                             >
                               <Loader size={14} className="mr-1" />
@@ -1347,9 +1348,9 @@ const ProfilePage = () => {
                     'Follow'
                   )}
                 </Button>
-                {profileData.isArtist && (
+                {!isOwnProfile && profileData.isArtist && profileData.id && (
                   <Button
-                    onClick={() => navigate('/request-commission', { state: { artist: { id: profileData.id || 'artist-1', name: profileData.displayName, profileImage: profileData.avatar, username: profileData.username } } })}
+                    onClick={() => navigate('/request-commission', { state: { artist: { id: profileData.id, name: profileData.displayName, profileImage: profileData.avatar, username: profileData.username, role: profileData.role } } })}
                     className="w-full md:w-auto bg-gradient-to-r from-purple-500 to-pink-500 shadow-lg shadow-purple-500/30 hover:shadow-purple-500/50 transform hover:scale-105 transition-all duration-300"
                   >
                     <Sparkles size={16} className="mr-2" />

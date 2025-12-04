@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { subscriptionService } from '../services';
+import { subscriptionService, walletService } from '../services';
 import { useToast } from '../components/ui/Toast';
 import { LoadingPaint } from '../components/ui/LoadingStates';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
 import Input from '../components/common/Input';
 import Modal from '../components/common/Modal';
-import { Sparkles, Check, Lock, ArrowRight } from 'lucide-react';
+import { Sparkles, Check, Lock, ArrowRight, Wallet } from 'lucide-react';
 
 const SubscriptionsPage = () => {
   const { user, updateSubscription } = useAuth();
@@ -19,10 +19,12 @@ const SubscriptionsPage = () => {
   const [billingCycle, setBillingCycle] = useState('monthly');
   const [paymentMethod, setPaymentMethod] = useState('card');
   const [plans, setPlans] = useState([]);
+  const [walletBalance, setWalletBalance] = useState(0);
 
-  // Fetch subscription plans on mount
+  // Fetch subscription plans and wallet balance on mount
   useEffect(() => {
     fetchPlans();
+    fetchWalletBalance();
   }, []);
 
   const fetchPlans = async () => {
@@ -80,6 +82,16 @@ const SubscriptionsPage = () => {
     }
   };
 
+  const fetchWalletBalance = async () => {
+    try {
+      const response = await walletService.getBalance();
+      setWalletBalance(response.balance || 0);
+    } catch (error) {
+      console.error('Error fetching wallet balance:', error);
+      // Don't show error toast, just default to 0
+    }
+  };
+
   const handleSelectPlan = async (plan) => {
     if (plan.name === 'free') {
       try {
@@ -99,10 +111,29 @@ const SubscriptionsPage = () => {
   const handlePayment = async () => {
     try {
       setProcessing(true);
-      // For now, we'll just update the subscription without payment method
-      // In production, you'd integrate Stripe here
-      await subscriptionService.createSubscription(selectedPlan.name);
+
+      // Calculate subscription amount
+      const isYearly = billingCycle === 'yearly';
+      const subscriptionAmount = isYearly ? Math.round(selectedPlan.price * 12 * 0.8) : selectedPlan.price;
+
+      // Validate wallet balance if using wallet payment
+      if (paymentMethod === 'wallet') {
+        if (walletBalance < subscriptionAmount) {
+          toast?.error?.(`Insufficient wallet balance. You need ₱${subscriptionAmount.toLocaleString()} but have ₱${walletBalance.toLocaleString()}`);
+          setProcessing(false);
+          return;
+        }
+      }
+
+      // Create subscription with payment method
+      await subscriptionService.createSubscription(selectedPlan.name, paymentMethod, billingCycle);
       updateSubscription(selectedPlan.name);
+
+      // Refresh wallet balance if payment was made with wallet
+      if (paymentMethod === 'wallet') {
+        await fetchWalletBalance();
+      }
+
       toast?.success?.(`Successfully upgraded to ${selectedPlan.title} plan!`);
       setShowPayment(false);
       setSelectedPlan(null);
@@ -296,6 +327,22 @@ const SubscriptionsPage = () => {
           <div>
             <h3 className="text-sm md:text-base text-[#f2e9dd] font-bold mb-2 md:mb-3">Payment Method:</h3>
             <div className="space-y-2">
+              <label className={`flex items-center justify-between gap-2 md:gap-3 p-2 md:p-3 border rounded-lg cursor-pointer transition-colors ${
+                paymentMethod === 'wallet' ? 'border-[#7C5FFF] bg-[#7C5FFF]/10' : 'border-white/10 hover:border-[#7C5FFF]'
+              }`}>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <input
+                    type="radio"
+                    name="payment"
+                    checked={paymentMethod === 'wallet'}
+                    onChange={() => setPaymentMethod('wallet')}
+                  />
+                  <span className="text-sm md:text-base text-[#f2e9dd]">💰 Wallet</span>
+                </div>
+                <span className="text-xs md:text-sm text-[#f2e9dd]/60">
+                  Balance: ₱{walletBalance.toLocaleString()}
+                </span>
+              </label>
               <label className={`flex items-center gap-2 md:gap-3 p-2 md:p-3 border rounded-lg cursor-pointer transition-colors ${
                 paymentMethod === 'card' ? 'border-[#7C5FFF] bg-[#7C5FFF]/10' : 'border-white/10 hover:border-[#7C5FFF]'
               }`}>

@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate, useParams } from 'react-router-dom';
 import Button from '../components/common/Button';
 import Card from '../components/common/Card';
-import { Lock, Star, MessageSquare, Share, ShoppingCart, AlertCircle, Plus } from 'lucide-react';
+import { Lock, Star, MessageSquare, Share, ShoppingCart, AlertCircle, Plus, Heart } from 'lucide-react';
 import { useToast } from '../components/ui/Toast';
 import { useCart } from '../context/CartContext';
 import { LoadingPaint, SkeletonGrid } from '../components/ui/LoadingStates';
@@ -136,10 +136,6 @@ const ArtworkPage = () => {
         timestamp: formatTimeAgo(comment.created_at),
         createdAt: comment.created_at,
       }));
-
-      // Debug: Check if exhibitions data is present
-      console.log('[ArtworkPage] Exhibitions data:', rawArtwork.exhibitions);
-      console.log('[ArtworkPage] Transformed artwork:', transformedArtwork);
 
       setArtwork(transformedArtwork);
       setComments(transformedComments);
@@ -409,12 +405,81 @@ const ArtworkPage = () => {
             <div className="flex items-center gap-3 md:gap-4 text-xs md:text-base text-[#f2e9dd]/70 mb-4 md:mb-6">
               <span>👁 {artwork.views?.toLocaleString() || '2.3K'} views</span>
               <span>•</span>
-              <button
-                onClick={handleLike}
-                className={`transition-colors ${isLiked ? 'text-red-500' : 'hover:text-red-500'}`}
-              >
-                {isLiked ? '❤️' : '🤍'} {likesCount} likes
-              </button>
+              <div className="relative inline-block group">
+                <button
+                  onClick={handleLike}
+                  className="relative px-4 py-1.5 text-sm font-medium text-[#f2e9dd] border border-transparent rounded-full overflow-visible transition-all duration-300 hover:text-white hover:scale-105 active:scale-95 flex items-center gap-1.5 bg-gradient-to-r from-[#FF5F9E]/20 to-[#ff003b]/20 hover:from-[#FF5F9E]/30 hover:to-[#ff003b]/30"
+                >
+                  <span className="relative z-10 flex items-center gap-1.5">
+                    <Heart
+                      size={16}
+                      className={`transition-all duration-300 ${isLiked ? 'fill-current text-[#ff003b]' : ''}`}
+                    />
+                    <span className="hidden sm:inline text-xs">{likesCount} likes</span>
+                    <span className="sm:hidden text-xs">{likesCount}</span>
+                  </span>
+                  <span
+                    className={`absolute top-0 left-0 h-full bg-gradient-to-r from-[#FF5F9E] to-[#ff003b] rounded-full transition-all duration-300 ${
+                      isLiked ? 'w-full opacity-30' : 'w-0 opacity-0 group-hover:w-full group-hover:opacity-20'
+                    }`}
+                  />
+                </button>
+
+                {/* Bubble particles */}
+                <div className="absolute inset-0 pointer-events-none opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity duration-300">
+                  {/* Top-left bubbles */}
+                  <div
+                    className="absolute w-3 h-3 rounded-full animate-bubble-1"
+                    style={{
+                      background: 'linear-gradient(135deg, #7C5FFF, #FF5F9E)',
+                      top: '-8px',
+                      left: '10px'
+                    }}
+                  />
+                  <div
+                    className="absolute w-2.5 h-2.5 rounded-full animate-bubble-2"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF5F9E, #ff003b)',
+                      top: '0px',
+                      left: '-5px'
+                    }}
+                  />
+                  <div
+                    className="absolute w-2 h-2 rounded-full animate-bubble-3"
+                    style={{
+                      background: 'linear-gradient(135deg, #7C5FFF, #ff003b)',
+                      top: '-12px',
+                      left: '25px'
+                    }}
+                  />
+
+                  {/* Bottom-right bubbles */}
+                  <div
+                    className="absolute w-3 h-3 rounded-full animate-bubble-4"
+                    style={{
+                      background: 'linear-gradient(135deg, #FF5F9E, #7C5FFF)',
+                      bottom: '-8px',
+                      right: '10px'
+                    }}
+                  />
+                  <div
+                    className="absolute w-2.5 h-2.5 rounded-full animate-bubble-5"
+                    style={{
+                      background: 'linear-gradient(135deg, #ff003b, #FF5F9E)',
+                      bottom: '0px',
+                      right: '-5px'
+                    }}
+                  />
+                  <div
+                    className="absolute w-2 h-2 rounded-full animate-bubble-6"
+                    style={{
+                      background: 'linear-gradient(135deg, #7C5FFF, #FF5F9E)',
+                      bottom: '-12px',
+                      right: '25px'
+                    }}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Exhibition Section */}
@@ -486,7 +551,7 @@ const ArtworkPage = () => {
 
       <div className="mt-6 md:mt-8">
         <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-3 md:mb-4 flex items-center gap-2">
-          <MessageSquare size={20} className="md:size-24" /> Comments
+          <MessageSquare size={18} className="md:w-5 md:h-5" /> Comments
         </h2>
         <div className="space-y-3 md:space-y-4">
           {comments.map((comment, idx) => (

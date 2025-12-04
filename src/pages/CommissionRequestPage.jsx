@@ -157,8 +157,8 @@ const CommissionRequestPage = () => {
 
       toast.success('Commission request submitted! 🎨');
 
-      // Navigate back to artist profile
-      navigate(`/profile/${selectedArtist?.username || selectedArtist?.id}`);
+      // Navigate to commissions page
+      navigate('/commissions');
     } catch (error) {
       console.error('Error submitting commission:', error);
       toast.error(error.message || 'Failed to submit commission request');

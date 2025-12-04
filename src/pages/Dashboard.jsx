@@ -363,11 +363,9 @@ const Dashboard = () => {
           <Card
             key={artwork.id}
             noPadding
-            className="animate-fadeIn group transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300"
+            className="animate-fadeIn group transform hover:scale-105 md:hover:-translate-y-2 transition-all duration-300 border border-white/10 hover:border-[#7C5FFF]/50 hover:shadow-lg hover:shadow-[#7C5FFF]/20 overflow-hidden"
             style={{ animationDelay: `${idx * 0.1}s` }}
           >
-            <div className="border border-white/10 rounded-2xl overflow-hidden hover:border-[#7C5FFF]/50 hover:shadow-lg hover:shadow-[#7C5FFF]/20 transition-all duration-300">
-
               {/* Clickable Area for Navigation */}
               <div onClick={() => handleArtworkClick(artwork)} className="cursor-pointer">
                 {activeTab === 'foryou' && artwork.reason && (
@@ -443,7 +441,6 @@ const Dashboard = () => {
                   </button>
                 </div>
               </div>
-            </div>
           </Card>
         ))}
       </div>

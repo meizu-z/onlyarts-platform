@@ -83,7 +83,12 @@ const ExhibitionPage = () => {
       setIsFavorited(exhibitionData.exhibition?.isFavorited || false);
     } catch (err) {
       console.error('Error fetching exhibition:', err);
-      setError(err.message || 'Failed to load exhibition. Please try again.');
+      // Check if it's a premium access error
+      if (err.message && (err.message.includes('PREMIUM') || err.message.includes('exclusive'))) {
+        setError({ type: 'premium', message: err.message });
+      } else {
+        setError({ type: 'generic', message: err.message || 'Failed to load exhibition. Please try again.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -231,9 +236,70 @@ const ExhibitionPage = () => {
   }
 
   if (error) {
+    // Show premium upgrade prompt for exclusive exhibitions
+    if (error.type === 'premium') {
+      return (
+        <div className="flex-1 p-3 sm:p-6 md:p-8">
+          <Card className="max-w-2xl mx-auto p-8 text-center bg-gradient-to-br from-[#7C5FFF]/10 to-[#FF5F9E]/10 border-2 border-[#7C5FFF]/30">
+            <div className="mb-6">
+              <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#7C5FFF] to-[#FF5F9E] flex items-center justify-center">
+                <Lock size={40} className="text-white" />
+              </div>
+              <h2 className="text-3xl font-bold text-[#f2e9dd] mb-4">Exclusive Exhibition</h2>
+              <p className="text-[#f2e9dd]/90 text-lg mb-2">
+                This exhibition contains exclusive content reserved for Premium members.
+              </p>
+              <p className="text-[#f2e9dd]/70 mb-6">
+                Upgrade to Premium to unlock exclusive exhibitions, artworks, and features!
+              </p>
+            </div>
+
+            <div className="bg-[#0a0a0a]/50 rounded-xl p-6 mb-6 border border-[#7C5FFF]/20">
+              <h3 className="text-xl font-semibold text-[#f2e9dd] mb-4">Premium Benefits:</h3>
+              <ul className="text-left text-[#f2e9dd]/80 space-y-2">
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C5FFF]">✓</span>
+                  <span>Access exclusive VIP exhibitions & showcases</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C5FFF]">✓</span>
+                  <span>Priority bidding in auctions with last-call feature</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C5FFF]">✓</span>
+                  <span>Exclusive collectibles (NFTs, badges)</span>
+                </li>
+                <li className="flex items-start gap-2">
+                  <span className="text-[#7C5FFF]">✓</span>
+                  <span>VIP badge on your profile</span>
+                </li>
+              </ul>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button
+                onClick={() => navigate('/subscriptions')}
+                className="bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] hover:opacity-90 transform hover:scale-105 transition-all duration-300"
+              >
+                <Star size={18} className="mr-2" />
+                Upgrade to Premium
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/exhibitions')}
+              >
+                Browse Other Exhibitions
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
+    // Show generic error for other errors
     return (
       <div className="flex-1 p-3 sm:p-6 md:p-8">
-        <APIError error={error} retry={fetchExhibitionData} />
+        <APIError error={error.message || error} retry={fetchExhibitionData} />
       </div>
     );
   }
@@ -323,6 +389,7 @@ const ExhibitionPage = () => {
             {artworks.filter(a => a.artwork_type === 'exclusive').map((artwork, idx) => (
               <div key={artwork.id} onClick={() => artwork.price && setSelectedArtwork(artwork)} className="h-full">
                 <Card
+                  noPadding
                   hover={true}
                   className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group border-2 border-yellow-500/30 h-full flex flex-col"
                   style={{ animationDelay: `${idx * 0.1}s` }}
@@ -347,15 +414,15 @@ const ExhibitionPage = () => {
                     {artwork.price && artwork.price > 0 ? (
                       <div className="flex flex-col gap-1 mt-auto">
                         <p className="text-yellow-400 font-bold text-sm">₱{artwork.price.toLocaleString()}</p>
-                        <Button
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleBuyNow(artwork);
                           }}
-                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-2 py-0.5 rounded-md text-[10px]"
+                          className="w-full bg-gradient-to-r from-yellow-500 to-orange-500 text-white px-2 py-1 rounded text-[10px] font-medium hover:from-yellow-600 hover:to-orange-600 transition-colors"
                         >
                           Buy Now
-                        </Button>
+                        </button>
                       </div>
                     ) : (
                       <p className="text-green-400 font-bold text-sm mt-auto">Free Artwork</p>
@@ -377,6 +444,7 @@ const ExhibitionPage = () => {
             {artworks.filter(a => a.artwork_type === 'for_sale').map((artwork, idx) => (
               <div key={artwork.id} onClick={() => artwork.price && setSelectedArtwork(artwork)} className="h-full">
                 <Card
+                  noPadding
                   hover={true}
                   className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group h-full flex flex-col"
                   style={{ animationDelay: `${idx * 0.1}s` }}
@@ -397,15 +465,15 @@ const ExhibitionPage = () => {
                     {artwork.price && artwork.price > 0 ? (
                       <div className="flex flex-col gap-1 mt-auto">
                         <p className="text-[#B15FFF] font-bold text-sm">₱{artwork.price.toLocaleString()}</p>
-                        <Button
+                        <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleBuyNow(artwork);
                           }}
-                          className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-2 py-0.5 rounded-md text-[10px]"
+                          className="w-full bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E] text-white px-2 py-1 rounded text-[10px] font-medium hover:from-[#7C5FFF]/80 hover:to-[#FF5F9E]/80 transition-colors"
                         >
                           Buy Now
-                        </Button>
+                        </button>
                       </div>
                     ) : (
                       <p className="text-green-400 font-bold text-sm mt-auto">Free Artwork</p>
@@ -430,6 +498,7 @@ const ExhibitionPage = () => {
             {artworks.filter(a => a.artwork_type === 'display_only').map((artwork, idx) => (
               <div key={artwork.id} onClick={() => setSelectedArtwork(artwork)} className="h-full">
                 <Card
+                  noPadding
                   hover={true}
                   className="relative cursor-pointer transform hover:scale-105 hover:-translate-y-2 transition-all duration-300 animate-fadeIn group border-2 border-gray-500/30 h-full flex flex-col"
                   style={{ animationDelay: `${idx * 0.1}s` }}

@@ -8,6 +8,7 @@ const NotificationDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [showingAll, setShowingAll] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
 
@@ -23,6 +24,7 @@ const NotificationDropdown = () => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsOpen(false);
+        setShowingAll(false);
       }
     };
 
@@ -30,14 +32,26 @@ const NotificationDropdown = () => {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (limit = 10) => {
     try {
-      const response = await notificationService.getNotifications({ limit: 10 });
+      const response = await notificationService.getNotifications({ limit });
       const notifs = response.data?.notifications || response.notifications || [];
       setNotifications(notifs);
       setUnreadCount(notifs.filter(n => !n.is_read).length);
     } catch (error) {
       console.error('Error fetching notifications:', error);
+    }
+  };
+
+  const handleViewAllToggle = async () => {
+    if (showingAll) {
+      // Show less - go back to 10
+      setShowingAll(false);
+      await fetchNotifications(10);
+    } else {
+      // Show all - fetch without limit
+      setShowingAll(true);
+      await fetchNotifications(100); // Fetch up to 100
     }
   };
 
@@ -189,13 +203,10 @@ const NotificationDropdown = () => {
           {notifications.length > 0 && (
             <div className="p-3 border-t border-white/10 text-center">
               <button
-                onClick={() => {
-                  navigate('/notifications');
-                  setIsOpen(false);
-                }}
+                onClick={handleViewAllToggle}
                 className="text-sm text-purple-400 hover:text-purple-300 transition-colors"
               >
-                View all notifications
+                {showingAll ? 'Show less' : 'View all notifications'}
               </button>
             </div>
           )}

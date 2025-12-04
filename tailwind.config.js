@@ -19,12 +19,48 @@ export default {
       },
       animation: {
         fadeIn: 'fadeIn 0.5s ease-in-out',
+        'bubble-1': 'bubble1 1.2s ease-out forwards',
+        'bubble-2': 'bubble2 1.3s ease-out 0.1s forwards',
+        'bubble-3': 'bubble3 1.4s ease-out 0.2s forwards',
+        'bubble-4': 'bubble4 1.2s ease-out 0.15s forwards',
+        'bubble-5': 'bubble5 1.3s ease-out 0.25s forwards',
+        'bubble-6': 'bubble6 1.4s ease-out 0.35s forwards',
       },
       keyframes: {
         fadeIn: {
           '0%': { opacity: 0, transform: 'translateY(10px)' },
           '100%': { opacity: 1, transform: 'translateY(0)' },
-        }
+        },
+        bubble1: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(-15px, -25px) scale(1.2)' },
+        },
+        bubble2: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(-25px, -15px) scale(1)' },
+        },
+        bubble3: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(-10px, -30px) scale(0.8)' },
+        },
+        bubble4: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(15px, 25px) scale(1.2)' },
+        },
+        bubble5: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(25px, 15px) scale(1)' },
+        },
+        bubble6: {
+          '0%': { opacity: 0, transform: 'translate(0, 0) scale(0)' },
+          '50%': { opacity: 1 },
+          '100%': { opacity: 0, transform: 'translate(10px, 30px) scale(0.8)' },
+        },
       }
     },
   },

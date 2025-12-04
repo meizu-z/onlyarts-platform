@@ -1,147 +1,163 @@
 # OnlyArts Platform - Testing Checklist
 
-## <� Pre-Launch Testing Guide
-
-Test these features before going live to ensure everything works correctly.
-
----
-
-## 1.  Image Upload (Cloudinary)
-
-### Test: Upload Profile Picture
-1. Log into your app (http://localhost:5173)
-2. Go to **Settings** � **Profile**
-3. Click **Change Profile Picture**
-4. Upload a test image
-5. **Expected Result:**
-   - Image uploads successfully
-   - Preview shows the image
-   - Page refreshes and shows new profile picture
-
-### Test: Upload Artwork
-1. Go to **Create Artwork**
-2. Fill in artwork details
-3. Upload an image
-4. Click **Publish**
-5. **Expected Result:**
-   - Artwork created successfully
-   - Image displays on artwork page
-   - Image URL in console starts with `https://res.cloudinary.com/`
-
-###  Verification:
-- [ ] Profile picture uploads work
-- [ ] Artwork images upload to Cloudinary
-- [ ] Images display properly after upload
-- [ ] Check Cloudinary dashboard - images should appear there
+## Overview
+This checklist covers all recent stability and performance improvements made to the platform.
 
 ---
 
-## 2. =� Chat (Real-time Messaging)
+## 🔧 Pre-Testing Setup
 
-### Test: Send/Receive Messages
-1. Open app in **two different browsers** (or incognito + normal)
-2. Log in as **User A** in first browser
-3. Log in as **User B** in second browser
-4. **User A:** Go to Chat � Start conversation with User B
-5. **User A:** Send message: "Hello from User A"
-6. **User B:** Check chat - message should appear **instantly**
-7. **User B:** Reply: "Hello from User B"
-8. **User A:** Should see reply **immediately without refresh**
+### Backend
+- [ ] Stop any running backend instances
+- [ ] Restart backend: `cd backend && node server.js`
+- [ ] Verify in console: "✅ Connected to MySQL database"
+- [ ] Verify in console: "📊 Pool configured with 50 max connections"
+- [ ] (Dev mode only) Check pool monitoring logs appear every 30 seconds
 
-###  Verification:
-- [ ] Messages appear instantly (no refresh needed)
-- [ ] Messages persist after refresh
-- [ ] Check browser console - Should see: `=� Connected to chat socket`
+### Frontend
+- [ ] Stop any running frontend instances
+- [ ] Start frontend: `npm run dev`
+- [ ] Open browser to http://localhost:5173
+- [ ] Open browser DevTools (F12) → Console tab
 
 ---
 
-## 3. =� Wallet & Transactions
+## 🐛 Bug Fixes Testing
 
-### Test: View Transaction History
-1. Go to **Wallet** page
-2. Check **Transaction History** section
-3. **Expected Result:**
-   - NO 500 error!
-   - Transactions load successfully
-   - Proper pagination if many transactions
+### ✅ Test 1: Artwork Comments (Fixed Database Error)
+**What was fixed**: MySQL parameter mismatch in LIMIT/OFFSET query
 
-### Test: Add Funds (Mock Payment)
-1. Click **Add Funds**
-2. Enter amount: **�500**
-3. Enter any card details (mock accepts anything)
-4. Submit
-5. **Expected Result:**
-   - Balance increases
-   - Transaction appears in history
+**Steps:**
+1. [ ] Login to the platform
+2. [ ] Navigate to any artwork page (e.g., `/artwork/23`)
+3. [ ] Scroll to comments section
+4. [ ] **Expected**: Comments load without errors
+5. [ ] Open browser console → Network tab
+6. [ ] Look for `/api/artworks/*/comments` request
+7. [ ] **Expected**: Status 200 (success), no database errors
+8. [ ] Try paginating through comments if available
+9. [ ] **Expected**: No "Incorrect arguments to mysqld_stmt_execute" errors
 
-###  Verification:
-- [ ] Transaction history loads without errors
-- [ ] Can add funds to wallet
-- [ ] Balance updates correctly
+**✅ PASS** | **❌ FAIL** (note error):
 
 ---
 
-## 4. <� Exhibition Features
+### ✅ Test 2: Livestream Start/End Workflow (Fixed Status Bug)
+**What was fixed**: Frontend now calls API to transition livestream from "scheduled" to "live"
 
-### Test: Exhibition Display
-1. Go to any exhibition page
-2. **Check:**
-   - [ ] All artwork cards are same height (leveled)
-   - [ ] Buy Now buttons are small (not oversized)
-   - [ ] Comment icons are appropriate size
-   - [ ] No "Follow" button (should be removed)
+**Steps:**
+1. [ ] Login as a user (not admin)
+2. [ ] Navigate to `/start-live`
+3. [ ] Fill in livestream details:
+   - Title: "Test Livestream"
+   - Description: "Testing the fixed workflow"
+   - Type: Normal Live Stream
+4. [ ] Click "Go Live Now"
+5. [ ] **Expected**: Camera permission prompt appears
+6. [ ] Allow camera access
+7. [ ] **Expected**: Success message "Your live stream is now live! 🎉"
+8. [ ] **Expected**: Video preview appears with "LIVE" badge
+9. [ ] **CRITICAL**: Click "End Stream" button
+10. [ ] **Expected**: Success message "Livestream ended successfully"
+11. [ ] **Expected**: Redirects to `/livestreams` page
+12. [ ] Check backend console logs for:
+    - `POST /api/livestreams [201]` (create)
+    - `PUT /api/livestreams/*/start [200]` (go live) ← **THIS IS NEW**
+    - `PUT /api/livestreams/*/end [200]` (end)
 
-### Test: Exhibition Badges on Artwork Page
-1. View an artwork that's in an exhibition
-2. **Expected:**
-   - Card shows which exhibition(s) it belongs to
-   - Badges are clickable
-   - Clicking navigates to exhibition
-
-### Test: Exhibition Badges in Dashboard
-1. Go to Dashboard/Feed
-2. Find artworks in exhibitions
-3. **Expected:**
-   - Small badges below artwork
-   - Shows up to 2 exhibitions
-   - "EX" label for exclusive
-
-###  Verification:
-- [ ] Exhibition cards properly leveled
-- [ ] Buy Now buttons appropriately sized
-- [ ] Exhibition badges work on artwork pages
-- [ ] Exhibition badges appear in feed
-- [ ] Favorites filter works
+**✅ PASS** | **❌ FAIL** (note error):
 
 ---
 
-## =� Quick Test Script
+## ⚡ Performance Testing
 
-Open your app and try this complete flow:
+### ✅ Test 3: Database Connection Pool (Increased Capacity)
+**What was improved**: Connection limit 10 → 50, plus timeouts and monitoring
 
-1.  **Upload** artwork image � Check Cloudinary dashboard
-2.  **Create** exhibition with cover image
-3.  **View** wallet transactions � Should load without error
-4.  **Open** chat in two browsers � Send messages real-time
-5.  **Check** exhibition badges on artwork page
+**Steps:**
+1. [ ] Check backend console shows: "📊 Pool configured with 50 max connections"
+2. [ ] (Dev mode) Wait 30 seconds, verify pool monitoring logs appear
+3. [ ] Navigate through multiple pages quickly (Dashboard → Explore → Profile → Wallet)
+4. [ ] **Expected**: No "Connection pool exhausted" errors
+5. [ ] Check backend console for pool stats
+6. [ ] **Expected**: Free connections should be > 0
 
-**If all pass � You're ready for production!** <�
-
----
-
-## = Known Fixed Issues
-
--  Wallet transaction error (LIMIT/OFFSET)
--  Exhibition database error (FormData boolean)
--  Comment icons too large
--  Buy Now buttons too large
--  Exhibition cards not leveled
+**✅ PASS** | **❌ FAIL** (note error):
 
 ---
 
-## =� Before Going Live
+### ✅ Test 4: React Error Boundaries (Crash Protection)
+**What was added**: App-wide error boundary to catch component crashes
 
-- [ ] Remove debug console.logs from ArtworkPage.jsx
-- [ ] Test on mobile device
-- [ ] Verify all features work
-- [ ] Check for console errors
+**Steps:**
+1. [ ] Open browser DevTools → Console
+2. [ ] Type: `throw new Error("Test error boundary");`
+3. [ ] Press Enter
+4. [ ] **Expected**: Beautiful error screen with recovery buttons
+5. [ ] Click "Try Again" → **Expected**: Returns to app
+6. [ ] Click "Go Home" → **Expected**: Navigates to home
+
+**✅ PASS** | **❌ FAIL** (note error):
+
+---
+
+### ✅ Test 5: Vite Build Optimization (Code Splitting)
+**What was improved**: Manual chunk splitting for faster loads
+
+**Steps:**
+1. [ ] Run: `npm run build`
+2. [ ] Check `dist/js/` for multiple chunks:
+   - `vendor-react-*.js`
+   - `vendor-ui-*.js`
+   - `vendor-realtime-*.js`
+   - `admin-*.js`
+   - `pages-main-*.js`
+3. [ ] Check `dist/assets/` for organized folders
+4. [ ] Run: `npm run preview`
+5. [ ] Navigate app → chunks load on-demand
+
+**✅ PASS** | **❌ FAIL** (note error):
+
+---
+
+## 🔄 General Functionality Testing
+
+### ✅ Test 6: Core User Flows
+- [ ] Login/Logout
+- [ ] View artwork + comments
+- [ ] Wallet operations
+- [ ] Subscriptions
+- [ ] Exhibitions
+- [ ] Admin features
+
+**✅ ALL PASS** | **❌ SOME FAIL** (note which):
+
+---
+
+## 📊 Console Checks
+- [ ] No red errors
+- [ ] No failed requests (Network tab)
+- [ ] No React warnings
+- [ ] No database errors
+
+---
+
+## ✅ Final Status
+- [ ] All tests passed
+- [ ] Issues documented below
+- [ ] Ready for production
+
+---
+
+## 🐛 Issues Found
+
+### Issue 1:
+- Test:
+- Error:
+- Browser:
+
+---
+
+**Tested by**: ________________  
+**Date**: ________________  
+**Status**: ✅ PASS | ⚠️ ISSUES | ❌ FAIL

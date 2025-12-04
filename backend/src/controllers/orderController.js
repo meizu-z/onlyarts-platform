@@ -138,29 +138,85 @@ exports.createOrder = asyncHandler(async (req, res, next) => {
   // Clear cart
   await query('DELETE FROM cart_items WHERE user_id = ?', [userId]);
 
-  // Create payment intent for card payments
-  let paymentIntent = null;
-  if (paymentMethod === 'card' && process.env.STRIPE_SECRET_KEY) {
-    try {
-      paymentIntent = await createPaymentIntent(
-        totalAmount,
-        'usd',
-        {
-          orderId: orderId,
-          orderNumber: orderNumber,
-          buyerId: userId,
-        }
-      );
+  // Process wallet payment
+  if (paymentMethod === 'wallet') {
+    // Get user's wallet balance
+    const walletResult = await query('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
+    const walletBalance = parseFloat(walletResult.rows[0].wallet_balance) || 0;
 
-      // Update order with payment intent ID
-      await query(
-        'UPDATE orders SET payment_intent_id = ? WHERE id = ?',
-        [paymentIntent.id, orderId]
-      );
-    } catch (error) {
-      console.error('Failed to create payment intent:', error);
-      // Continue without payment intent - can be created later
+    // Check if user has sufficient balance
+    if (walletBalance < totalAmount) {
+      return next(new AppError(`Insufficient wallet balance. You need ₱${totalAmount.toFixed(2)} but have ₱${walletBalance.toFixed(2)}`, 400));
     }
+
+    // Deduct from wallet
+    await query(
+      'UPDATE users SET wallet_balance = wallet_balance - ? WHERE id = ?',
+      [totalAmount, userId]
+    );
+
+    // Get new balance
+    const newBalanceResult = await query('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
+    const newBalance = parseFloat(newBalanceResult.rows[0].wallet_balance) || 0;
+
+    // Record wallet transaction
+    await query(
+      `INSERT INTO wallet_transactions (user_id, type, amount, description, payment_method, balance_after)
+       VALUES (?, 'purchase', ?, ?, 'wallet', ?)`,
+      [
+        userId,
+        -totalAmount,
+        `Order ${orderNumber} - Artwork Purchase`,
+        newBalance
+      ]
+    );
+
+    // Mark order as completed and paid
+    await query(
+      `UPDATE orders SET status = 'completed', payment_status = 'paid', paid_at = NOW() WHERE id = ?`,
+      [orderId]
+    );
+  }
+
+  // Create payment intent for card payments or mark as completed for mock payments
+  let paymentIntent = null;
+  if (paymentMethod === 'card') {
+    if (process.env.STRIPE_SECRET_KEY) {
+      try {
+        paymentIntent = await createPaymentIntent(
+          totalAmount,
+          'usd',
+          {
+            orderId: orderId,
+            orderNumber: orderNumber,
+            buyerId: userId,
+          }
+        );
+
+        // Update order with payment intent ID
+        await query(
+          'UPDATE orders SET payment_intent_id = ? WHERE id = ?',
+          [paymentIntent.id, orderId]
+        );
+      } catch (error) {
+        console.error('Failed to create payment intent:', error);
+        // Continue without payment intent - can be created later
+      }
+    } else {
+      // Mock card payment - mark as completed immediately
+      await query(
+        `UPDATE orders SET status = 'completed', payment_status = 'paid', paid_at = NOW() WHERE id = ?`,
+        [orderId]
+      );
+    }
+  }
+
+  // Mark bank transfer as completed for mock system
+  if (paymentMethod === 'bank_transfer') {
+    await query(
+      `UPDATE orders SET status = 'completed', payment_status = 'paid', paid_at = NOW() WHERE id = ?`,
+      [orderId]
+    );
   }
 
   // Get created order with items

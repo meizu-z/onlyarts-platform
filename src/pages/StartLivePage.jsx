@@ -142,7 +142,7 @@ const StartLivePage = () => {
         });
       }
 
-      // 2. Create livestream via API
+      // 2. Create livestream via API (status: scheduled)
       const streamData = {
         title: title.trim(),
         description: description.trim(),
@@ -155,7 +155,10 @@ const StartLivePage = () => {
       const livestreamId = response.stream.id;
       setCurrentLivestreamId(livestreamId);
 
-      // 3. Connect to socket and join stream room
+      // 3. Transition livestream to live status in database
+      await livestreamService.goLive(livestreamId);
+
+      // 4. Connect to socket and join stream room
       const token = localStorage.getItem('token');
       console.log('Token for socket:', token ? 'exists' : 'missing');
 
@@ -198,7 +201,7 @@ const StartLivePage = () => {
 
       console.log('Socket connected, starting stream:', livestreamId);
 
-      // 4. Start the stream via socket
+      // 5. Start the stream via socket
       socketService.startStream(livestreamId);
       socketService.joinStream(livestreamId);
 

@@ -27,6 +27,16 @@ const WalletPage = () => {
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
 
+  // Card Management state
+  const [showAddCard, setShowAddCard] = useState(false);
+  const [savedCards, setSavedCards] = useState([]);
+  const [cardForm, setCardForm] = useState({
+    cardNumber: '',
+    cardHolder: '',
+    expiryDate: '',
+    cvv: ''
+  });
+
   useEffect(() => {
     fetchWalletData();
   }, []);
@@ -125,6 +135,38 @@ const WalletPage = () => {
     toast.info('Withdraw feature coming soon!');
   };
 
+  const handleAddCard = () => {
+    setShowAddCard(true);
+    setCardForm({
+      cardNumber: '',
+      cardHolder: '',
+      expiryDate: '',
+      cvv: ''
+    });
+  };
+
+  const handleCardSubmit = (e) => {
+    e.preventDefault();
+
+    // Mock validation - accepts any input
+    const newCard = {
+      id: Date.now(),
+      last4: cardForm.cardNumber.slice(-4) || '****',
+      cardHolder: cardForm.cardHolder || 'Card Holder',
+      expiryDate: cardForm.expiryDate || 'MM/YY',
+      brand: 'Visa' // Mock brand
+    };
+
+    setSavedCards([...savedCards, newCard]);
+    toast.success('Card added successfully!');
+    setShowAddCard(false);
+  };
+
+  const handleRemoveCard = (cardId) => {
+    setSavedCards(savedCards.filter(card => card.id !== cardId));
+    toast.success('Card removed');
+  };
+
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -185,24 +227,60 @@ const WalletPage = () => {
 
       {/* Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-8 px-3 md:px-0">
-        {[
-          { icon: '💳', label: 'Add Payment Method', color: 'from-[#7C5FFF]/10 to-[#FF5F9E]/10' },
-          { icon: '🎁', label: 'Send Gift', color: 'from-[#FF5F9E]/10 to-orange-600/10' }
-        ].map((action, idx) => (
-          <Card
-            key={idx}
-            className={`p-4 md:p-6 text-center hover:border-[#7C5FFF]/50 border border-white/10 transition-all duration-300 cursor-pointer transform hover:scale-105 hover:-translate-y-2 animate-fadeIn bg-gradient-to-br ${action.color} group`}
-            style={{ animationDelay: `${idx * 0.1}s` }}
-          >
-            <div className="text-3xl md:text-4xl mb-2 transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
-              {action.icon}
-            </div>
-            <p className="text-sm md:text-base text-[#f2e9dd] font-bold group-hover:text-[#B15FFF] transition-colors">
-              {action.label}
-            </p>
-          </Card>
-        ))}
+        <Card
+          onClick={handleAddCard}
+          className="p-4 md:p-6 text-center hover:border-[#7C5FFF]/50 border border-white/10 transition-all duration-300 cursor-pointer transform hover:scale-105 hover:-translate-y-2 animate-fadeIn bg-gradient-to-br from-[#7C5FFF]/10 to-[#FF5F9E]/10 group"
+        >
+          <div className="text-3xl md:text-4xl mb-2 transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
+            💳
+          </div>
+          <p className="text-sm md:text-base text-[#f2e9dd] font-bold group-hover:text-[#B15FFF] transition-colors">
+            Add Payment Method
+          </p>
+        </Card>
+        <Card
+          onClick={() => toast.info('Send Gift feature coming soon!')}
+          className="p-4 md:p-6 text-center hover:border-[#7C5FFF]/50 border border-white/10 transition-all duration-300 cursor-pointer transform hover:scale-105 hover:-translate-y-2 animate-fadeIn bg-gradient-to-br from-[#FF5F9E]/10 to-orange-600/10 group"
+          style={{ animationDelay: '0.1s' }}
+        >
+          <div className="text-3xl md:text-4xl mb-2 transform group-hover:scale-110 group-hover:rotate-12 transition-all duration-300">
+            🎁
+          </div>
+          <p className="text-sm md:text-base text-[#f2e9dd] font-bold group-hover:text-[#B15FFF] transition-colors">
+            Send Gift
+          </p>
+        </Card>
       </div>
+
+      {/* Saved Cards Section */}
+      {savedCards.length > 0 && (
+        <Card className="p-3 md:p-6 mx-3 md:mx-0 mb-4 md:mb-8 animate-fadeIn">
+          <h2 className="text-xl md:text-2xl font-bold text-[#f2e9dd] mb-4 md:mb-6">Payment Methods</h2>
+          <div className="space-y-3">
+            {savedCards.map((card) => (
+              <div
+                key={card.id}
+                className="flex items-center justify-between p-4 bg-gradient-to-r from-[#7C5FFF]/10 to-[#FF5F9E]/10 border border-[#7C5FFF]/30 rounded-lg hover:border-[#7C5FFF]/50 transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="text-2xl">💳</div>
+                  <div>
+                    <p className="font-semibold text-[#f2e9dd]">{card.brand} •••• {card.last4}</p>
+                    <p className="text-sm text-[#f2e9dd]/50">{card.cardHolder} · Expires {card.expiryDate}</p>
+                  </div>
+                </div>
+                <Button
+                  onClick={() => handleRemoveCard(card.id)}
+                  variant="ghost"
+                  className="text-red-400 hover:text-red-300 text-sm"
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Transaction History */}
       <Card className="p-3 md:p-6 mx-3 md:mx-0 animate-fadeIn" style={{ animationDelay: '0.3s' }}>
@@ -218,7 +296,7 @@ const WalletPage = () => {
                 <p className="text-sm md:text-base font-bold text-[#f2e9dd] group-hover:text-[#B15FFF] transition-colors truncate">
                   {tx.description}
                 </p>
-                <p className="text-xs md:text-sm text-[#f2e9dd]/50">{formatDate(tx.date)}</p>
+                <p className="text-xs md:text-sm text-[#f2e9dd]/50">{formatDate(tx.created_at)}</p>
               </div>
               <div className="text-right ml-2">
                 <p className={`text-sm md:text-base font-bold transform group-hover:scale-110 transition-transform ${
@@ -299,6 +377,65 @@ const WalletPage = () => {
             loading={processingPayment}
           />
         )}
+      </Modal>
+
+      {/* Add Card Modal */}
+      <Modal
+        isOpen={showAddCard}
+        onClose={() => setShowAddCard(false)}
+        title="Add Payment Method"
+      >
+        <form onSubmit={handleCardSubmit} className="space-y-4">
+          <Input
+            label="Card Number"
+            type="text"
+            value={cardForm.cardNumber}
+            onChange={(e) => setCardForm({ ...cardForm, cardNumber: e.target.value })}
+            placeholder="1234 5678 9012 3456"
+          />
+
+          <Input
+            label="Cardholder Name"
+            type="text"
+            value={cardForm.cardHolder}
+            onChange={(e) => setCardForm({ ...cardForm, cardHolder: e.target.value })}
+            placeholder="John Doe"
+          />
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Expiry Date"
+              type="text"
+              value={cardForm.expiryDate}
+              onChange={(e) => setCardForm({ ...cardForm, expiryDate: e.target.value })}
+              placeholder="MM/YY"
+            />
+
+            <Input
+              label="CVV"
+              type="text"
+              value={cardForm.cvv}
+              onChange={(e) => setCardForm({ ...cardForm, cvv: e.target.value })}
+              placeholder="123"
+            />
+          </div>
+
+          <div className="flex gap-3 pt-2">
+            <Button
+              type="submit"
+              className="flex-1 bg-gradient-to-r from-[#7C5FFF] to-[#FF5F9E]"
+            >
+              Add Card
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowAddCard(false)}
+            >
+              Cancel
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

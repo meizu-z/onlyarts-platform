@@ -13,8 +13,16 @@ exports.createLivestream = asyncHandler(async (req, res, next) => {
   const { title, description, scheduledFor, thumbnailUrl, isAuction, startingBid } = req.body;
 
   // Check if user can create livestreams (any artist)
-  if (req.user.role !== 'artist' && req.user.role !== 'admin') {
+  if (req.user.role !== 'artist' && !req.user.is_admin) {
     return next(new AppError('Only artists can create livestreams', 403));
+  }
+
+  // Check subscription tier - free tier cannot create livestreams
+  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [userId]);
+  const subscriptionTier = userResult.rows[0]?.subscription_tier || 'free';
+
+  if (subscriptionTier === 'free') {
+    return next(new AppError('Upgrade to BASIC or PREMIUM plan to access livestream capabilities', 403));
   }
 
   const result = await query(
@@ -143,12 +151,12 @@ exports.startLivestream = asyncHandler(async (req, res, next) => {
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.artist_id !== userId) {
+  if (livestream.artist_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 
   if (livestream.status !== 'scheduled') {
-    return next(new AppError('Can only start scheduled livestreams', 400));
+    return next(new AppError(`Can only start scheduled livestreams. Current status: ${livestream.status}`, 400));
   }
 
   await query(
@@ -177,12 +185,12 @@ exports.endLivestream = asyncHandler(async (req, res, next) => {
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.artist_id !== userId) {
+  if (livestream.artist_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 
   if (livestream.status !== 'live') {
-    return next(new AppError('Can only end live livestreams', 400));
+    return next(new AppError(`Can only end live livestreams. Current status: ${livestream.status}`, 400));
   }
 
   await query(
@@ -209,7 +217,7 @@ exports.deleteLivestream = asyncHandler(async (req, res, next) => {
   }
 
   const livestream = livestreamResult.rows[0];
-  if (livestream.artist_id !== userId && req.user.role !== 'admin') {
+  if (livestream.artist_id !== userId && !req.user.is_admin) {
     return next(new AppError('Access denied', 403));
   }
 

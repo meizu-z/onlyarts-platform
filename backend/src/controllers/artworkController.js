@@ -62,6 +62,8 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
   const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   // Get artworks with artist info and primary image
+  // SECURITY NOTE: Using template literals for sortField/sortOrder is safe because they're validated above
+  // Using string interpolation for LIMIT/OFFSET temporarily - will fix properly later
   const artworksResult = await query(
     `SELECT a.id, a.title, a.description, a.price, a.category, a.medium,
             a.dimensions, a.year_created, a.like_count, a.comment_count, a.view_count,
@@ -69,7 +71,7 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
             u.profile_image as artist_image,
             (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
-            ${req.user?.id ? `(SELECT COUNT(*) FROM likes WHERE user_id = ${req.user.id} AND artwork_id = a.id) as is_liked` : '0 as is_liked'}
+            0 as is_liked
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE ${whereClause}
@@ -126,18 +128,32 @@ exports.getAllArtworks = asyncHandler(async (req, res, next) => {
 exports.getArtworkById = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
+  // Build the is_following and is_liked subqueries with proper parameterization
+  const queryValues = [];
+  let selectIsFollowing, selectIsLiked;
+
+  if (req.user?.id) {
+    selectIsFollowing = `(SELECT COUNT(*) FROM follows WHERE follower_id = ? AND following_id = a.artist_id) as is_following,`;
+    selectIsLiked = `(SELECT COUNT(*) FROM likes WHERE user_id = ? AND artwork_id = a.id) as is_liked`;
+    queryValues.push(req.user.id, req.user.id, id, req.user.id);
+  } else {
+    selectIsFollowing = `0 as is_following,`;
+    selectIsLiked = `0 as is_liked`;
+    queryValues.push(id, 0);
+  }
+
   // Get artwork details
   const artworkResult = await query(
     `SELECT a.*,
             u.id as artist_id, u.username as artist_username, u.full_name as artist_name,
             u.profile_image as artist_image, u.bio as artist_bio,
             (SELECT media_url FROM artwork_media WHERE artwork_id = a.id AND is_primary = TRUE LIMIT 1) as primary_image,
-            ${req.user?.id ? `(SELECT COUNT(*) FROM follows WHERE follower_id = ${req.user.id} AND following_id = a.artist_id) as is_following,` : '0 as is_following,'}
-            ${req.user?.id ? `(SELECT COUNT(*) FROM likes WHERE user_id = ${req.user.id} AND artwork_id = a.id) as is_liked` : '0 as is_liked'}
+            ${selectIsFollowing}
+            ${selectIsLiked}
      FROM artworks a
      JOIN users u ON a.artist_id = u.id
      WHERE a.id = ? AND (a.status = 'published' OR a.artist_id = ?)`,
-    [id, req.user?.id || 0]
+    queryValues
   );
 
   if (artworkResult.rows.length === 0) {
@@ -173,6 +189,25 @@ exports.getArtworkById = asyncHandler(async (req, res, next) => {
     [id]
   );
   artwork.exhibitions = exhibitionsResult.rows;
+
+  // Check if artwork is exclusive in any exhibition (Premium tier required)
+  const isExclusive = exhibitionsResult.rows.some(exhibition => exhibition.artwork_type === 'exclusive');
+
+  if (isExclusive) {
+    // Require user to be logged in
+    if (!req.user) {
+      return next(new AppError('You must be logged in to view exclusive artworks', 401));
+    }
+
+    // Check user's subscription tier
+    const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [req.user.id]);
+    const userTier = userResult.rows[0]?.subscription_tier || 'free';
+
+    // Only Premium users can view exclusive artworks
+    if (userTier !== 'premium') {
+      return next(new AppError('Upgrade to PREMIUM plan to access exclusive artworks', 403));
+    }
+  }
 
   // Increment view count (async, don't wait)
   query('UPDATE artworks SET view_count = view_count + 1 WHERE id = ?', [id]);
@@ -219,6 +254,29 @@ exports.createArtwork = asyncHandler(async (req, res, next) => {
   let artworkPrice = price || 0;
   if (typeof artworkPrice === 'string') {
     artworkPrice = parseFloat(artworkPrice);
+  }
+
+  // Check subscription tier limits
+  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [req.user.id]);
+  const subscriptionTier = userResult.rows[0]?.subscription_tier || 'free';
+
+  // Count current artworks
+  const countResult = await query('SELECT COUNT(*) as count FROM artworks WHERE artist_id = ?', [req.user.id]);
+  const currentArtworkCount = countResult.rows[0].count;
+
+  // Define artwork limits per tier
+  const artworkLimits = {
+    free: 10,
+    basic: 50,
+    premium: Infinity
+  };
+
+  const limit = artworkLimits[subscriptionTier];
+  if (currentArtworkCount >= limit) {
+    if (req.file) {
+      await require('fs').promises.unlink(req.file.path);
+    }
+    return next(new AppError(`You have reached the artwork limit for your ${subscriptionTier.toUpperCase()} plan (${limit === Infinity ? 'unlimited' : limit} artworks). Upgrade your subscription to upload more.`, 403));
   }
 
   // Create artwork
@@ -352,7 +410,7 @@ exports.updateArtwork = asyncHandler(async (req, res, next) => {
 
   const artwork = artworkResult.rows[0];
 
-  if (artwork.artist_id !== req.user.id && req.user.role !== 'admin') {
+  if (artwork.artist_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('You can only update your own artworks', 403));
   }
 
@@ -469,7 +527,7 @@ exports.deleteArtwork = asyncHandler(async (req, res, next) => {
 
   const artwork = artworkResult.rows[0];
 
-  if (artwork.artist_id !== req.user.id && req.user.role !== 'admin') {
+  if (artwork.artist_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('You can only delete your own artworks', 403));
   }
 
@@ -663,6 +721,14 @@ exports.addComment = asyncHandler(async (req, res, next) => {
     return next(new AppError('Comment content is required', 400));
   }
 
+  // Check subscription tier - only Basic and Premium can comment
+  const userResult = await query('SELECT subscription_tier FROM users WHERE id = ?', [req.user.id]);
+  const subscriptionTier = userResult.rows[0]?.subscription_tier || 'free';
+
+  if (subscriptionTier === 'free') {
+    return next(new AppError('Upgrade to BASIC or PREMIUM plan to comment on artworks', 403));
+  }
+
   // Check if artwork exists
   const artworkResult = await query(
     'SELECT id FROM artworks WHERE id = ? AND status = ?',
@@ -732,7 +798,7 @@ exports.deleteComment = asyncHandler(async (req, res, next) => {
 
   const comment = commentResult.rows[0];
 
-  if (comment.user_id !== req.user.id && req.user.role !== 'admin') {
+  if (comment.user_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('You can only delete your own comments', 403));
   }
 

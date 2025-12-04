@@ -94,30 +94,37 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
   const userId = req.user.id;
   const { plan, paymentMethod, billingCycle } = req.body;
 
+  // Normalize plan name to lowercase first
+  const targetPlan = plan?.toLowerCase() || 'free';
+
   const validPlans = ['free', 'basic', 'premium'];
-  if (!validPlans.includes(plan)) {
+  if (!validPlans.includes(targetPlan)) {
     return next(new AppError('Invalid subscription plan', 400));
   }
 
   // Get current subscription and wallet balance
   const userResult = await query('SELECT subscription_tier, wallet_balance FROM users WHERE id = ?', [userId]);
-  const currentPlan = userResult.rows[0].subscription_tier;
-  const walletBalance = parseFloat(userResult.rows[0].wallet_balance);
+  const currentPlan = userResult.rows[0].subscription_tier?.toLowerCase() || 'free';
+  const walletBalance = parseFloat(userResult.rows[0].wallet_balance) || 0;
 
-  // Can't downgrade to free or same plan
+  // Can't downgrade to free or stay on same plan
   const planHierarchy = { free: 0, basic: 1, premium: 2 };
-  if (planHierarchy[plan] <= planHierarchy[currentPlan]) {
-    return next(new AppError('Invalid subscription change', 400));
+  if (planHierarchy[targetPlan] < planHierarchy[currentPlan]) {
+    return next(new AppError(`Cannot downgrade from ${currentPlan.toUpperCase()} to ${targetPlan.toUpperCase()}`, 400));
+  }
+
+  if (targetPlan === currentPlan) {
+    return next(new AppError(`You are already on the ${currentPlan.toUpperCase()} plan`, 400));
   }
 
   // Calculate subscription amount
   const monthlyPrices = { free: 0, basic: 149, premium: 249 };
-  const monthlyPrice = monthlyPrices[plan];
+  const monthlyPrice = monthlyPrices[targetPlan];
   const isYearly = billingCycle === 'yearly';
   const subscriptionAmount = isYearly ? Math.round(monthlyPrice * 12 * 0.8) : monthlyPrice;
 
   // For paid plans, payment is required
-  if (plan !== 'free' && !paymentMethod) {
+  if (targetPlan !== 'free' && !paymentMethod) {
     return next(new AppError('Payment method required for paid plans', 400));
   }
 
@@ -130,12 +137,12 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
     // Deduct from wallet
     await query(
       'UPDATE users SET wallet_balance = wallet_balance - ?, subscription_tier = ?, updated_at = NOW() WHERE id = ?',
-      [subscriptionAmount, plan, userId]
+      [subscriptionAmount, targetPlan, userId]
     );
 
     // Get new balance
     const newBalanceResult = await query('SELECT wallet_balance FROM users WHERE id = ?', [userId]);
-    const newBalance = parseFloat(newBalanceResult.rows[0].wallet_balance);
+    const newBalance = parseFloat(newBalanceResult.rows[0].wallet_balance) || 0;
 
     // Record wallet transaction
     await query(
@@ -144,7 +151,7 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
       [
         userId,
         -subscriptionAmount,
-        `${plan.toUpperCase()} Subscription (${isYearly ? 'Yearly' : 'Monthly'})`,
+        `${targetPlan.toUpperCase()} Subscription (${isYearly ? 'Yearly' : 'Monthly'})`,
         newBalance
       ]
     );
@@ -152,7 +159,7 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
     // For card payments, just update tier (mock payment processing)
     await query(
       'UPDATE users SET subscription_tier = ?, updated_at = NOW() WHERE id = ?',
-      [plan, userId]
+      [targetPlan, userId]
     );
   }
 
@@ -160,18 +167,18 @@ exports.upgradeSubscription = asyncHandler(async (req, res, next) => {
   await query(
     `INSERT INTO subscription_history (user_id, from_tier, to_tier, amount, payment_method_id)
      VALUES (?, ?, ?, ?, ?)`,
-    [userId, currentPlan, plan, subscriptionAmount, paymentMethod || 'none']
+    [userId, currentPlan, targetPlan, subscriptionAmount, paymentMethod || 'none']
   );
 
   // Create notification
   await query(
     `INSERT INTO notifications (user_id, type, title, message)
      VALUES (?, 'subscription', 'Subscription Upgraded', ?)`,
-    [userId, `Your subscription has been upgraded to ${plan.toUpperCase()}!`]
+    [userId, `Your subscription has been upgraded to ${targetPlan.toUpperCase()}!`]
   );
 
   successResponse(res, {
-    subscription_tier: plan,
+    subscription_tier: targetPlan,
     amount_paid: subscriptionAmount,
     billing_cycle: billingCycle || 'monthly',
   }, 'Subscription upgraded successfully');

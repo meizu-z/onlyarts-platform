@@ -41,12 +41,22 @@ export const livestreamService = {
   },
 
   /**
-   * Start a new livestream
+   * Create a new livestream (scheduled status)
    * @param {Object} streamData
    * @returns {Promise<{stream}>}
    */
   startStream: async (streamData) => {
     const response = await api.post('/livestreams', streamData);
+    return response.data;
+  },
+
+  /**
+   * Transition livestream from scheduled to live
+   * @param {string} streamId
+   * @returns {Promise<{stream}>}
+   */
+  goLive: async (streamId) => {
+    const response = await api.put(`/livestreams/${streamId}/start`);
     return response.data;
   },
 

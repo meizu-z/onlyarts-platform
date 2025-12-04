@@ -4,7 +4,7 @@
  */
 
 export const API_CONFIG = {
-  baseURL: 'http://localhost:5000/api', // Hardcoded to fix env loading issue
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
   timeout: parseInt(import.meta.env.VITE_API_TIMEOUT || '10000'),
   tokenKey: import.meta.env.VITE_TOKEN_KEY || 'onlyarts_token',
   refreshTokenKey: import.meta.env.VITE_REFRESH_TOKEN_KEY || 'onlyarts_refresh_token',
@@ -129,9 +129,9 @@ export const API_ENDPOINTS = {
   subscriptions: {
     plans: '/subscriptions/plans',
     current: '/subscriptions/current',
-    subscribe: '/subscriptions/subscribe',
+    subscribe: '/subscriptions/upgrade',
     cancel: '/subscriptions/cancel',
-    update: '/subscriptions/update',
+    update: '/subscriptions/upgrade',
   },
 
   // Wallet

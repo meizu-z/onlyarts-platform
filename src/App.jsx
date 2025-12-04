@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
 import { ToastProvider } from './components/ui/Toast';
 import { initializeMockOrders } from './services/order.service';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Layouts
 import MainLayout from './components/layouts/MainLayout';
@@ -37,6 +38,8 @@ import OrderConfirmationPage from './pages/OrderConfirmationPage';
 import MyOrdersPage from './pages/MyOrdersPage';
 import SalesDashboardPage from './pages/SalesDashboardPage';
 import CommissionRequestPage from './pages/CommissionRequestPage';
+import CommissionsPage from './pages/CommissionsPage';
+import CommissionDetailsPage from './pages/CommissionDetailsPage';
 import { AnalyticsPage } from './pages/AnalyticsPage';
 
 // Admin Pages
@@ -104,13 +107,14 @@ const App = () => {
   }, []);
 
   return (
-    <AuthProvider>
-      <CartProvider>
-        <ToastProvider>
-          <Router>
-            <Routes>
-              {/* The root path redirects to the appropriate page based on auth state. */}
-              <Route path="/" element={<RootRedirect />} />
+    <ErrorBoundary>
+      <AuthProvider>
+        <CartProvider>
+          <ToastProvider>
+            <Router>
+              <Routes>
+                {/* The root path redirects to the appropriate page based on auth state. */}
+                <Route path="/" element={<RootRedirect />} />
               
               {/* Public routes accessible to everyone. */}
               <Route path="/landing" element={<LandingPage />} />
@@ -149,6 +153,8 @@ const App = () => {
                 <Route path="/orders" element={<MyOrdersPage />} />
                 <Route path="/sales" element={<SalesDashboardPage />} />
                 <Route path="/request-commission" element={<CommissionRequestPage />} />
+                <Route path="/commissions" element={<CommissionsPage />} />
+                <Route path="/commissions/:id" element={<CommissionDetailsPage />} />
                 <Route path="/analytics" element={<AnalyticsPage />} />
               </Route>
 
@@ -176,6 +182,7 @@ const App = () => {
         </ToastProvider>
       </CartProvider>
     </AuthProvider>
+    </ErrorBoundary>
   );
 };
 

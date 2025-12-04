@@ -57,7 +57,7 @@ exports.uploadArtworkImages = asyncHandler(async (req, res, next) => {
 
   const artwork = artworkResult.rows[0];
 
-  if (artwork.artist_id !== req.user.id && req.user.role !== 'admin') {
+  if (artwork.artist_id !== req.user.id && !req.user.is_admin) {
     // Delete uploaded files
     for (const file of req.files) {
       await fs.unlink(file.path);
@@ -142,7 +142,7 @@ exports.deleteArtworkImage = asyncHandler(async (req, res, next) => {
 
   const artwork = artworkResult.rows[0];
 
-  if (artwork.artist_id !== req.user.id && req.user.role !== 'admin') {
+  if (artwork.artist_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('You can only delete images from your own artworks', 403));
   }
 
@@ -209,7 +209,7 @@ exports.setPrimaryImage = asyncHandler(async (req, res, next) => {
 
   const artwork = artworkResult.rows[0];
 
-  if (artwork.artist_id !== req.user.id && req.user.role !== 'admin') {
+  if (artwork.artist_id !== req.user.id && !req.user.is_admin) {
     return next(new AppError('You can only modify your own artworks', 403));
   }
 

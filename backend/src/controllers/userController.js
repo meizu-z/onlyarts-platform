@@ -62,7 +62,7 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
   const { id } = req.params;
 
   // Check if user can update this profile
-  if (req.user.id !== parseInt(id) && req.user.role !== 'admin') {
+  if (req.user.id !== parseInt(id) && !req.user.is_admin) {
     return next(new AppError('You can only update your own profile', 403));
   }
 
@@ -458,6 +458,7 @@ exports.getAllUsers = asyncHandler(async (req, res, next) => {
   const sortOrder = order.toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
 
   // Get users
+  // SECURITY NOTE: sortField/sortOrder are validated above, limit/offset are parseInt'd
   const usersResult = await query(
     `SELECT id, username, email, full_name, bio, profile_image, role,
             subscription_tier, follower_count, following_count, artwork_count,
